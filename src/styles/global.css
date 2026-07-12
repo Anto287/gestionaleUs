@@ -1,0 +1,198 @@
+/* ============================================================
+   U.S. Riolunato — stili di contorno.
+   I componenti sono di Ant Design (tema rosso in main.tsx).
+   Qui restano solo login, sidebar, header mobile e tessere.
+   ============================================================ */
+
+:root {
+  --rosso: #c22026;
+  --bg: #f6f3ee;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+}
+
+/* ---------- Accesso ---------- */
+
+.gate {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  padding: 1.5rem;
+  background:
+    radial-gradient(120% 90% at 50% -20%, #fcefcd 0%, transparent 45%),
+    radial-gradient(140% 120% at 50% -10%, #ffffff 0%, var(--bg) 60%);
+}
+
+.gate-card {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 390px;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(40, 24, 14, 0.13);
+}
+
+.gate-bar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--rosso) 0 50%, #e3a200 50% 100%);
+}
+
+.gate-logo {
+  display: block;
+  width: 140px;
+  height: auto;
+  margin: 0.4rem auto 0.2rem;
+}
+
+.gate-title {
+  margin: 0.4rem 0 0.1rem !important;
+}
+
+.gate-sub {
+  display: block;
+}
+
+.gate-foot {
+  font-size: 0.8rem;
+}
+
+/* ---------- Sidebar / brand ---------- */
+
+.app-sider {
+  position: sticky !important;
+  top: 0;
+  height: 100vh;
+  border-right: 1px solid #ece6dc;
+}
+
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.2rem 0.75rem 1rem;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding-bottom: 1rem;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid #ece6dc;
+}
+
+.brand-logo {
+  height: 64px;
+  width: auto;
+}
+
+.brand-season {
+  font-size: 0.72rem !important;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-foot {
+  padding-top: 0.6rem;
+  border-top: 1px solid #ece6dc;
+}
+
+/* ---------- Header mobile ---------- */
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #fff !important;
+  padding: 0 0.75rem !important;
+  border-bottom: 1px solid #ece6dc;
+  line-height: normal;
+  height: 56px !important;
+}
+
+.topbar-logo {
+  height: 30px;
+  width: auto;
+}
+
+.topbar-title {
+  font-weight: 600;
+}
+
+/* ---------- Contenuto ---------- */
+
+.app-content {
+  padding: clamp(1.1rem, 3vw, 2rem);
+}
+
+.app-container {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+  flex-wrap: wrap;
+}
+
+/* ---------- Tessere dashboard ---------- */
+
+.tile-card .tile-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #f8e6e5;
+  color: var(--rosso);
+  font-size: 20px;
+  margin-bottom: 0.5rem;
+}
+
+.tile-card:hover .tile-icon {
+  background: var(--rosso);
+  color: #fff;
+}
+
+.tile-label {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 2px;
+}
+
+/* ---------- Caricamento ---------- */
+
+.drive-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.drive-splash-text {
+  color: #6f695f;
+}
