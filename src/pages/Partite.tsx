@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -118,6 +119,8 @@ export function Partite() {
       title: '',
       key: 'azioni',
       width: 60,
+      // il click su Elimina (e sul suo Popconfirm) non deve aprire la partita
+      onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }),
       render: (_: unknown, p: Partita) => (
         <Popconfirm
           title={`Eliminare la partita con ${p.avversario}?`}
@@ -126,7 +129,7 @@ export function Partite() {
           okButtonProps={{ danger: true }}
           onConfirm={() => remove(p.id)}
         >
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
+          <Button type="text" danger icon={<DeleteOutlined />} />
         </Popconfirm>
       ),
     },

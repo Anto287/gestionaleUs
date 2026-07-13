@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { Button, Result, Space, Spin } from 'antd'
+import { Button, Result, Space } from 'antd'
+import { PalloneSpinner } from '../components/PalloneSpinner'
 import { config } from '../config'
 import * as store from '../services/driveStore'
 import { useAuth } from '../auth/AuthContext'
@@ -151,7 +152,7 @@ function SeasonSplash({
   }
   return (
     <div className="drive-splash" style={{ minHeight: '100vh' }}>
-      <Spin size="large" />
+      <PalloneSpinner />
       <p className="drive-splash-text">Carico le stagioni…</p>
     </div>
   )

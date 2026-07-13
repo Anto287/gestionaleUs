@@ -114,6 +114,21 @@ export function put<T extends { id: string }>(collection: string, season: string
   })
 }
 
+/** Sostituisce TUTTA la raccolta in un colpo solo (usato dall'import dei conti). */
+export function replaceAll<T extends { id: string }>(
+  collection: string,
+  season: string,
+  records: T[],
+): Promise<void> {
+  if (!DRIVE_URL) {
+    saveCollection(lsKey(collection, season), records)
+    return Promise.resolve()
+  }
+  return inCoda(async () => {
+    await post({ action: 'putAll', collection, season: seasonKey(season), records })
+  })
+}
+
 export function remove(collection: string, season: string, id: string): Promise<void> {
   if (!DRIVE_URL) {
     const k = lsKey(collection, season)
@@ -167,6 +182,24 @@ export function setSeasonsConfig(stagioni: string[], attiva: string): Promise<vo
   }
   return inCoda(async () => {
     await post({ action: 'setSeasons', stagioni, attiva })
+  })
+}
+
+/**
+ * Crea un documento vero sul Drive (Documento o Foglio Google) nella
+ * cartella Documenti della stagione. Solo in modalità Drive.
+ */
+export function createDoc(
+  season: string,
+  nome: string,
+  tipo: 'documento' | 'foglio',
+): Promise<DocMeta> {
+  if (!DRIVE_URL) {
+    return Promise.reject(new Error('Per creare documenti serve il Drive collegato'))
+  }
+  return inCoda(async () => {
+    const data = await post({ action: 'createDoc', season: seasonKey(season), nome, tipo })
+    return data.item as DocMeta
   })
 }
 

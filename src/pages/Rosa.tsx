@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
@@ -85,6 +86,9 @@ export function Rosa() {
     setModale(false)
   }
 
+  // il click su Elimina (e sul suo Popconfirm) non deve aprire la scheda del giocatore
+  const stopCell = { onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }) }
+
   const columns = [
     {
       title: 'Giocatore',
@@ -135,6 +139,7 @@ export function Rosa() {
       title: '',
       key: 'azioni',
       width: 60,
+      ...stopCell,
       render: (_: unknown, g: Giocatore) => (
         <Popconfirm
           title={`Eliminare ${g.nome} ${g.cognome}?`}
@@ -143,7 +148,7 @@ export function Rosa() {
           okButtonProps={{ danger: true }}
           onConfirm={() => remove(g.id)}
         >
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
+          <Button type="text" danger icon={<DeleteOutlined />} />
         </Popconfirm>
       ),
     },

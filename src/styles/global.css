@@ -1,23 +1,84 @@
 /* ============================================================
    U.S. Riolunato — stili di contorno.
-   I componenti sono di Ant Design (tema rosso in main.tsx).
-   Qui restano solo login, sidebar, header mobile e tessere.
+   I componenti sono di Ant Design (tema in main.tsx). Qui vivono
+   l'identità giallorossa (fascia, titoli da tabellone, lametta del
+   menu), login, sidebar, header mobile, tessere e caricamento.
    ============================================================ */
 
 :root {
   --rosso: #c22026;
-  --bg: #f6f3ee;
+  --oro: #e5a800;
+  --inchiostro: #241d16;
+  --testo-2: #75695a;
+  --carta: #f5f2eb;
+  --linea: #e9e1d2;
+  --bg: var(--carta);
+  /* la fascia del capitano: rosso e oro del crest */
+  --fascia: linear-gradient(90deg, var(--rosso) 0 62%, var(--oro) 62% 100%);
+  --font-display: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+  --ombra-card: 0 1px 2px rgba(36, 29, 22, 0.05), 0 14px 34px -22px rgba(36, 29, 22, 0.3);
 }
 
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: var(--bg);
+  background: var(--carta);
+  color: var(--inchiostro);
+}
+
+/* ---------- Titoli "da tabellone" ---------- */
+
+.page-title {
+  margin: 0 !important;
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+  font-size: 30px !important;
+  line-height: 1.05 !important;
+}
+
+.page-title-hero {
+  font-size: 42px !important;
+}
+
+/* la fascia sotto i titoli di pagina */
+.page-band {
+  display: block;
+  width: 46px;
+  height: 4px;
+  border-radius: 2px;
+  margin: 8px 0 6px;
+  background: var(--fascia);
+}
+
+.page-sub {
+  display: block;
+}
+
+.hero-eyebrow {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rosso);
+}
+
+.section-label {
+  display: block;
+  margin: 28px 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--testo-2);
 }
 
 /* ---------- Accesso ---------- */
 
 .gate {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -27,23 +88,40 @@ body {
   padding: 1.5rem;
   background:
     radial-gradient(120% 90% at 50% -20%, #fcefcd 0%, transparent 45%),
-    radial-gradient(140% 120% at 50% -10%, #ffffff 0%, var(--bg) 60%);
+    radial-gradient(140% 120% at 50% -10%, #ffffff 0%, var(--carta) 60%);
+}
+
+/* accenno di centrocampo dietro la card: linea mediana + cerchio */
+.gate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(36, 29, 22, 0.07), rgba(36, 29, 22, 0.07)) center / 100% 1px no-repeat,
+    radial-gradient(
+      circle at center,
+      transparent 229px,
+      rgba(36, 29, 22, 0.07) 230px 231px,
+      transparent 232px
+    );
 }
 
 .gate-card {
   position: relative;
+  z-index: 1;
   overflow: hidden;
   width: 100%;
   max-width: 390px;
   text-align: center;
-  box-shadow: 0 12px 36px rgba(40, 24, 14, 0.13);
+  box-shadow: 0 16px 44px rgba(40, 24, 14, 0.14);
 }
 
 .gate-bar {
   position: absolute;
   inset: 0 0 auto 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--rosso) 0 50%, #e3a200 50% 100%);
+  height: 5px;
+  background: var(--fascia);
 }
 
 .gate-logo {
@@ -55,6 +133,11 @@ body {
 
 .gate-title {
   margin: 0.4rem 0 0.1rem !important;
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 28px !important;
 }
 
 .gate-sub {
@@ -62,7 +145,11 @@ body {
 }
 
 .gate-foot {
+  position: relative;
+  z-index: 1;
   font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 /* ---------- Sidebar / brand ---------- */
@@ -71,36 +158,49 @@ body {
   position: sticky !important;
   top: 0;
   height: 100vh;
-  border-right: 1px solid #ece6dc;
+  border-right: 1px solid var(--linea);
 }
 
 .sidebar-inner {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1.2rem 0.75rem 1rem;
+  padding: 1.3rem 0.75rem 1rem;
+}
+
+/* la fascia in testa alla sidebar */
+.sidebar-inner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--fascia);
 }
 
 .brand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.45rem;
   padding-bottom: 1rem;
   margin-bottom: 0.6rem;
-  border-bottom: 1px solid #ece6dc;
+  border-bottom: 1px solid var(--linea);
 }
 
 .brand-logo {
-  height: 64px;
+  height: 68px;
   width: auto;
 }
 
 .brand-season {
-  font-size: 0.72rem !important;
-  font-weight: 500;
+  font-size: 0.7rem !important;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
+  color: var(--testo-2) !important;
 }
 
 .sidebar-nav {
@@ -108,22 +208,53 @@ body {
   overflow-y: auto;
 }
 
+/* lametta rossa sulla voce attiva */
+.sidebar-nav .ant-menu-item {
+  position: relative;
+}
+
+.sidebar-nav .ant-menu-item-selected {
+  font-weight: 600;
+}
+
+.sidebar-nav .ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--rosso);
+}
+
 .sidebar-foot {
   padding-top: 0.6rem;
-  border-top: 1px solid #ece6dc;
+  border-top: 1px solid var(--linea);
 }
 
 /* ---------- Header mobile ---------- */
 
 .app-topbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   background: #fff !important;
   padding: 0 0.75rem !important;
-  border-bottom: 1px solid #ece6dc;
   line-height: normal;
   height: 56px !important;
+}
+
+.app-topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--fascia);
 }
 
 .topbar-logo {
@@ -132,7 +263,11 @@ body {
 }
 
 .topbar-title {
+  font-family: var(--font-display);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 17px;
 }
 
 /* ---------- Contenuto ---------- */
@@ -155,7 +290,73 @@ body {
   flex-wrap: wrap;
 }
 
+/* ---------- Rifiniture Ant Design ---------- */
+
+/* cartoncini morbidi, senza bordi duri */
+.ant-card {
+  border-color: #f1eadd;
+  box-shadow: var(--ombra-card);
+}
+
+.ant-card-head-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 18px;
+}
+
+.ant-modal-title {
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 20px !important;
+}
+
+/* tabelle come fogli: intestazioni in maiuscoletto, numeri incolonnati */
+.ant-table-wrapper {
+  background: #fff;
+  border: 1px solid #f1eadd;
+  border-radius: 14px;
+  box-shadow: var(--ombra-card);
+  overflow: clip;
+}
+
+.ant-table {
+  font-variant-numeric: tabular-nums;
+}
+
+.ant-table-thead > tr > th {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+/* numeri "da tabellone" nelle statistiche */
+.ant-statistic-title {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+}
+
+.ant-statistic-content {
+  font-family: var(--font-display) !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Tessere dashboard ---------- */
+
+.tile-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tile-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(36, 29, 22, 0.05), 0 18px 40px -20px rgba(36, 29, 22, 0.32);
+}
 
 .tile-card .tile-icon {
   display: inline-flex;
@@ -164,10 +365,11 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: #f8e6e5;
+  background: #f9ebe6;
   color: var(--rosso);
   font-size: 20px;
   margin-bottom: 0.5rem;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .tile-card:hover .tile-icon {
@@ -179,6 +381,16 @@ body {
   font-weight: 600;
   font-size: 1rem;
   margin-bottom: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile-card,
+  .tile-card .tile-icon {
+    transition: none;
+  }
+  .tile-card:hover {
+    transform: none;
+  }
 }
 
 /* ---------- Caricamento ---------- */
@@ -194,5 +406,53 @@ body {
 }
 
 .drive-splash-text {
-  color: #6f695f;
+  color: var(--testo-2);
+}
+
+/* Il pallone che rotola (PalloneSpinner) */
+
+.pallone-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pallone-salto {
+  animation: pallone-salto 0.6s ease-in-out infinite alternate;
+}
+
+.pallone {
+  display: block;
+  color: var(--rosso);
+  animation: pallone-rotola 1.4s linear infinite;
+}
+
+.pallone-ombra {
+  height: 7px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(43, 28, 16, 0.3), transparent);
+  animation: pallone-ombra 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes pallone-rotola {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes pallone-salto {
+  from { transform: translateY(-1px); }
+  to { transform: translateY(-9px); }
+}
+
+@keyframes pallone-ombra {
+  from { transform: scaleX(1); opacity: 0.9; }
+  to { transform: scaleX(0.6); opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pallone,
+  .pallone-salto,
+  .pallone-ombra {
+    animation: none;
+  }
 }

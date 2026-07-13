@@ -7,7 +7,7 @@ export interface MeseBilancio {
   uscite: number
 }
 
-const BLU = '#2f6fdb'
+const VERDE = '#3f7a52'
 const ROSSO = '#c22026'
 
 /** Bilancio mensile: barre raggruppate Entrate/Uscite per mese. */
@@ -23,7 +23,7 @@ export function BilancioMensile({ dati }: { dati: MeseBilancio[] }) {
     <div>
       <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginBottom: 10, fontSize: 12 }}>
         <span>
-          <i style={{ display: 'inline-block', width: 10, height: 10, background: BLU, borderRadius: 2, marginRight: 5 }} />
+          <i style={{ display: 'inline-block', width: 10, height: 10, background: VERDE, borderRadius: 2, marginRight: 5 }} />
           Entrate
         </span>
         <span>
@@ -40,7 +40,7 @@ export function BilancioMensile({ dati }: { dati: MeseBilancio[] }) {
                   flex: 1,
                   height: `${(d.entrate / max) * 100}%`,
                   minHeight: d.entrate > 0 ? 3 : 0,
-                  background: BLU,
+                  background: VERDE,
                   borderRadius: '4px 4px 0 0',
                 }}
               />

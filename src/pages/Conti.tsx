@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import {
+  App as AntApp,
   Button,
   Card,
   Checkbox,
@@ -18,12 +19,14 @@ import {
   Table,
   Tag,
   Typography,
+  Upload,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { formatData, formatEuro } from '../lib/format'
 import { BilancioMensile, type MeseBilancio } from './conti/BilancioMensile'
+import { leggiBilancio } from './conti/importaBilancio'
 import type { Movimento } from '../types'
 
 function oggiIso() {
@@ -35,10 +38,26 @@ function labelMese(chiave: string) {
 }
 
 export function Conti() {
-  const { items, add, update, remove } = useCollection<Movimento>('conti')
+  const { items, add, update, remove, replace } = useCollection<Movimento>('conti')
+  const { modal, message } = AntApp.useApp()
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Movimento | null>(null)
+  const [importando, setImportando] = useState(false)
+  // l'import resta nascosto: si sblocca con 5 tocchi rapidi sul titolo
+  const [importSbloccato, setImportSbloccato] = useState(false)
+  const tocchi = useRef({ n: 0, t: 0 })
   const [form] = Form.useForm()
+
+  function tapTitolo() {
+    if (importSbloccato) return
+    const ora = Date.now()
+    if (ora - tocchi.current.t > 1200) tocchi.current.n = 0
+    tocchi.current = { n: tocchi.current.n + 1, t: ora }
+    if (tocchi.current.n >= 5) {
+      setImportSbloccato(true)
+      message.success('Import sbloccato: ora puoi caricare il bilancio da file.')
+    }
+  }
 
   const [q, setQ] = useState('')
   const [tipo, setTipo] = useState<string | undefined>()
@@ -111,6 +130,60 @@ export function Conti() {
     setModale(false)
   }
 
+  /** Import da Excel/CSV nel formato del bilancio: SOSTITUISCE tutti i movimenti. */
+  async function importaFile(file: File) {
+    if (!/\.(xlsx|xls|csv)$/i.test(file.name)) {
+      message.error('File non valido: servono Excel (.xlsx, .xls) o CSV.')
+      return
+    }
+    setImportando(true)
+    try {
+      const movimenti = await leggiBilancio(file)
+      if (!movimenti.length) {
+        message.error(
+          'File non valido: nessun movimento riconosciuto. Servono le colonne Data, Nome transazione, Uscita/Entrata.',
+        )
+        return
+      }
+      const entrate = movimenti.filter((m) => m.tipo === 'entrata').length
+      modal.confirm({
+        title: 'Importare il bilancio?',
+        content:
+          `In "${file.name}" ho trovato ${movimenti.length} movimenti ` +
+          `(${entrate} entrate, ${movimenti.length - entrate} uscite). ` +
+          (items.length > 0
+            ? `L'import sostituisce i ${items.length} movimenti già presenti.`
+            : 'Verranno aggiunti ai conti.'),
+        okText: items.length > 0 ? 'Sostituisci tutto' : 'Importa',
+        okButtonProps: { danger: items.length > 0 },
+        cancelText: 'Annulla',
+        onOk: () => {
+          replace(movimenti.map((m) => ({ ...m, id: crypto.randomUUID() })))
+          message.success(`Importati ${movimenti.length} movimenti.`)
+        },
+      })
+    } catch (e) {
+      message.error(`Import non riuscito: ${String((e as Error)?.message || e)}`)
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  const bottoneImporta = (
+    <Upload
+      accept=".xlsx,.xls,.csv"
+      showUploadList={false}
+      beforeUpload={(f) => {
+        importaFile(f)
+        return false // il file non va caricato da nessuna parte: si legge e basta
+      }}
+    >
+      <Button icon={<UploadOutlined />} loading={importando}>
+        Importa
+      </Button>
+    </Upload>
+  )
+
   const stopCell = { onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }) }
 
   const columns = [
@@ -171,10 +244,14 @@ export function Conti() {
       <PageHeader
         titolo="Conti"
         sottotitolo="Cassa continua (non divisa per stagione) · tocca una riga per modificarla"
+        onTitleClick={tapTitolo}
         azioni={
-          <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
-            Nuovo movimento
-          </Button>
+          <Space wrap>
+            {importSbloccato && bottoneImporta}
+            <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
+              Nuovo movimento
+            </Button>
+          </Space>
         }
       />
 
@@ -190,7 +267,7 @@ export function Conti() {
         </Col>
         <Col xs={12} sm={8}>
           <Card>
-            <Statistic title="Da incassare" value={formatEuro(daIncassare)} valueStyle={{ color: '#2f6fdb' }} />
+            <Statistic title="Da incassare" value={formatEuro(daIncassare)} valueStyle={{ color: '#3f7a52' }} />
           </Card>
         </Col>
         <Col xs={12} sm={8}>
@@ -212,9 +289,12 @@ export function Conti() {
 
       {items.length === 0 ? (
         <Empty description="Nessun movimento registrato">
-          <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
-            Nuovo movimento
-          </Button>
+          <Space wrap style={{ justifyContent: 'center' }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
+              Nuovo movimento
+            </Button>
+            {importSbloccato && bottoneImporta}
+          </Space>
         </Empty>
       ) : (
         <>

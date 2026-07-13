@@ -1,8 +1,9 @@
 /**
- * Le raccolte di dati del gestionale. Ognuna, per ogni stagione,
- * diventerà un file dentro la cartella della stagione sul Drive.
- * Elencarle qui serve per copiarle o eliminarle quando si gestiscono
- * le stagioni.
+ * Le raccolte di dati del gestionale. Sul Drive: giocatori, allenamenti,
+ * partite e distinte sono un foglio ciascuna dentro la cartella della
+ * stagione; conti ("Bilancio") e magazzino sono un unico foglio nella
+ * cartella madre, con una scheda per stagione. Elencarle qui serve per
+ * copiarle o eliminarle quando si gestiscono le stagioni.
  */
 export const COLLECTIONS = [
   'giocatori',

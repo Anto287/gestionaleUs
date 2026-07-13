@@ -43,13 +43,14 @@ export function Dashboard() {
     <>
       <div className="page-header">
         <div>
-          <Text type="secondary" style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: 12 }}>
-            Stagione {attiva}
-          </Text>
-          <Title level={2} style={{ margin: '2px 0 4px' }}>
+          <Text className="hero-eyebrow">Stagione {attiva}</Text>
+          <Title level={2} className="page-title page-title-hero">
             {config.clubName}
           </Title>
-          <Text type="secondary">{sottotitolo}</Text>
+          <span className="page-band" aria-hidden />
+          <Text type="secondary" className="page-sub">
+            {sottotitolo}
+          </Text>
         </div>
       </div>
 
@@ -88,9 +89,7 @@ export function Dashboard() {
         </Col>
       </Row>
 
-      <Title level={5} type="secondary" style={{ margin: '24px 0 12px', fontWeight: 600 }}>
-        Sezioni
-      </Title>
+      <Text className="section-label">Sezioni</Text>
       <Row gutter={[16, 16]}>
         {navItems
           .filter((n) => n.to !== '/' && n.to !== '/impostazioni')

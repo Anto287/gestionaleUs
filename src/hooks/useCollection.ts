@@ -20,8 +20,6 @@ export function useCollection<T extends { id: string }>(nome: string): Collectio
     add: (item) => data.add<T>(nome, item),
     update: (id, patch) => data.update<T>(nome, id, patch),
     remove: (id) => data.remove(nome, id),
-    replace: () => {
-      // non usato con l'archiviazione su Drive
-    },
+    replace: (next) => data.replaceAll(nome, next),
   }
 }

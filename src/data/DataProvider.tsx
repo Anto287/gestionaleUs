@@ -7,7 +7,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Alert, Button, Result, Spin } from 'antd'
+import { Alert, Button, Result } from 'antd'
+import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
 import * as store from '../services/driveStore'
@@ -19,7 +20,11 @@ interface DataValue {
   add: <T>(collection: string, item: Omit<T, 'id'>) => string
   update: <T>(collection: string, id: string, patch: Partial<T>) => void
   remove: (collection: string, id: string) => void
+  /** Sostituisce l'intera raccolta (usato dall'import dei conti). */
+  replaceAll: <T extends { id: string }>(collection: string, items: T[]) => void
   uploadDoc: (file: File) => Promise<void>
+  /** Crea un Documento o Foglio Google nella cartella Documenti. */
+  createDoc: (nome: string, tipo: 'documento' | 'foglio') => Promise<store.DocMeta>
 }
 
 const DataContext = createContext<DataValue | null>(null)
@@ -120,6 +125,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [attiva, fallita],
   )
 
+  const replaceAll = useCallback(
+    <T extends { id: string }>(c: string, items: T[]) => {
+      setData((s) => ({ ...s, [c]: items }))
+      store.replaceAll(c, seasonDi(c, attiva), items).catch(fallita)
+    },
+    [attiva, fallita],
+  )
+
   const uploadDoc = useCallback(
     async (file: File) => {
       try {
@@ -133,12 +146,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [attiva, fallita],
   )
 
+  const createDoc = useCallback(
+    async (nome: string, tipo: 'documento' | 'foglio') => {
+      const meta = await store.createDoc(attiva, nome, tipo)
+      setData((s) => ({ ...s, documenti: [...(s.documenti ?? []), meta] }))
+      return meta
+    },
+    [attiva],
+  )
+
   if (stato === 'loading') return <DriveSplash />
   if (stato === 'error')
     return <DriveSplash errore={erroreCaricamento} onRiprova={() => setTentativo((t) => t + 1)} />
 
   return (
-    <DataContext.Provider value={{ getItems, add, update, remove, uploadDoc }}>
+    <DataContext.Provider value={{ getItems, add, update, remove, replaceAll, uploadDoc, createDoc }}>
       {erroreSync && (
         <Alert
           type="warning"
@@ -173,7 +195,7 @@ function DriveSplash({ errore, onRiprova }: { errore?: string; onRiprova?: () =>
   }
   return (
     <div className="drive-splash">
-      <Spin size="large" />
+      <PalloneSpinner />
       <p className="drive-splash-text">Carico i dati dal Drive…</p>
     </div>
   )
