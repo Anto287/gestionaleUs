@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Select, InputNumber, Button, List, Card, Row, Col, Space, Checkbox, Radio, App } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { isDirigente, isGiocatore } from '../../lib/categoria'
+import type { Categoria } from '../../types'
 
 /**
  * Selezione dei convocati per la distinta (dal repo generatore-distinte,
  * adattato ad Ant Design v5 e alla rosa del gestionale).
- * `rows` = righe con almeno Nome/Cognome. `onListChange` riceve la lista.
+ * `rows` = righe con almeno Nome/Cognome (e Categoria). `onListChange` riceve la lista.
  */
 
 type Row = Record<string, unknown>
@@ -28,6 +30,12 @@ const CHECKBOX_LABELS: Record<string, string> = {
   DirAcc: 'Dir. Acc',
 }
 const SPECIAL_CHECKBOXES = ['Allen', 'VAllen', 'DirAcc']
+
+/** I ruoli di panchina (Allen./V.Allen./Dir. Acc) spettano ai dirigenti; numero, C. e V.C. ai giocatori. */
+function ammessoPerRuolo(raw: Row, role: string | null): boolean {
+  const cat = { categoria: raw.Categoria as Categoria | undefined }
+  return role && SPECIAL_CHECKBOXES.includes(role) ? isDirigente(cat) : isGiocatore(cat)
+}
 
 export function SelectorList({
   rows,
@@ -61,6 +69,24 @@ export function SelectorList({
         .filter((o) => o.label.toLowerCase().includes(filter.toLowerCase())),
     [options, list, filter],
   )
+
+  const selectedRaw = useMemo(
+    () => options.find((o) => o.key === selectedKey)?.raw,
+    [options, selectedKey],
+  )
+
+  // Scelta la persona, il ruolo si adatta: se quello segnato non è compatibile
+  // si deseleziona; per un dirigente puro (che in distinta va solo in panchina)
+  // si propone il primo ruolo di panchina ancora libero.
+  useEffect(() => {
+    if (!selectedRaw) return
+    setSelectedCheckbox((cur) => {
+      if (cur && !ammessoPerRuolo(selectedRaw, cur)) cur = null
+      if (cur === null && !ammessoPerRuolo(selectedRaw, null))
+        cur = SPECIAL_CHECKBOXES.find((k) => !list.some((it) => it[k])) ?? null
+      return cur
+    })
+  }, [selectedRaw, list])
 
   useEffect(() => {
     if (filteredOptions.length === 0) setSelectedKey(undefined)
@@ -102,6 +128,14 @@ export function SelectorList({
     const selectedOption = options.find((o) => o.key === selectedKey)!
     const isSpecial = selectedCheckbox ? SPECIAL_CHECKBOXES.includes(selectedCheckbox) : false
 
+    if (!ammessoPerRuolo(selectedOption.raw, selectedCheckbox))
+      return message.error(
+        selectedCheckbox
+          ? `${CHECKBOX_LABELS[selectedCheckbox]} è riservato ai ${
+              SPECIAL_CHECKBOXES.includes(selectedCheckbox) ? 'dirigenti' : 'giocatori'
+            }`
+          : `${selectedOption.label} è un dirigente: scegli Allen., V.Allen. o Dir. Acc`,
+      )
     if (!isSpecial && isNumberTaken(amount)) return message.error(`Il numero ${amount} è già assegnato`)
     if (selectedCheckbox && isRoleTaken(selectedCheckbox))
       return message.error(`Il ruolo ${CHECKBOX_LABELS[selectedCheckbox]} è già assegnato`)
@@ -124,6 +158,13 @@ export function SelectorList({
   function toggleCheckbox(id: string, key: string, checked: boolean) {
     if (checked && isRoleTaken(key))
       return message.error(`Il ruolo ${CHECKBOX_LABELS[key]} è già assegnato a un'altra persona`)
+    const target = list.find((it) => it.id === id)
+    if (checked && target && !ammessoPerRuolo(target.raw, key))
+      return message.error(
+        SPECIAL_CHECKBOXES.includes(key)
+          ? `${CHECKBOX_LABELS[key]} è riservato ai dirigenti`
+          : `${CHECKBOX_LABELS[key]} è riservato ai giocatori`,
+      )
 
     setList((prev) => {
       const updated = prev.map((it) => ({ ...it }))
@@ -236,7 +277,7 @@ export function SelectorList({
                     <Radio.Button
                       value={k}
                       style={{ width: '100%', textAlign: 'center' }}
-                      disabled={isRoleTaken(k)}
+                      disabled={isRoleTaken(k) || (!!selectedRaw && !ammessoPerRuolo(selectedRaw, k))}
                     >
                       {CHECKBOX_LABELS[k]}
                     </Radio.Button>
@@ -244,7 +285,12 @@ export function SelectorList({
                 ))}
                 {selectedCheckbox && (
                   <Col xs={12} sm={8} md={4}>
-                    <Button size="small" onClick={() => setSelectedCheckbox(null)} block>
+                    <Button
+                      size="small"
+                      onClick={() => setSelectedCheckbox(null)}
+                      disabled={!!selectedRaw && !ammessoPerRuolo(selectedRaw, null)}
+                      block
+                    >
                       Nessuno
                     </Button>
                   </Col>
@@ -299,7 +345,7 @@ export function SelectorList({
                       <Checkbox
                         checked={!!item[k]}
                         onChange={(e) => toggleCheckbox(item.id, k, e.target.checked)}
-                        disabled={!item[k] && isRoleTaken(k)}
+                        disabled={!item[k] && (isRoleTaken(k) || !ammessoPerRuolo(item.raw, k))}
                         style={{ fontSize: 12 }}
                       >
                         {CHECKBOX_LABELS[k]}

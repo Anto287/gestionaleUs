@@ -20,6 +20,7 @@ import { useCollection } from '../hooks/useCollection'
 import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { formatData } from '../lib/format'
+import { isGiocatore } from '../lib/categoria'
 import { AffluenzaChart } from './allenamenti/AffluenzaChart'
 import { ClassificaPresenze, esportaClassificaPdf, type RigaClassifica } from './allenamenti/classifica'
 import type { Allenamento, Giocatore } from '../types'
@@ -44,11 +45,12 @@ export function Allenamenti() {
   const [esportando, setEsportando] = useState(false)
   const [form] = Form.useForm()
 
+  // agli allenamenti si segnano i giocatori, non i dirigenti puri
   const rosa = useMemo(
     () =>
-      [...giocatori.items].sort((a, b) =>
-        `${a.cognome}${a.nome}`.localeCompare(`${b.cognome}${b.nome}`),
-      ),
+      giocatori.items
+        .filter(isGiocatore)
+        .sort((a, b) => `${a.cognome}${a.nome}`.localeCompare(`${b.cognome}${b.nome}`)),
     [giocatori.items],
   )
 

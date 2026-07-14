@@ -3,6 +3,9 @@
  * Ogni raccolta diventerà un foglio/file sul Drive quando sarà collegato.
  */
 
+/** Categoria del tesserato: chi manca del campo (dati esistenti) è giocatore. */
+export type Categoria = 'giocatore' | 'dirigente' | 'entrambi'
+
 /**
  * Un giocatore della rosa. Presenze (dagli allenamenti) e statistiche
  * (gol, assist, ammonizioni, espulsioni — dalle partite) si calcolano
@@ -12,6 +15,7 @@ export interface Giocatore {
   id: string
   nome: string
   cognome: string
+  categoria?: Categoria
   /** codice ruolo stile FIFA (vedi src/ruoli.ts), es. 'DC', 'COC' */
   ruoloPreferito?: string
   /** ruoli in cui è adattabile */

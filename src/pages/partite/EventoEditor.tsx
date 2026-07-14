@@ -1,5 +1,6 @@
 import { Button, InputNumber, Select, Space, Typography } from 'antd'
 import { DeleteOutlined } from '@ant-design/icons'
+import { isGiocatore } from '../../lib/categoria'
 import type { EventoGol, Giocatore } from '../../types'
 
 /** Attribuisce gol/assist ai giocatori (con quantità). Salva a ogni modifica. */
@@ -16,7 +17,9 @@ export function EventoEditor({
     const g = rosa.find((x) => x.id === id)
     return g ? `${g.cognome} ${g.nome}` : '—'
   }
-  const disponibili = rosa.filter((g) => !value.some((v) => v.giocatoreId === g.id))
+  const disponibili = rosa.filter(
+    (g) => isGiocatore(g) && !value.some((v) => v.giocatoreId === g.id),
+  )
 
   return (
     <Space direction="vertical" style={{ width: '100%' }}>

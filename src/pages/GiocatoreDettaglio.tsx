@@ -24,6 +24,7 @@ import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/ico
 import { useCollection } from '../hooks/useCollection'
 import { coloreRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
+import { isDirigente, isGiocatore, OPZIONI_CATEGORIA } from '../lib/categoria'
 import { statisticheGiocatore } from '../lib/statistiche'
 import { formatData } from '../lib/format'
 import type { Allenamento, Giocatore, Partita } from '../types'
@@ -76,7 +77,7 @@ export function GiocatoreDettaglio() {
   const percPresenze = presenze.totali ? Math.round((presenze.fatte / presenze.totali) * 100) : 0
 
   function apriModifica() {
-    form.setFieldsValue(g)
+    form.setFieldsValue({ ...g, categoria: g!.categoria ?? 'giocatore' })
     setModale(true)
   }
   function salvaModifica(valori: Partial<Giocatore>) {
@@ -109,12 +110,15 @@ export function GiocatoreDettaglio() {
               {g.cognome} {g.nome}
             </Title>
             <Space size={[6, 6]} wrap style={{ marginTop: 6 }}>
+              {isDirigente(g) && (
+                <Tag color="purple">{g.categoria === 'entrambi' ? 'Giocatore e dirigente' : 'Dirigente'}</Tag>
+              )}
               {g.ruoloPreferito ? (
                 <Tag color={coloreRuolo(g.ruoloPreferito)}>
                   {g.ruoloPreferito} · {RUOLO_BY_CODE[g.ruoloPreferito]?.label}
                 </Tag>
               ) : (
-                <Text type="secondary">Ruolo non impostato</Text>
+                isGiocatore(g) && <Text type="secondary">Ruolo non impostato</Text>
               )}
               {g.ruoliAdattati?.map((r) => (
                 <Tag key={r} color={coloreRuolo(r)} style={{ opacity: 0.7 }}>
@@ -210,6 +214,9 @@ export function GiocatoreDettaglio() {
           </Form.Item>
           <Form.Item label="Cognome" name="cognome" rules={[{ required: true, message: 'Inserisci il cognome' }]}>
             <Input />
+          </Form.Item>
+          <Form.Item label="Categoria" name="categoria">
+            <Select options={OPZIONI_CATEGORIA} />
           </Form.Item>
           <Form.Item label="Ruolo preferito" name="ruoloPreferito">
             <Select options={OPZIONI_RUOLI} allowClear showSearch optionFilterProp="label" />

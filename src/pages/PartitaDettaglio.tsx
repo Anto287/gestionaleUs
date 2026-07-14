@@ -18,6 +18,7 @@ import {
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { formatData } from '../lib/format'
+import { isGiocatore } from '../lib/categoria'
 import { EventoEditor } from './partite/EventoEditor'
 import type { EventoGol, Giocatore, Partita } from '../types'
 
@@ -40,7 +41,12 @@ export function PartitaDettaglio() {
       ),
     [giocatori.items],
   )
-  const opzioniRosa = rosa.map((g) => ({ value: g.id, label: `${g.cognome} ${g.nome}` }))
+  // i dirigenti puri non giocano: si propongono solo i giocatori, ma chi è già
+  // segnato (es. riclassificato dirigente in seguito) resta visibile col suo nome
+  const opzioniGiocatori = (selezionati: string[]) =>
+    rosa
+      .filter((g) => isGiocatore(g) || selezionati.includes(g.id))
+      .map((g) => ({ value: g.id, label: `${g.cognome} ${g.nome}` }))
 
   if (!p) {
     return (
@@ -142,7 +148,7 @@ export function PartitaDettaglio() {
               showSearch
               optionFilterProp="label"
               value={p.ammoniti ?? []}
-              options={opzioniRosa}
+              options={opzioniGiocatori(p.ammoniti ?? [])}
               onChange={(ammoniti) => update(p.id, { ammoniti })}
             />
           </Card>
@@ -156,7 +162,7 @@ export function PartitaDettaglio() {
               showSearch
               optionFilterProp="label"
               value={p.espulsi ?? []}
-              options={opzioniRosa}
+              options={opzioniGiocatori(p.espulsi ?? [])}
               onChange={(espulsi) => update(p.id, { espulsi })}
             />
           </Card>

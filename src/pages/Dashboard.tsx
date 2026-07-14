@@ -8,6 +8,7 @@ import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
 import { formatData, formatEuro } from '../lib/format'
 import { statoScadenza } from '../lib/scadenza'
+import { isGiocatore } from '../lib/categoria'
 import type { Allenamento, Articolo, Distinta, Giocatore, Movimento } from '../types'
 
 const { Title, Text } = Typography
@@ -59,7 +60,7 @@ export function Dashboard() {
         <Col xs={12} md={6}>
           <Card className="stat-card">
             <TeamOutlined className="stat-icon" aria-hidden />
-            <Statistic title="Giocatori in rosa" value={giocatori.items.length} />
+            <Statistic title="Giocatori in rosa" value={giocatori.items.filter(isGiocatore).length} />
           </Card>
         </Col>
         <Col xs={12} md={6}>

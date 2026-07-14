@@ -19,12 +19,14 @@ import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
+import { isDirigente, isGiocatore, OPZIONI_CATEGORIA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
 
 type Bozza = Pick<
   Giocatore,
   | 'nome'
   | 'cognome'
+  | 'categoria'
   | 'ruoloPreferito'
   | 'ruoliAdattati'
   | 'nascita'
@@ -42,6 +44,7 @@ export function Rosa() {
   const [form] = Form.useForm()
   const [q, setQ] = useState('')
   const [ruoloF, setRuoloF] = useState<string | undefined>()
+  const [categoriaF, setCategoriaF] = useState<string | undefined>()
 
   const presenze = useMemo(() => {
     const conteggio: Record<string, number> = {}
@@ -70,14 +73,16 @@ export function Rosa() {
         if (q && !nome.includes(q.toLowerCase())) return false
         if (ruoloF && g.ruoloPreferito !== ruoloF && !(g.ruoliAdattati ?? []).includes(ruoloF))
           return false
+        if (categoriaF === 'giocatore' && !isGiocatore(g)) return false
+        if (categoriaF === 'dirigente' && !isDirigente(g)) return false
         return true
       }),
-    [ordinati, q, ruoloF],
+    [ordinati, q, ruoloF, categoriaF],
   )
 
   function apriNuovo() {
     form.resetFields()
-    form.setFieldsValue({ certificatoMedico: false, ruoliAdattati: [] })
+    form.setFieldsValue({ certificatoMedico: false, ruoliAdattati: [], categoria: 'giocatore' })
     setModale(true)
   }
 
@@ -96,6 +101,11 @@ export function Rosa() {
       render: (_: unknown, g: Giocatore) => (
         <span style={{ fontWeight: 600 }}>
           {g.cognome} {g.nome}
+          {isDirigente(g) && (
+            <Tag color="purple" style={{ marginLeft: 8 }}>
+              {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
+            </Tag>
+          )}
         </span>
       ),
     },
@@ -158,7 +168,7 @@ export function Rosa() {
     <>
       <PageHeader
         titolo="Rosa"
-        sottotitolo={`${items.length} giocatori · tocca un nome per la scheda`}
+        sottotitolo={`${items.length} tesserati · tocca un nome per la scheda`}
         azioni={
           items.length > 0 && (
             <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
@@ -195,6 +205,17 @@ export function Rosa() {
               options={OPZIONI_RUOLI}
               style={{ width: 200 }}
             />
+            <Select
+              allowClear
+              placeholder="Categoria"
+              value={categoriaF}
+              onChange={setCategoriaF}
+              options={[
+                { value: 'giocatore', label: 'Giocatori' },
+                { value: 'dirigente', label: 'Dirigenti' },
+              ]}
+              style={{ width: 150 }}
+            />
           </Space>
           <Table
             rowKey="id"
@@ -228,6 +249,9 @@ export function Rosa() {
             rules={[{ required: true, message: 'Inserisci il cognome' }]}
           >
             <Input />
+          </Form.Item>
+          <Form.Item label="Categoria" name="categoria">
+            <Select options={OPZIONI_CATEGORIA} />
           </Form.Item>
           <Form.Item label="Ruolo preferito" name="ruoloPreferito">
             <Select options={OPZIONI_RUOLI} placeholder="es. DC — Difensore centrale" allowClear showSearch optionFilterProp="label" />

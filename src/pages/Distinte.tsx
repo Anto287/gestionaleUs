@@ -17,6 +17,7 @@ export function Distinte() {
       items.map((g) => ({
         Nome: g.nome,
         Cognome: g.cognome,
+        Categoria: g.categoria ?? 'giocatore',
         DataNascita: g.nascita ?? '',
         Tessera: g.tessera ?? '',
         DataRilascio: g.dataRilascio ?? '',
@@ -42,8 +43,8 @@ export function Distinte() {
               <PdfExporter list={selezionati} />
               <div style={{ marginTop: 12 }}>
                 <Text type="secondary">
-                  Il PDF con la distinta ufficiale verrà scaricato. La data di nascita arriva dalla
-                  rosa; tessera e data rilascio restano da compilare a mano sul modulo.
+                  Il PDF con la distinta ufficiale verrà scaricato. Data di nascita, numero tessera
+                  e data di rilascio arrivano dalla scheda di ciascun tesserato nella Rosa.
                 </Text>
               </div>
             </Card>
