@@ -21,7 +21,15 @@ import {
   Typography,
   Upload,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons'
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  FallOutlined,
+  RiseOutlined,
+  SearchOutlined,
+  UploadOutlined,
+  WalletOutlined,
+} from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { formatData, formatEuro } from '../lib/format'
@@ -257,7 +265,8 @@ export function Conti() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={8}>
-          <Card>
+          <Card className="stat-card">
+            <WalletOutlined className="stat-icon" aria-hidden />
             <Statistic
               title="Totale in cassa"
               value={formatEuro(saldo)}
@@ -266,12 +275,14 @@ export function Conti() {
           </Card>
         </Col>
         <Col xs={12} sm={8}>
-          <Card>
+          <Card className="stat-card">
+            <RiseOutlined className="stat-icon" aria-hidden />
             <Statistic title="Da incassare" value={formatEuro(daIncassare)} valueStyle={{ color: '#3f7a52' }} />
           </Card>
         </Col>
         <Col xs={12} sm={8}>
-          <Card>
+          <Card className="stat-card">
+            <FallOutlined className="stat-icon" aria-hidden />
             <Statistic
               title="Da dare"
               value={formatEuro(daPagare)}

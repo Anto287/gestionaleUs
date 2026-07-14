@@ -12,9 +12,19 @@ npm run dev
 
 ## Accesso
 
-All'apertura viene chiesta una password (blocco lato browser, non una vera
-protezione). La imposti in `src/config.ts` → `gatePassword`. La sicurezza vera
-arriverà con l'accesso a Google quando si collegherà il Drive.
+All'apertura viene chiesta una password. La schermata di login è solo UX: la
+protezione vera sta nel backend Apps Script, che rifiuta ogni richiesta senza
+la chiave giusta. La password non è scritta nel codice — si digita al login e
+resta nel browser di ogni dispositivo (`localStorage`).
+
+La chiave è la costante `SECRET` in `docs/apps-script.gs`. Deve essere **lunga
+e casuale** (20+ caratteri; genera con `openssl rand -hex 10`). Per cambiarla:
+aggiorni `SECRET`, ripubblichi lo script **aggiornando il deployment esistente**
+(così l'URL `/exec` non cambia) e rifai il login su ogni dispositivo.
+
+Difese lato Apps Script: confronto della chiave a tempo costante e ritardo di
+1 secondo sui tentativi con chiave errata (freno al brute force). La chiave
+viaggia sempre nel corpo delle richieste POST, mai nell'URL.
 
 ## Sezioni
 

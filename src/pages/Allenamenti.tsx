@@ -137,7 +137,7 @@ export function Allenamenti() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={8}>
-          <Card style={{ height: '100%' }}>
+          <Card>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
               <Statistic
                 title="Affluenza media"
@@ -150,7 +150,7 @@ export function Allenamenti() {
           </Card>
         </Col>
         <Col xs={24} md={16}>
-          <Card title="Affluenza per seduta" style={{ height: '100%' }}>
+          <Card title="Affluenza per seduta">
             <AffluenzaChart dati={datiChart} media={media} scala={rosa.length} />
           </Card>
         </Col>

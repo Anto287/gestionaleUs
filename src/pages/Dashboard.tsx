@@ -1,6 +1,7 @@
 import { createElement } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, Col, Row, Statistic, Typography } from 'antd'
+import { ClockCircleOutlined, CreditCardOutlined, TeamOutlined, WalletOutlined } from '@ant-design/icons'
 import { config } from '../config'
 import { navItems } from '../nav'
 import { useSeason } from '../season/SeasonContext'
@@ -56,12 +57,14 @@ export function Dashboard() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 8 }}>
         <Col xs={12} md={6}>
-          <Card>
+          <Card className="stat-card">
+            <TeamOutlined className="stat-icon" aria-hidden />
             <Statistic title="Giocatori in rosa" value={giocatori.items.length} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card>
+          <Card className="stat-card">
+            <WalletOutlined className="stat-icon" aria-hidden />
             <Statistic
               title="Saldo di cassa"
               value={formatEuro(saldo)}
@@ -70,7 +73,8 @@ export function Dashboard() {
           </Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card>
+          <Card className="stat-card">
+            <CreditCardOutlined className="stat-icon" aria-hidden />
             <Statistic
               title="Da pagare"
               value={formatEuro(daPagare)}
@@ -79,7 +83,8 @@ export function Dashboard() {
           </Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card>
+          <Card className="stat-card">
+            <ClockCircleOutlined className="stat-icon" aria-hidden />
             <Statistic
               title="Articoli in scadenza"
               value={inScadenza}

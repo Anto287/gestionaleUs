@@ -142,7 +142,7 @@ export function GiocatoreDettaglio() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
-          <Card style={{ textAlign: 'center', height: '100%' }}>
+          <Card style={{ textAlign: 'center' }}>
             <Text type="secondary">Presenze agli allenamenti</Text>
             <div style={{ margin: '12px 0' }}>
               <Progress type="dashboard" percent={percPresenze} strokeColor="#c22026" size={140} />
@@ -156,7 +156,6 @@ export function GiocatoreDettaglio() {
           <Card
             title="Statistiche"
             extra={<Text type="secondary" style={{ fontSize: 12 }}>calcolate dalle partite</Text>}
-            style={{ height: '100%' }}
           >
             <Row gutter={[16, 16]}>
               <Col xs={12} sm={6}>

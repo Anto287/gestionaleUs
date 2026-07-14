@@ -29,10 +29,9 @@ export function clearSecret(): void {
 export async function testSecret(candidate: string): Promise<boolean> {
   if (!DRIVE_URL) return true
   try {
-    const res = await fetch(
-      `${DRIVE_URL}?action=seasons&secret=${encodeURIComponent(candidate)}`,
-    )
-    const data = await res.json()
+    // la chiave va nel CORPO (POST), non nell'URL: non finisce così in
+    // cronologia, log dei proxy o header Referer.
+    const data = await callDrive({ action: 'seasons', secret: candidate.trim() })
     // chiave giusta: ok:true (script aggiornato) oppure "azione sconosciuta"
     // (script vecchio, ma il controllo chiave è passato). Chiave errata: "non autorizzato".
     if (data.ok) return true
@@ -68,12 +67,8 @@ export interface DocMeta {
 
 export async function list<T>(collection: string, season: string): Promise<T[]> {
   if (!DRIVE_URL) return loadCollection<T>(lsKey(collection, season))
-  const u =
-    `${DRIVE_URL}?action=list&collection=${encodeURIComponent(collection)}` +
-    `&season=${encodeURIComponent(seasonKey(season))}&secret=${encodeURIComponent(getSecret())}`
-  const res = await fetch(u)
-  const data = await res.json()
-  if (!data.ok) throw new Error(data.error || 'Errore Drive')
+  // lettura via POST: la chiave resta nel corpo, fuori dall'URL
+  const data = await post({ action: 'list', collection, season: seasonKey(season) })
   return data.items as T[]
 }
 
@@ -86,14 +81,24 @@ function inCoda<T>(fn: () => Promise<T>): Promise<T> {
   return run as Promise<T>
 }
 
-async function post(body: Record<string, unknown>) {
+/**
+ * Chiamata grezza al Drive: POST con la chiave nel corpo (mai nell'URL).
+ * Il text/plain evita il preflight CORS con Apps Script. Restituisce la
+ * risposta così com'è, senza lanciare: usato da chi deve leggerne l'esito
+ * (es. testSecret / seasonsConfig).
+ */
+async function callDrive(body: Record<string, unknown>) {
   const res = await fetch(DRIVE_URL, {
     method: 'POST',
-    // text/plain evita il preflight CORS con Apps Script
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ ...body, secret: getSecret() }),
+    body: JSON.stringify(body),
   })
-  const data = await res.json()
+  return res.json()
+}
+
+/** Come callDrive, ma inietta la chiave salvata e lancia se il Drive risponde con errore. */
+async function post(body: Record<string, unknown>) {
+  const data = await callDrive({ ...body, secret: getSecret() })
   if (!data.ok) throw new Error(data.error || 'Errore Drive')
   return data
 }
@@ -166,8 +171,7 @@ export async function seasonsConfig(): Promise<SeasonsConfig | null> {
     }
     return { stagioni: [], attiva: '' }
   }
-  const res = await fetch(`${DRIVE_URL}?action=seasons&secret=${encodeURIComponent(getSecret())}`)
-  const data = await res.json()
+  const data = await callDrive({ action: 'seasons', secret: getSecret() })
   if (!data.ok) {
     if (String(data.error || '').toLowerCase().includes('sconosciuta')) return null
     throw new Error(data.error || 'Errore Drive')
