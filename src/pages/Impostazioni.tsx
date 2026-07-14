@@ -17,7 +17,8 @@ import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
 import * as store from '../services/driveStore'
 import { PageHeader } from '../components/PageHeader'
-import type { Giocatore } from '../types'
+import { TorneiManager } from './impostazioni/TorneiManager'
+import type { Giocatore, Divisa, Torneo } from '../types'
 
 const { Text } = Typography
 
@@ -33,6 +34,8 @@ export function Impostazioni() {
   const { message } = App.useApp()
   const { stagioni, attiva, cambia, crea, elimina } = useSeason()
   const rosa = useCollection<Giocatore>('giocatori')
+  const tornei = useCollection<Torneo>('tornei')
+  const divise = useCollection<Divisa>('divise')
 
   const [nuova, setNuova] = useState(() => prossimaStagione(attiva))
   const [copiaRosa, setCopiaRosa] = useState(true)
@@ -48,9 +51,22 @@ export function Impostazioni() {
     setCreando(true)
     try {
       if (copiaRosa && rosa.items.length > 0) {
-        // le statistiche derivano dalle partite: la nuova stagione riparte da 0 da sola
-        await Promise.all(rosa.items.map((g) => store.put('giocatori', nome, g)))
+        // le statistiche derivano dalle partite: la nuova stagione riparte da 0 da sola.
+        // La tessera va rinnovata ogni anno: non si importa (né numero né data rilascio),
+        // e la quota associativa riparte da "non pagata".
+        await Promise.all(
+          rosa.items.map((g) => {
+            const { tessera: _t, dataRilascio: _d, ...resto } = g
+            return store.put('giocatori', nome, { ...resto, quotaPagata: false })
+          }),
+        )
       }
+      // tornei e tute da gara sono impostazioni della società: le portiamo
+      // avanti nella nuova stagione (restano modificabili lì dentro).
+      await Promise.all([
+        ...tornei.items.map((t) => store.put('tornei', nome, t)),
+        ...divise.items.map((d) => store.put('divise', nome, d)),
+      ])
       crea(nome)
       setNuova('')
       message.success(`Stagione ${nome} creata`)
@@ -129,6 +145,8 @@ export function Impostazioni() {
           </Button>
         </Space>
       </Card>
+
+      <TorneiManager />
 
       <Card title="Dati e Drive">
         <Text type="secondary">

@@ -10,6 +10,7 @@ import {
   Modal,
   Popconfirm,
   Row,
+  Segmented,
   Space,
   Statistic,
   Tag,
@@ -21,7 +22,7 @@ import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { formatData } from '../lib/format'
 import { isGiocatore } from '../lib/categoria'
-import { AffluenzaChart } from './allenamenti/AffluenzaChart'
+import { AffluenzaChart, type TipoAffluenza } from './allenamenti/AffluenzaChart'
 import { ClassificaPresenze, esportaClassificaPdf, type RigaClassifica } from './allenamenti/classifica'
 import type { Allenamento, Giocatore } from '../types'
 
@@ -43,6 +44,7 @@ export function Allenamenti() {
   const [modaleNuova, setModaleNuova] = useState(false)
   const [apertaId, setApertaId] = useState<string | null>(null)
   const [esportando, setEsportando] = useState(false)
+  const [tipoChart, setTipoChart] = useState<TipoAffluenza>('barre')
   const [form] = Form.useForm()
 
   // agli allenamenti si segnano i giocatori, non i dirigenti puri
@@ -152,8 +154,21 @@ export function Allenamenti() {
           </Card>
         </Col>
         <Col xs={24} md={16}>
-          <Card title="Affluenza per seduta">
-            <AffluenzaChart dati={datiChart} media={media} scala={rosa.length} />
+          <Card
+            title="Affluenza per seduta"
+            extra={
+              <Segmented
+                size="small"
+                value={tipoChart}
+                onChange={(v) => setTipoChart(v as TipoAffluenza)}
+                options={[
+                  { label: 'Barre', value: 'barre' },
+                  { label: 'Andamento', value: 'linea' },
+                ]}
+              />
+            }
+          >
+            <AffluenzaChart dati={datiChart} media={media} scala={rosa.length} tipo={tipoChart} />
           </Card>
         </Col>
       </Row>

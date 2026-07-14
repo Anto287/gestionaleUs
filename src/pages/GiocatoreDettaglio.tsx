@@ -185,13 +185,20 @@ export function GiocatoreDettaglio() {
             </Row>
             <Descriptions column={{ xs: 1, sm: 2 }} size="small" style={{ marginTop: 20 }} title="Anagrafica e tesseramento">
               <Descriptions.Item label="Data di nascita">{g.nascita || '—'}</Descriptions.Item>
-              <Descriptions.Item label="N. tessera">{g.tessera || '—'}</Descriptions.Item>
+              <Descriptions.Item label="N. tessera">
+                {g.tessera || <Tag color="orange">Mancante</Tag>}
+              </Descriptions.Item>
               <Descriptions.Item label="Rilascio tessera">{g.dataRilascio || '—'}</Descriptions.Item>
               <Descriptions.Item label="Certificato medico">
                 <Tag color={cert.color}>{cert.label}</Tag>
                 {g.scadenzaCertificato && (
                   <Text type="secondary"> scad. {formatData(g.scadenzaCertificato, true)}</Text>
                 )}
+              </Descriptions.Item>
+              <Descriptions.Item label="Quota associativa">
+                <Tag color={g.quotaPagata ? 'green' : 'red'}>
+                  {g.quotaPagata ? 'Pagata' : 'Da pagare'}
+                </Tag>
               </Descriptions.Item>
             </Descriptions>
           </Card>
@@ -238,6 +245,9 @@ export function GiocatoreDettaglio() {
           </Form.Item>
           <Form.Item label="Scadenza certificato" name="scadenzaCertificato">
             <Input type="date" />
+          </Form.Item>
+          <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
+            <Switch />
           </Form.Item>
         </Form>
       </Modal>

@@ -31,12 +31,12 @@ export function Dashboard() {
 
   const oggi = new Date().toISOString().slice(0, 10)
   const prossima = distinte.items
-    .filter((d) => d.data >= oggi)
-    .sort((a, b) => a.data.localeCompare(b.data))[0]
+    .filter((d) => d.data && d.data >= oggi)
+    .sort((a, b) => (a.data ?? '').localeCompare(b.data ?? ''))[0]
   const ultimoAllenamento = allenamenti.items.map((a) => a.data).sort((a, b) => b.localeCompare(a))[0]
 
   const sottotitolo = prossima
-    ? `Prossimo impegno: ${prossima.avversario} · ${formatData(prossima.data, true)}`
+    ? `Prossimo impegno: ${prossima.avversario ?? 'prossima gara'}${prossima.data ? ' · ' + formatData(prossima.data, true) : ''}`
     : ultimoAllenamento
       ? `Ultimo allenamento: ${formatData(ultimoAllenamento, true)}`
       : 'Inizia aggiungendo i giocatori alla rosa.'

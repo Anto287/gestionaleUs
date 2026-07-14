@@ -27,6 +27,8 @@ export interface Giocatore {
   /** certificato medico */
   certificatoMedico?: boolean
   scadenzaCertificato?: string
+  /** quota associativa pagata: riparte da false a ogni nuova stagione */
+  quotaPagata?: boolean
 }
 
 /** Gol o assist attribuiti a un giocatore in una partita. */
@@ -61,18 +63,80 @@ export interface Allenamento {
   presenze: Record<string, boolean>
 }
 
-/** La distinta di una partita. */
+/** Una riga di dati tesserato usata dentro la distinta (Nome, Cognome, ecc.). */
+export type RigaConvocato = Record<string, unknown>
+
+/**
+ * Un convocato nella distinta: il numero di maglia (amount), gli eventuali
+ * ruoli (C/VC/Allen/…) e i dati del tesserato in `raw`.
+ */
+export interface Convocato {
+  id: string
+  label: string
+  raw: RigaConvocato
+  amount: number | null
+  [k: string]: unknown
+}
+
+/**
+ * Una distinta salvata. Si può riprenderla dall'elenco, ricompilarne i campi,
+ * modificarli e ristamparla. La testata e i convocati sono l'istantanea usata
+ * per il PDF; `data` e `avversario` sono copiati dalla testata per l'elenco.
+ */
 export interface Distinta {
   id: string
-  data: string
-  avversario: string
-  inCasa: boolean
-  modulo?: string
-  /** id giocatori titolari (max 11) */
-  titolari: string[]
-  /** id giocatori in panchina */
-  panchina: string[]
-  note?: string
+  /** quando è stata salvata l'ultima volta (ISO con ora) */
+  creata: string
+  /** data della gara (ISO 'YYYY-MM-DD'), copia dalla testata */
+  data?: string
+  /** avversario, copia dalla testata */
+  avversario?: string
+  testata: TestataDistinta
+  convocati: Convocato[]
+}
+
+/**
+ * Una tuta/divisa da gara, definita nel Magazzino. I colori finiscono
+ * nella testata della distinta quando la si sceglie.
+ */
+export interface Divisa {
+  id: string
+  nome: string
+  coloreMaglia?: string
+  colorePantaloncini?: string
+  coloreCalzettoni?: string
+}
+
+/**
+ * Un torneo/competizione col suo girone (es. Campionato, Coppa), definito
+ * nelle Impostazioni. Nella distinta si sceglie da un elenco a tendina.
+ */
+export interface Torneo {
+  id: string
+  nome: string
+  girone?: string
+}
+
+/**
+ * I valori di testata da stampare in cima alla distinta. Tutti facoltativi:
+ * se restano vuoti, la distinta si stampa con le righe da compilare a mano.
+ */
+export interface TestataDistinta {
+  coloreMaglia?: string
+  colorePantaloncini?: string
+  coloreCalzettoni?: string
+  torneo?: string
+  girone?: string
+  /** data della gara in formato ISO 'YYYY-MM-DD' */
+  dataGara?: string
+  /** orario di inizio gara, es. "15:30" */
+  oraGara?: string
+  /** orario di ritrovo/presentazione o note libere */
+  orarioRitrovo?: string
+  /** squadra avversaria */
+  avversario?: string
+  /** campo di gioco */
+  campo?: string
 }
 
 /** Un articolo del magazzino del bar. Possono esserci più articoli con lo stesso nome. */
@@ -83,6 +147,21 @@ export interface Articolo {
   quantita: number
   /** data di scadenza (facoltativa); si ordina per questa */
   scadenza?: string
+}
+
+/**
+ * Una voce di un magazzino generico (bar, materiale allenamento, manutenzione
+ * campo, borsa medica). Ogni sezione usa solo i campi che le servono; per
+ * questo, oltre al nome, sono tutti facoltativi. `Articolo` ne è un caso.
+ */
+export interface VoceMagazzino {
+  id: string
+  nome: string
+  categoria?: string
+  quantita?: number
+  /** data di scadenza (per il bar e la borsa medica) */
+  scadenza?: string
+  note?: string
 }
 
 /** Un movimento di cassa: entrata o uscita, saldato o ancora aperto. */

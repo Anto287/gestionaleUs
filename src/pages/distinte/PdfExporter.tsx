@@ -3,15 +3,42 @@ import { DownloadOutlined } from '@ant-design/icons'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import type { Convocato } from './SelectorList'
+import type { TestataDistinta } from '../../types'
+import { formatData } from '../../lib/format'
+
+/** Scherma i caratteri speciali: il testo dell'utente va dentro innerHTML. */
+function esc(s?: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/** Valore in grassetto se presente, altrimenti la riga vuota (underscore) da compilare a mano. */
+function campo(valore: string | undefined, rigaVuota: string): string {
+  return valore ? `<b>${esc(valore)}</b>` : rigaVuota
+}
 
 /**
  * Genera la distinta di gara ufficiale in PDF (dal repo generatore-distinte).
  */
-export function PdfExporter({ list = [] }: { list?: Convocato[] }) {
+export function PdfExporter({
+  list = [],
+  testata = {},
+  onStampato,
+}: {
+  list?: Convocato[]
+  testata?: TestataDistinta
+  /** chiamato dopo che il PDF è stato generato con successo (per salvare la distinta) */
+  onStampato?: () => void
+}) {
   const { message } = App.useApp()
 
   async function handlePrint() {
     if (!list.length) return message.warning('La lista è vuota: aggiungi i convocati prima di stampare')
+
+    const gironeTorneo = [testata.torneo, testata.girone].filter(Boolean).join(' — ')
+    const dataGara = testata.dataGara ? formatData(testata.dataGara, true) : undefined
 
     function getMansNum(item: Convocato) {
       if (item.Allen) return 'Allen.'
@@ -53,16 +80,16 @@ export function PdfExporter({ list = [] }: { list?: Convocato[] }) {
         <h2 style="font-size: 22px; font-weight: bold; margin: 0 0 20px 0;">DISTINTA GARA</h2>
         <div style="font-weight: bold; margin-bottom: 15px; font-size: 13px;">SQUADRA: U.S. RIOLUNATO</div>
         <div style="margin-bottom: 12px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <span>COLORI: MAGLIE_______________________</span>
-          <span>PANT. _______________________</span>
-          <span>CALZ. _______________________</span>
+          <span>COLORI: MAGLIE ${campo(testata.coloreMaglia, '_______________________')}</span>
+          <span>PANT. ${campo(testata.colorePantaloncini, '_______________________')}</span>
+          <span>CALZ. ${campo(testata.coloreCalzettoni, '_______________________')}</span>
         </div>
         <div style="margin-bottom: 12px; font-size: 12px;">
-          <span style="font-size: 10px;">GIRONE/TORNEO:</span> ________________________ Tesserati partecipanti alla gara del ____________
+          <span style="font-size: 10px;">GIRONE/TORNEO:</span> ${campo(gironeTorneo, '________________________')} Tesserati partecipanti alla gara del ${campo(dataGara, '____________')}
         </div>
         <div style="margin-bottom: 20px; font-size: 12px;">
-          ore_______ orario pres.note________ Contro_____________________________
-          Campo____________________________
+          ore ${campo(testata.oraGara, '_______')} orario pres.note ${campo(testata.orarioRitrovo, '________')} Contro ${campo(testata.avversario, '_____________________________')}
+          Campo ${campo(testata.campo, '____________________________')}
         </div>
       </div>
       <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width:100%; font-size:12px;">
@@ -144,6 +171,7 @@ export function PdfExporter({ list = [] }: { list?: Convocato[] }) {
         .replace(/:/g, '-')
       pdf.save(`distinta-riolunato-${data}_${ora}.pdf`)
       message.success('PDF generato con successo')
+      onStampato?.()
     } catch (err) {
       console.error('Errore generazione PDF:', err)
       message.error('Errore durante la generazione del PDF')

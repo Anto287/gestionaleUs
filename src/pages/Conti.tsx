@@ -13,6 +13,7 @@ import {
   Modal,
   Popconfirm,
   Row,
+  Segmented,
   Select,
   Space,
   Statistic,
@@ -33,7 +34,7 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { formatData, formatEuro } from '../lib/format'
-import { BilancioMensile, type MeseBilancio } from './conti/BilancioMensile'
+import { BilancioMensile, type MeseBilancio, type TipoBilancio } from './conti/BilancioMensile'
 import { leggiBilancio } from './conti/importaBilancio'
 import type { Movimento } from '../types'
 
@@ -70,6 +71,7 @@ export function Conti() {
   const [q, setQ] = useState('')
   const [tipo, setTipo] = useState<string | undefined>()
   const [stato, setStato] = useState<string | undefined>()
+  const [tipoBilancio, setTipoBilancio] = useState<TipoBilancio>('barre')
 
   // saldo progressivo su TUTTI i movimenti (i filtri non alterano la cassa)
   const vista = useMemo(() => {
@@ -293,8 +295,22 @@ export function Conti() {
       </Row>
 
       {bilancio.length > 0 && (
-        <Card title="Bilancio mensile" style={{ marginBottom: 16 }}>
-          <BilancioMensile dati={bilancio} />
+        <Card
+          title="Bilancio mensile"
+          style={{ marginBottom: 16 }}
+          extra={
+            <Segmented
+              size="small"
+              value={tipoBilancio}
+              onChange={(v) => setTipoBilancio(v as TipoBilancio)}
+              options={[
+                { label: 'Entrate/Uscite', value: 'barre' },
+                { label: 'Saldo', value: 'saldo' },
+              ]}
+            />
+          }
+        >
+          <BilancioMensile dati={bilancio} tipo={tipoBilancio} />
         </Card>
       )}
 

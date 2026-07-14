@@ -2,22 +2,19 @@ import { useMemo, useState, useEffect } from 'react'
 import { Select, InputNumber, Button, List, Card, Row, Col, Space, Checkbox, Radio, App } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { isDirigente, isGiocatore } from '../../lib/categoria'
-import type { Categoria } from '../../types'
+import type { Categoria, Convocato, RigaConvocato } from '../../types'
+
+export type { Convocato } from '../../types'
+
+/** alias locale di tipo, per non confonderlo con il componente Row di antd */
+type Row = RigaConvocato
 
 /**
  * Selezione dei convocati per la distinta (dal repo generatore-distinte,
  * adattato ad Ant Design v5 e alla rosa del gestionale).
  * `rows` = righe con almeno Nome/Cognome (e Categoria). `onListChange` riceve la lista.
+ * `initialList` = convocati di partenza (quando si riprende una distinta salvata).
  */
-
-type Row = Record<string, unknown>
-export interface Convocato {
-  id: string
-  label: string
-  raw: Row
-  amount: number | null
-  [k: string]: unknown
-}
 
 const labelKey1 = 'Nome'
 const labelKey2 = 'Cognome'
@@ -40,16 +37,20 @@ function ammessoPerRuolo(raw: Row, role: string | null): boolean {
 export function SelectorList({
   rows,
   onListChange,
+  initialList,
 }: {
   rows: Row[]
   onListChange: (list: Convocato[]) => void
+  initialList?: Convocato[]
 }) {
   const { message } = App.useApp()
 
   const options = useMemo(
     () =>
       rows.map((r, idx) => ({
-        key: idx.toString(),
+        // chiave stabile sull'id del giocatore, così una distinta ripresa
+        // ritrova gli stessi convocati anche se la rosa è cambiata
+        key: String(r.Id ?? idx),
         label: `${r[labelKey1] || ''} ${r[labelKey2] || ''}`.trim(),
         raw: r,
       })),
@@ -59,7 +60,7 @@ export function SelectorList({
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined)
   const [amount, setAmount] = useState(1)
   const [selectedCheckbox, setSelectedCheckbox] = useState<string | null>(null)
-  const [list, setList] = useState<Convocato[]>([])
+  const [list, setList] = useState<Convocato[]>(() => initialList ?? [])
   const [filter, setFilter] = useState('')
 
   const filteredOptions = useMemo(

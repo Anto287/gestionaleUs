@@ -14,7 +14,7 @@ import {
   Table,
   Tag,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI } from '../ruoli'
@@ -34,10 +34,11 @@ type Bozza = Pick<
   | 'dataRilascio'
   | 'certificatoMedico'
   | 'scadenzaCertificato'
+  | 'quotaPagata'
 >
 
 export function Rosa() {
-  const { items, add, remove } = useCollection<Giocatore>('giocatori')
+  const { items, add, remove, update } = useCollection<Giocatore>('giocatori')
   const allenamenti = useCollection<Allenamento>('allenamenti')
   const navigate = useNavigate()
   const [modale, setModale] = useState(false)
@@ -82,7 +83,12 @@ export function Rosa() {
 
   function apriNuovo() {
     form.resetFields()
-    form.setFieldsValue({ certificatoMedico: false, ruoliAdattati: [], categoria: 'giocatore' })
+    form.setFieldsValue({
+      certificatoMedico: false,
+      quotaPagata: false,
+      ruoliAdattati: [],
+      categoria: 'giocatore',
+    })
     setModale(true)
   }
 
@@ -144,6 +150,32 @@ export function Rosa() {
         const s = statoCertificato(g)
         return <Tag color={s.color}>{s.label}</Tag>
       },
+    },
+    {
+      title: 'Tessera',
+      key: 'tessera',
+      render: (_: unknown, g: Giocatore) =>
+        g.tessera ? (
+          <Tag color="default">{g.tessera}</Tag>
+        ) : (
+          <Tag color="orange" icon={<WarningOutlined />}>
+            Mancante
+          </Tag>
+        ),
+    },
+    {
+      title: 'Quota',
+      key: 'quota',
+      ...stopCell,
+      render: (_: unknown, g: Giocatore) => (
+        <Switch
+          size="small"
+          checked={!!g.quotaPagata}
+          checkedChildren="Pagata"
+          unCheckedChildren="No"
+          onChange={(v) => update(g.id, { quotaPagata: v })}
+        />
+      ),
     },
     {
       title: '',
@@ -280,6 +312,9 @@ export function Rosa() {
           </Form.Item>
           <Form.Item label="Scadenza certificato" name="scadenzaCertificato">
             <Input type="date" />
+          </Form.Item>
+          <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
+            <Switch />
           </Form.Item>
         </Form>
       </Modal>
