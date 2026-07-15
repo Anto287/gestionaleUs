@@ -43,8 +43,15 @@ export interface EventoGol {
 export interface Partita {
   id: string
   data: string
+  /** orario di inizio, es. "15:30" (facoltativo; usato per calendario e annunci) */
+  ora?: string
   avversario: string
   inCasa: boolean
+  /**
+   * true = già giocata (ha un risultato); false = in programma (nessun
+   * risultato ancora). Assente vale già giocata, per i dati precedenti.
+   */
+  giocata?: boolean
   golFatti: number
   golSubiti: number
   marcatori: EventoGol[]

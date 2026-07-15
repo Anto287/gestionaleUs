@@ -240,13 +240,25 @@ export function Conti() {
   const stopCell = { onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }) }
 
   const columns = [
-    { title: 'Data', width: 110, render: (_: unknown, r: { m: Movimento }) => formatData(r.m.data, true) },
+    {
+      title: 'Data',
+      width: 110,
+      sorter: (a: { m: Movimento }, b: { m: Movimento }) => a.m.data.localeCompare(b.m.data),
+      render: (_: unknown, r: { m: Movimento }) => formatData(r.m.data, true),
+    },
     {
       title: 'Descrizione',
+      width: 380,
       render: (_: unknown, r: { m: Movimento }) => (
         <span>
-          <b>{r.m.descrizione}</b>
-          {r.m.controparte && <Typography.Text type="secondary"> · {r.m.controparte}</Typography.Text>}
+          <span
+            className="tronca"
+            style={{ maxWidth: 300 }}
+            title={r.m.controparte ? `${r.m.descrizione} · ${r.m.controparte}` : r.m.descrizione}
+          >
+            <b>{r.m.descrizione}</b>
+            {r.m.controparte && <Typography.Text type="secondary"> · {r.m.controparte}</Typography.Text>}
+          </span>
           {!r.m.saldato && (
             <Tag color="warning" style={{ marginLeft: 8 }}>
               {r.m.tipo === 'entrata' ? 'Da incassare' : 'Da dare'}

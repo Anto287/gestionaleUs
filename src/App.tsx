@@ -17,8 +17,9 @@ import { Conti } from './pages/Conti'
 import { Documenti } from './pages/Documenti'
 import { Impostazioni } from './pages/Impostazioni'
 
-// caricata su richiesta: porta con sé jspdf/html2canvas (pesanti)
+// caricate su richiesta: portano con sé jspdf/html2canvas (pesanti)
 const Distinte = lazy(() => import('./pages/Distinte').then((m) => ({ default: m.Distinte })))
+const Social = lazy(() => import('./pages/Social').then((m) => ({ default: m.Social })))
 
 function Caricamento() {
   return (
@@ -49,6 +50,14 @@ function App() {
             element={
               <Suspense fallback={<Caricamento />}>
                 <Distinte />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/social"
+            element={
+              <Suspense fallback={<Caricamento />}>
+                <Social />
               </Suspense>
             }
           />

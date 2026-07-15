@@ -147,21 +147,33 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   const nomeCol = {
     title: 'Nome',
     key: 'nome',
+    width: 280,
+    sorter: (a: VoceMagazzino, b: VoceMagazzino) => (a.nome ?? '').localeCompare(b.nome ?? ''),
     render: (_: unknown, a: VoceMagazzino) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{a.nome}</div>
-        {conNote && a.note && <div style={{ fontSize: 12, color: '#8a7d6b' }}>{a.note}</div>}
+      <div style={{ maxWidth: 260 }}>
+        <div className="tronca" style={{ maxWidth: 260, fontWeight: 600 }} title={a.nome}>
+          {a.nome}
+        </div>
+        {conNote && a.note && (
+          <div className="tronca" style={{ maxWidth: 260, fontSize: 12, color: '#8a7d6b' }} title={a.note}>
+            {a.note}
+          </div>
+        )}
       </div>
     ),
   }
   const catCol = {
     title: 'Categoria',
     dataIndex: 'categoria',
+    width: 160,
+    sorter: (a: VoceMagazzino, b: VoceMagazzino) => (a.categoria ?? '').localeCompare(b.categoria ?? ''),
     render: (c: string) => (c ? <Tag color={coloreCategoria(c)}>{c}</Tag> : <Text type="secondary">—</Text>),
   }
   const scadenzaCol = {
     title: 'Scadenza',
     key: 'scadenza',
+    width: 180,
+    sorter: (a: VoceMagazzino, b: VoceMagazzino) => (a.scadenza ?? '').localeCompare(b.scadenza ?? ''),
     render: (_: unknown, a: VoceMagazzino) => {
       if (!a.scadenza) return <Text type="secondary">—</Text>
       const s = statoScadenza(a.scadenza)
@@ -179,6 +191,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
     title: 'Quantità',
     align: 'center' as const,
     width: 170,
+    sorter: (a: VoceMagazzino, b: VoceMagazzino) => (a.quantita ?? 0) - (b.quantita ?? 0),
     ...stopCell,
     render: (_: unknown, a: VoceMagazzino) => (
       <Space.Compact>

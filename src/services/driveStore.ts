@@ -207,6 +207,21 @@ export function createDoc(
   })
 }
 
+/**
+ * Salva una grafica (PNG) nella cartella "Grafica" della cartella madre del
+ * Drive (accanto alle stagioni). Serve lo script aggiornato con l'azione
+ * 'uploadGrafica'. Restituisce i metadati del file (con l'url).
+ */
+export function uploadGrafica(nome: string, dataBase64: string): Promise<DocMeta> {
+  if (!DRIVE_URL) {
+    return Promise.reject(new Error('Per salvare su Drive serve il Drive collegato'))
+  }
+  return inCoda(async () => {
+    const data = await post({ action: 'uploadGrafica', nome, dataBase64 })
+    return data.item as DocMeta
+  })
+}
+
 export function uploadDoc(
   season: string,
   nome: string,

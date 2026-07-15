@@ -11,6 +11,7 @@ import {
   Modal,
   Popconfirm,
   Select,
+  Switch,
   Table,
   Tag,
 } from 'antd'
@@ -30,6 +31,11 @@ function labelMese(chiave: string) {
   return `${m}/${y}`
 }
 
+/** Una partita senza risultato ancora: è solo in programma. */
+function inProgramma(p: Partita): boolean {
+  return p.giocata === false
+}
+
 function esito(p: Partita): { label: string; color: string } {
   if (p.golFatti > p.golSubiti) return { label: 'V', color: 'success' }
   if (p.golFatti < p.golSubiti) return { label: 'S', color: 'error' }
@@ -43,11 +49,13 @@ export function Partite() {
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [form] = Form.useForm()
+  const giocataForm = Form.useWatch('giocata', form)
   const [q, setQ] = useState('')
   const [dove, setDove] = useState<string | undefined>()
   const [esitoF, setEsitoF] = useState<string | undefined>()
   const [meseF, setMeseF] = useState<string | undefined>()
   const [portaF, setPortaF] = useState<string | undefined>()
+  const [statoF, setStatoF] = useState<string | undefined>()
 
   const partite = useMemo(() => [...items].sort((a, b) => b.data.localeCompare(a.data)), [items])
 
@@ -58,49 +66,60 @@ export function Partite() {
       .map((k) => ({ value: k, label: labelMese(k) }))
   }, [partite])
 
-  const nFiltri = [dove, esitoF, meseF, portaF].filter(Boolean).length
+  const nFiltri = [dove, esitoF, meseF, portaF, statoF].filter(Boolean).length
   function azzeraFiltri() {
     setDove(undefined)
     setEsitoF(undefined)
     setMeseF(undefined)
     setPortaF(undefined)
+    setStatoF(undefined)
   }
 
   const filtrate = useMemo(
     () =>
       partite.filter((p) => {
+        const programma = inProgramma(p)
         if (q && !p.avversario.toLowerCase().includes(q.toLowerCase())) return false
         if (dove === 'casa' && !p.inCasa) return false
         if (dove === 'trasferta' && p.inCasa) return false
-        if (esitoF && esito(p).label !== esitoF) return false
-        if (meseF && p.data.slice(0, 7) !== meseF) return false
+        if (statoF === 'giocate' && programma) return false
+        if (statoF === 'programma' && !programma) return false
+        // esito e porta valgono solo per le partite già giocate
+        if (esitoF && (programma || esito(p).label !== esitoF)) return false
+        if (portaF && programma) return false
         if (portaF === 'inviolata' && p.golSubiti !== 0) return false
         if (portaF === 'subito' && p.golSubiti === 0) return false
+        if (meseF && p.data.slice(0, 7) !== meseF) return false
         return true
       }),
-    [partite, q, dove, esitoF, meseF, portaF],
+    [partite, q, dove, esitoF, meseF, portaF, statoF],
   )
 
   function apriNuova() {
     form.resetFields()
-    form.setFieldsValue({ data: oggiIso(), inCasa: true, golFatti: 0, golSubiti: 0 })
+    form.setFieldsValue({ data: oggiIso(), inCasa: true, giocata: true, golFatti: 0, golSubiti: 0 })
     setModale(true)
   }
 
   function salva(v: {
     data: string
+    ora?: string
     avversario: string
     inCasa: boolean
+    giocata?: boolean
     golFatti: number
     golSubiti: number
     note?: string
   }) {
+    const giocata = v.giocata !== false
     add({
       data: v.data,
+      ora: v.ora?.trim() || undefined,
       avversario: v.avversario.trim(),
       inCasa: v.inCasa,
-      golFatti: v.golFatti ?? 0,
-      golSubiti: v.golSubiti ?? 0,
+      giocata,
+      golFatti: giocata ? (v.golFatti ?? 0) : 0,
+      golSubiti: giocata ? (v.golSubiti ?? 0) : 0,
       note: v.note?.trim() || undefined,
       marcatori: [],
       assist: [],
@@ -113,16 +132,27 @@ export function Partite() {
   const columns = [
     {
       title: 'Data',
-      dataIndex: 'data',
-      width: 120,
-      render: (d: string) => formatData(d, true),
+      key: 'data',
+      width: 140,
+      sorter: (a: Partita, b: Partita) => a.data.localeCompare(b.data),
+      defaultSortOrder: 'descend' as const,
+      render: (_: unknown, p: Partita) => (
+        <span>
+          {formatData(p.data, true)}
+          {p.ora && <span style={{ color: 'var(--testo-2)' }}> · {p.ora}</span>}
+        </span>
+      ),
     },
     {
       title: 'Avversario',
       key: 'avv',
+      width: 280,
+      sorter: (a: Partita, b: Partita) => a.avversario.localeCompare(b.avversario),
       render: (_: unknown, p: Partita) => (
         <span>
-          <b>{p.avversario}</b>{' '}
+          <b className="tronca" style={{ maxWidth: 190 }} title={p.avversario}>
+            {p.avversario}
+          </b>{' '}
           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
         </span>
       ),
@@ -131,7 +161,11 @@ export function Partite() {
       title: 'Risultato',
       key: 'ris',
       align: 'center' as const,
+      width: 160,
+      sorter: (a: Partita, b: Partita) =>
+        a.golFatti - a.golSubiti - (b.golFatti - b.golSubiti),
       render: (_: unknown, p: Partita) => {
+        if (inProgramma(p)) return <Tag color="gold">In programma</Tag>
         const e = esito(p)
         return (
           <span>
@@ -196,6 +230,19 @@ export function Partite() {
               onChange={(e) => setQ(e.target.value)}
             />
             <FiltriDrawer count={nFiltri} onReset={azzeraFiltri}>
+              <FiltroCampo label="Stato">
+                <Select
+                  allowClear
+                  placeholder="Tutte"
+                  value={statoF}
+                  onChange={setStatoF}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'giocate', label: 'Già giocate' },
+                    { value: 'programma', label: 'In programma' },
+                  ]}
+                />
+              </FiltroCampo>
               <FiltroCampo label="Dove">
                 <Select
                   allowClear
@@ -253,6 +300,7 @@ export function Partite() {
           {isMobile ? (
             <div className="lista-mobile">
               {filtrate.map((p) => {
+                const programma = inProgramma(p)
                 const e = esito(p)
                 return (
                   <div key={p.id} className="lista-card" onClick={() => navigate(`/partite/${p.id}`)}>
@@ -261,6 +309,7 @@ export function Partite() {
                         <div className="lista-card-title">{p.avversario}</div>
                         <div className="lista-card-meta" style={{ marginTop: 5 }}>
                           {formatData(p.data, true)}
+                          {p.ora && <span>· {p.ora}</span>}
                           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
                         </div>
                       </div>
@@ -277,10 +326,16 @@ export function Partite() {
                       </span>
                     </div>
                     <div className="lista-card-meta">
-                      <span className="lista-card-num" style={{ fontSize: 16, color: 'var(--inchiostro)' }}>
-                        {p.golFatti} - {p.golSubiti}
-                      </span>
-                      <Tag color={e.color}>{e.label}</Tag>
+                      {programma ? (
+                        <Tag color="gold">In programma</Tag>
+                      ) : (
+                        <>
+                          <span className="lista-card-num" style={{ fontSize: 16, color: 'var(--inchiostro)' }}>
+                            {p.golFatti} - {p.golSubiti}
+                          </span>
+                          <Tag color={e.color}>{e.label}</Tag>
+                        </>
+                      )}
                     </div>
                   </div>
                 )
@@ -319,6 +374,9 @@ export function Partite() {
           >
             <DataPicker />
           </Form.Item>
+          <Form.Item label="Ora (facoltativa)" name="ora">
+            <Input placeholder="es. 15:30" autoComplete="off" />
+          </Form.Item>
           <Form.Item
             label="Avversario"
             name="avversario"
@@ -334,12 +392,24 @@ export function Partite() {
               ]}
             />
           </Form.Item>
-          <Form.Item label="Gol fatti" name="golFatti">
-            <InputNumber min={0} style={{ width: '100%' }} />
+          <Form.Item
+            label="Partita già giocata"
+            name="giocata"
+            valuePropName="checked"
+            extra="Spegni per una partita in programma (senza risultato)"
+          >
+            <Switch />
           </Form.Item>
-          <Form.Item label="Gol subiti" name="golSubiti">
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
+          {giocataForm !== false && (
+            <>
+              <Form.Item label="Gol fatti" name="golFatti">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item label="Gol subiti" name="golSubiti">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
           <Form.Item label="Note (facoltative)" name="note">
             <Input autoComplete="off" />
           </Form.Item>

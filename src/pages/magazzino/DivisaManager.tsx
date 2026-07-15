@@ -47,7 +47,12 @@ export function DivisaManager() {
   const nomeCol = {
     title: 'Divisa',
     dataIndex: 'nome',
-    render: (nome: string) => <span style={{ fontWeight: 600 }}>{nome}</span>,
+    sorter: (a: Divisa, b: Divisa) => (a.nome ?? '').localeCompare(b.nome ?? ''),
+    render: (nome: string) => (
+      <span className="tronca" style={{ maxWidth: 220, fontWeight: 600 }} title={nome}>
+        {nome}
+      </span>
+    ),
   }
   const azioniCol = {
     title: '',

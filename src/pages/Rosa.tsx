@@ -128,9 +128,19 @@ export function Rosa() {
     {
       title: 'Giocatore',
       key: 'nome',
+      width: 240,
+      sorter: (a: Giocatore, b: Giocatore) =>
+        `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`),
+      defaultSortOrder: 'ascend' as const,
       render: (_: unknown, g: Giocatore) => (
-        <span style={{ fontWeight: 600 }}>
-          {g.cognome} {g.nome}
+        <span>
+          <span
+            className="tronca"
+            style={{ maxWidth: 160, fontWeight: 600 }}
+            title={`${g.cognome} ${g.nome}`}
+          >
+            {g.cognome} {g.nome}
+          </span>
           {isDirigente(g) && (
             <Tag color="purple" style={{ marginLeft: 8 }}>
               {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
@@ -142,12 +152,16 @@ export function Rosa() {
     {
       title: 'Ruolo',
       key: 'ruolo',
+      width: 100,
+      sorter: (a: Giocatore, b: Giocatore) =>
+        (a.ruoloPreferito ?? '').localeCompare(b.ruoloPreferito ?? ''),
       render: (_: unknown, g: Giocatore) =>
         g.ruoloPreferito ? <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag> : '—',
     },
     {
       title: 'Adattato',
       key: 'adattati',
+      width: 150,
       render: (_: unknown, g: Giocatore) =>
         g.ruoliAdattati?.length ? (
           <Space size={[4, 4]} wrap>
@@ -165,11 +179,16 @@ export function Rosa() {
       title: 'Pres.',
       key: 'pres',
       align: 'right' as const,
+      width: 80,
+      sorter: (a: Giocatore, b: Giocatore) => (presenze[a.id] ?? 0) - (presenze[b.id] ?? 0),
       render: (_: unknown, g: Giocatore) => presenze[g.id] ?? 0,
     },
     {
       title: 'Certificato',
       key: 'cert',
+      width: 140,
+      sorter: (a: Giocatore, b: Giocatore) =>
+        (a.scadenzaCertificato ?? '').localeCompare(b.scadenzaCertificato ?? ''),
       render: (_: unknown, g: Giocatore) => {
         const s = statoCertificato(g)
         return <Tag color={s.color}>{s.label}</Tag>
@@ -178,6 +197,8 @@ export function Rosa() {
     {
       title: 'Tessera',
       key: 'tessera',
+      width: 130,
+      sorter: (a: Giocatore, b: Giocatore) => (a.tessera ?? '').localeCompare(b.tessera ?? ''),
       render: (_: unknown, g: Giocatore) =>
         g.tessera ? (
           <Tag color="default">{g.tessera}</Tag>
@@ -190,6 +211,8 @@ export function Rosa() {
     {
       title: 'Quota',
       key: 'quota',
+      width: 100,
+      sorter: (a: Giocatore, b: Giocatore) => Number(!!a.quotaPagata) - Number(!!b.quotaPagata),
       ...stopCell,
       render: (_: unknown, g: Giocatore) => (
         <Switch
