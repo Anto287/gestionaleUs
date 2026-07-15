@@ -11,6 +11,7 @@ import {
   Modal,
   Popconfirm,
   Progress,
+  Rate,
   Result,
   Row,
   Select,
@@ -22,6 +23,7 @@ import {
 } from 'antd'
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
 import { isDirigente, isGiocatore, OPZIONI_CATEGORIA } from '../lib/categoria'
@@ -184,6 +186,9 @@ export function GiocatoreDettaglio() {
               </Col>
             </Row>
             <Descriptions column={{ xs: 1, sm: 2 }} size="small" style={{ marginTop: 20 }} title="Anagrafica e tesseramento">
+              <Descriptions.Item label="Bravura">
+                {g.bravura ? <Rate disabled value={g.bravura} style={{ fontSize: 14 }} /> : '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Data di nascita">{g.nascita || '—'}</Descriptions.Item>
               <Descriptions.Item label="N. tessera">
                 {g.tessera || <Tag color="orange">Mancante</Tag>}
@@ -231,6 +236,9 @@ export function GiocatoreDettaglio() {
           <Form.Item label="Ruoli adattati" name="ruoliAdattati">
             <Select mode="multiple" options={OPZIONI_RUOLI} allowClear showSearch optionFilterProp="label" />
           </Form.Item>
+          <Form.Item label="Bravura" name="bravura" tooltip="Da 1 a 5: pesa nel generatore di formazione">
+            <Rate />
+          </Form.Item>
           <Form.Item label="Data di nascita" name="nascita">
             <Input placeholder="es. 12/03/2001" />
           </Form.Item>
@@ -243,8 +251,8 @@ export function GiocatoreDettaglio() {
           <Form.Item label="Certificato medico consegnato" name="certificatoMedico" valuePropName="checked">
             <Switch />
           </Form.Item>
-          <Form.Item label="Scadenza certificato" name="scadenzaCertificato">
-            <Input type="date" />
+          <Form.Item label="Scadenza certificato" name="scadenzaCertificato" {...propsCampoData}>
+            <DataPicker />
           </Form.Item>
           <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
             <Switch />

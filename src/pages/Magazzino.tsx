@@ -1,4 +1,4 @@
-import { Tabs } from 'antd'
+import { Grid, Tabs } from 'antd'
 import {
   CoffeeOutlined,
   AppstoreOutlined,
@@ -64,6 +64,7 @@ const BORSA_MEDICA: ConfigInventario = {
 }
 
 export function Magazzino() {
+  const screens = Grid.useBreakpoint()
   const tabs = [
     { key: 'bar', label: 'Bar', icon: <CoffeeOutlined />, children: <InventarioTab config={BAR} /> },
     {
@@ -93,7 +94,7 @@ export function Magazzino() {
         titolo="Magazzino"
         sottotitolo="Bar, materiale allenamento, manutenzione campo, borsa medica e tute da gara"
       />
-      <Tabs defaultActiveKey="bar" items={tabs} size="large" />
+      <Tabs defaultActiveKey="bar" items={tabs} size={screens.sm ? 'large' : 'middle'} />
     </>
   )
 }

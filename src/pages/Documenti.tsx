@@ -155,7 +155,7 @@ export function Documenti() {
         </Empty>
       ) : (
         <>
-          <Space wrap style={{ marginBottom: 16 }}>
+          <Space wrap className="filtri-inline" style={{ marginBottom: 16 }}>
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -167,6 +167,7 @@ export function Documenti() {
           </Space>
           <List
             bordered
+            className="documenti-list"
             dataSource={documenti}
             renderItem={(d) => (
               <List.Item

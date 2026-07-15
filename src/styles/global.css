@@ -292,6 +292,336 @@ body {
   flex-wrap: wrap;
 }
 
+/* ---------- Allenamenti ---------- */
+
+/* barretta affluenza compatta nell'elenco sedute */
+.mini-bar {
+  width: 72px;
+  height: 8px;
+  background: #f0ece4;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mini-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+}
+
+/* riquadro riepilogo in cima alla finestra presenze */
+.presenze-toolbar {
+  background: #faf7f0;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+/* chip presenza: acceso = giallorosso pieno, spento = contorno tenue */
+.presenza-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  border-radius: 9px;
+  border: 1px solid #ddd6ca;
+  background: #fff;
+  color: var(--inchiostro);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  font-family: inherit;
+}
+
+.presenza-chip:hover {
+  border-color: var(--rosso);
+}
+
+.presenza-chip.on {
+  background: var(--rosso);
+  border-color: var(--rosso);
+  color: #fff;
+}
+
+/* ---------- Toolbar liste + pannello filtri ---------- */
+
+.lista-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+  flex-wrap: wrap;
+}
+
+/* la ricerca cresce, il pulsante Filtri resta compatto a destra */
+.lista-toolbar .lista-cerca {
+  flex: 1 1 220px;
+  max-width: 380px;
+}
+
+.filtri-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.filtro-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.filtro-campo-label {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--testo-2);
+}
+
+/* ---------- Liste come card (mobile) ---------- */
+
+/* su telefono le tabelle a scorrimento orizzontale diventano una pila di card */
+.lista-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lista-card {
+  background: #fff;
+  border: 1px solid #f1eadd;
+  border-radius: 14px;
+  box-shadow: var(--ombra-card);
+  padding: 13px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lista-card:active {
+  transform: scale(0.99);
+  box-shadow: 0 1px 2px rgba(36, 29, 22, 0.05);
+}
+
+/* prima riga: titolo a sinistra, valore/azione a destra */
+.lista-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lista-card-title {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+/* riga di dettagli: tag e note, va a capo */
+.lista-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px 8px;
+  flex-wrap: wrap;
+  color: var(--testo-2);
+  font-size: 13px;
+}
+
+/* separa una parte del meta e la spinge a destra (es. la quota) */
+.lista-card-fine {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* numero incolonnato tipo "importo/cassa" nelle card conti */
+.lista-card-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* card di magazzino con scadenza critica: filetto rosso a sinistra */
+.lista-card.card-allarme {
+  border-color: #f0c4c0;
+  box-shadow: inset 3px 0 0 var(--rosso), var(--ombra-card);
+}
+
+/* ---------- Formazione: campo e token ---------- */
+
+.campo {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  aspect-ratio: 2 / 3;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--ombra-card);
+}
+
+.campo-erba {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.campo-slots {
+  position: absolute;
+  inset: 0;
+}
+
+.campo-token {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 64px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.token-disc {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease;
+}
+
+.campo-token:active .token-disc {
+  transform: scale(0.92);
+}
+
+.token-disc.vuoto {
+  background: rgba(255, 255, 255, 0.14);
+  border-style: dashed;
+  font-size: 20px;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+.token-nome {
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(20, 40, 25, 0.55);
+  padding: 1px 6px;
+  border-radius: 6px;
+  line-height: 1.45;
+}
+
+.token-nome.vuoto {
+  background: rgba(20, 40, 25, 0.4);
+  font-weight: 500;
+}
+
+.token-adatt {
+  position: absolute;
+  top: -2px;
+  right: 12px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.campo-pop {
+  max-width: 240px;
+}
+.campo-pop-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.campo-pop-nome {
+  font-weight: 600;
+}
+
+.panchina-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--linea);
+  border-radius: 20px;
+  background: #fff;
+  font-size: 13px;
+}
+.panchina-stelle {
+  color: var(--oro);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* badge "titolari schierabili" su ogni modulo + riga di consiglio */
+.modulo-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.modulo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(36, 29, 22, 0.12);
+  color: var(--testo-2);
+}
+.modulo-badge.ok {
+  background: rgba(63, 122, 82, 0.18);
+  color: #3f7a52;
+}
+.modulo-consiglio {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.modulo-hint {
+  flex-basis: 100%;
+  color: var(--testo-2);
+  font-size: 12px;
+}
+
 /* ---------- Rifiniture Ant Design ---------- */
 
 /* cartoncini morbidi, senza bordi duri */
@@ -496,8 +826,9 @@ body {
     padding: 0 16px;
   }
 
+  /* numeri statistica un filo più piccoli: importi lunghi (€) non traboccano */
   .ant-statistic-content {
-    font-size: 24px !important;
+    font-size: 22px !important;
   }
 
   .stat-card .stat-icon {
@@ -510,6 +841,88 @@ body {
     width: 38px;
     height: 38px;
     font-size: 18px;
+  }
+
+  /* contenuto più aderente ai bordi del telefono */
+  .app-content {
+    padding: 1rem 0.85rem 1.6rem;
+  }
+
+  /* intestazione: titolo sopra, azione principale a tutta larghezza sotto */
+  .page-header {
+    margin-bottom: 1rem;
+  }
+  .page-actions {
+    width: 100%;
+  }
+  .page-actions > .ant-btn {
+    width: 100%;
+  }
+  .page-actions > .ant-space {
+    display: flex;
+    width: 100%;
+  }
+  .page-actions > .ant-space > .ant-space-item {
+    flex: 1;
+  }
+  .page-actions > .ant-space .ant-btn,
+  .page-actions > .ant-space .ant-upload {
+    width: 100%;
+  }
+
+  /* toolbar liste: la ricerca prende tutta la riga */
+  .lista-cerca {
+    min-width: 0;
+  }
+
+  /* filtri "in linea" (es. Magazzino): controlli a tutta larghezza, impilati */
+  .filtri-inline {
+    display: flex !important;
+    width: 100%;
+  }
+  .filtri-inline > .ant-space-item {
+    width: 100%;
+  }
+  .filtri-inline .ant-input-affix-wrapper,
+  .filtri-inline .ant-input,
+  .filtri-inline .ant-select,
+  .filtri-inline .ant-picker,
+  .filtri-inline .ant-input-number {
+    width: 100% !important;
+  }
+
+  /* tap target comodi per i bottoni-icona (elimina, ecc.) */
+  .lista-card .ant-btn.ant-btn-icon-only,
+  .ant-table-tbody .ant-btn.ant-btn-icon-only,
+  .ant-list-item .ant-btn.ant-btn-icon-only {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* i grafici respirano meno margine ai lati su mobile */
+  .ant-card .recharts-responsive-container {
+    margin: 0 -6px;
+  }
+
+  /* testata card: su telefono i controlli (Select periodo, Segmented,
+     Esporta) scendono sotto il titolo invece di stringersi accanto */
+  .ant-card-head-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .ant-card-head-wrapper .ant-card-extra {
+    margin-inline-start: 0;
+    width: 100%;
+  }
+
+  /* Documenti: nomi file lunghi + azioni non si stringono, le azioni vanno a capo */
+  .documenti-list .ant-list-item {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .documenti-list .ant-list-item .ant-list-item-action {
+    margin-inline-start: 0;
   }
 }
 

@@ -5,46 +5,79 @@ export interface RigaClassifica {
   perc: number
 }
 
+/** oro, argento, bronzo per i primi tre posti */
+const MEDAGLIE = ['#e5a800', '#b6b0a3', '#c8823c']
+
 /** Classifica presenze: barre orizzontali ordinate, singola serie. */
-export function ClassificaPresenze({ righe }: { righe: RigaClassifica[] }) {
+export function ClassificaPresenze({ righe, totale }: { righe: RigaClassifica[]; totale?: number }) {
   const max = Math.max(1, ...righe.map((r) => r.presenze))
   if (righe.length === 0) {
     return <div style={{ color: '#9a948a' }}>Nessun giocatore</div>
   }
   return (
     <div>
-      {righe.map((r, i) => (
-        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '5px 0' }}>
-          <span style={{ width: 22, textAlign: 'right', color: '#9a948a', fontVariantNumeric: 'tabular-nums' }}>
-            {i + 1}
-          </span>
-          <span
-            style={{
-              width: 150,
-              fontWeight: 500,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {r.nome}
-          </span>
-          <div style={{ flex: 1, background: '#f0ece4', borderRadius: 6, height: 18, minWidth: 40 }}>
-            <div
+      {righe.map((r, i) => {
+        const medaglia = i < 3 && r.presenze > 0 ? MEDAGLIE[i] : null
+        return (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '5px 0' }}>
+            <span
               style={{
-                width: `${(r.presenze / max) * 100}%`,
-                minWidth: r.presenze > 0 ? 6 : 0,
-                height: '100%',
-                background: '#c22026',
-                borderRadius: 6,
+                width: 24,
+                height: 24,
+                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                fontSize: 12,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                background: medaglia ?? 'transparent',
+                color: medaglia ? '#fff' : '#9a948a',
               }}
-            />
+            >
+              {i + 1}
+            </span>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontWeight: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {r.nome}
+            </span>
+            <div style={{ flex: 1, background: '#f0ece4', borderRadius: 6, height: 18, minWidth: 40 }}>
+              <div
+                style={{
+                  width: `${(r.presenze / max) * 100}%`,
+                  minWidth: r.presenze > 0 ? 6 : 0,
+                  height: '100%',
+                  background: '#c22026',
+                  borderRadius: 6,
+                }}
+              />
+            </div>
+            <span
+              style={{
+                width: 92,
+                flexShrink: 0,
+                textAlign: 'right',
+                whiteSpace: 'nowrap',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              <b>{r.presenze}</b>
+              <span style={{ color: '#9a948a' }}>
+                {totale ? `/${totale}` : ''} ({r.perc}%)
+              </span>
+            </span>
           </div>
-          <span style={{ width: 92, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-            <b>{r.presenze}</b> <span style={{ color: '#9a948a' }}>({r.perc}%)</span>
-          </span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

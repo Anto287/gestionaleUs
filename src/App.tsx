@@ -11,6 +11,7 @@ import { GiocatoreDettaglio } from './pages/GiocatoreDettaglio'
 import { Allenamenti } from './pages/Allenamenti'
 import { Partite } from './pages/Partite'
 import { PartitaDettaglio } from './pages/PartitaDettaglio'
+import { Formazione } from './pages/Formazione'
 import { Magazzino } from './pages/Magazzino'
 import { Conti } from './pages/Conti'
 import { Documenti } from './pages/Documenti'
@@ -42,6 +43,7 @@ function App() {
           <Route path="/allenamenti" element={<Allenamenti />} />
           <Route path="/partite" element={<Partite />} />
           <Route path="/partite/:id" element={<PartitaDettaglio />} />
+          <Route path="/formazione" element={<Formazione />} />
           <Route
             path="/distinte"
             element={

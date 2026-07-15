@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Empty, Flex, Form, Input, Modal, Popconfirm, Table, Tag, Typography } from 'antd'
+import { Button, Empty, Flex, Form, Grid, Input, Modal, Popconfirm, Space, Table, Tag, Typography } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
 import type { Divisa } from '../../types'
@@ -20,6 +20,8 @@ function Colore({ valore }: { valore?: string }) {
  */
 export function DivisaManager() {
   const { items, add, update, remove } = useCollection<Divisa>('divise')
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Divisa | null>(null)
   const [form] = Form.useForm()
@@ -42,45 +44,53 @@ export function DivisaManager() {
 
   const stopCell = { onCell: () => ({ onClick: (e: React.MouseEvent) => e.stopPropagation() }) }
 
-  const columns = [
-    {
-      title: 'Divisa',
-      dataIndex: 'nome',
-      render: (nome: string) => <span style={{ fontWeight: 600 }}>{nome}</span>,
-    },
-    {
-      title: 'Maglia',
-      key: 'maglia',
-      render: (_: unknown, d: Divisa) => <Colore valore={d.coloreMaglia} />,
-    },
-    {
-      title: 'Pantaloncini',
-      key: 'pant',
-      render: (_: unknown, d: Divisa) => <Colore valore={d.colorePantaloncini} />,
-    },
-    {
-      title: 'Calzettoni',
-      key: 'calz',
-      render: (_: unknown, d: Divisa) => <Colore valore={d.coloreCalzettoni} />,
-    },
-    {
-      title: '',
-      key: 'azioni',
-      width: 50,
-      ...stopCell,
-      render: (_: unknown, d: Divisa) => (
-        <Popconfirm
-          title={`Eliminare la divisa ${d.nome}?`}
-          okText="Elimina"
-          cancelText="Annulla"
-          okButtonProps={{ danger: true }}
-          onConfirm={() => remove(d.id)}
-        >
-          <Button type="text" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
-      ),
-    },
-  ]
+  const nomeCol = {
+    title: 'Divisa',
+    dataIndex: 'nome',
+    render: (nome: string) => <span style={{ fontWeight: 600 }}>{nome}</span>,
+  }
+  const azioniCol = {
+    title: '',
+    key: 'azioni',
+    width: 50,
+    ...stopCell,
+    render: (_: unknown, d: Divisa) => (
+      <Popconfirm
+        title={`Eliminare la divisa ${d.nome}?`}
+        okText="Elimina"
+        cancelText="Annulla"
+        okButtonProps={{ danger: true }}
+        onConfirm={() => remove(d.id)}
+      >
+        <Button type="text" danger icon={<DeleteOutlined />} />
+      </Popconfirm>
+    ),
+  }
+  // su mobile i tre colori stanno in un'unica colonna (niente scroll orizzontale)
+  const colonneColore = isMobile
+    ? [
+        {
+          title: 'Colori',
+          key: 'colori',
+          render: (_: unknown, d: Divisa) =>
+            d.coloreMaglia || d.colorePantaloncini || d.coloreCalzettoni ? (
+              <Space size={[4, 4]} wrap>
+                {d.coloreMaglia && <Tag>Maglia: {d.coloreMaglia}</Tag>}
+                {d.colorePantaloncini && <Tag>Pant.: {d.colorePantaloncini}</Tag>}
+                {d.coloreCalzettoni && <Tag>Calz.: {d.coloreCalzettoni}</Tag>}
+              </Space>
+            ) : (
+              <Text type="secondary">—</Text>
+            ),
+        },
+      ]
+    : [
+        { title: 'Maglia', key: 'maglia', render: (_: unknown, d: Divisa) => <Colore valore={d.coloreMaglia} /> },
+        { title: 'Pantaloncini', key: 'pant', render: (_: unknown, d: Divisa) => <Colore valore={d.colorePantaloncini} /> },
+        { title: 'Calzettoni', key: 'calz', render: (_: unknown, d: Divisa) => <Colore valore={d.coloreCalzettoni} /> },
+      ]
+
+  const columns = [nomeCol, ...colonneColore, azioniCol]
 
   return (
     <>

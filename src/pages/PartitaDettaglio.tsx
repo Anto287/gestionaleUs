@@ -17,6 +17,7 @@ import {
 } from 'antd'
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
 import { isGiocatore } from '../lib/categoria'
 import { EventoEditor } from './partite/EventoEditor'
@@ -180,8 +181,8 @@ export function PartitaDettaglio() {
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={salvaModifica} requiredMark={false}>
-          <Form.Item label="Data" name="data" rules={[{ required: true }]}>
-            <Input type="date" />
+          <Form.Item label="Data" name="data" rules={[{ required: true }]} {...propsCampoData}>
+            <DataPicker />
           </Form.Item>
           <Form.Item label="Avversario" name="avversario" rules={[{ required: true }]}>
             <Input />

@@ -6,6 +6,7 @@ import {
   Empty,
   Flex,
   Form,
+  Grid,
   Input,
   InputNumber,
   Modal,
@@ -18,6 +19,7 @@ import {
 } from 'antd'
 import { PlusOutlined, MinusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
+import { DataPicker, propsCampoData } from '../../components/DataPicker'
 import { formatData } from '../../lib/format'
 import { statoScadenza, giorniAllaScadenza, GIORNI_ALLARME } from '../../lib/scadenza'
 import type { VoceMagazzino } from '../../types'
@@ -55,6 +57,8 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   const { collezione, nuovoLabel, singolare, plurale, categorie, conQuantita, conScadenza, conNote } =
     config
   const { items, add, update, remove } = useCollection<VoceMagazzino>(collezione)
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<VoceMagazzino | null>(null)
   const [form] = Form.useForm()
@@ -237,7 +241,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
         </Empty>
       ) : (
         <>
-          <Space wrap style={{ marginBottom: 16 }}>
+          <Space wrap className="filtri-inline" style={{ marginBottom: 16 }}>
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -275,6 +279,76 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
 
           {filtrati.length === 0 ? (
             <Empty description="Nessun risultato con questi filtri" />
+          ) : isMobile ? (
+            <div className="lista-mobile">
+              {filtrati.map((a) => {
+                const s = conScadenza && a.scadenza ? statoScadenza(a.scadenza) : null
+                return (
+                  <div
+                    key={a.id}
+                    className={`lista-card${s?.critico ? ' card-allarme' : ''}`}
+                    onClick={() => apriModifica(a)}
+                  >
+                    <div className="lista-card-top">
+                      <div>
+                        <div className="lista-card-title">{a.nome}</div>
+                        {conNote && a.note && (
+                          <div style={{ fontSize: 12, color: '#8a7d6b', marginTop: 2 }}>{a.note}</div>
+                        )}
+                        {(categorie || s) && (
+                          <div className="lista-card-meta" style={{ marginTop: 6 }}>
+                            {categorie && a.categoria && (
+                              <Tag color={coloreCategoria(a.categoria)}>{a.categoria}</Tag>
+                            )}
+                            {s && a.scadenza && (
+                              <span style={{ color: s.critico ? '#b1352f' : 'var(--testo-2)' }}>
+                                {formatData(a.scadenza, true)}
+                                {s.label && (
+                                  <Tag color={s.color} style={{ marginLeft: 6 }}>
+                                    {s.label}
+                                  </Tag>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <Popconfirm
+                          title={`Eliminare ${a.nome}?`}
+                          okText="Elimina"
+                          cancelText="Annulla"
+                          okButtonProps={{ danger: true }}
+                          onConfirm={() => remove(a.id)}
+                        >
+                          <Button type="text" danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                      </span>
+                    </div>
+                    {conQuantita && (
+                      <div className="lista-card-meta" onClick={(e) => e.stopPropagation()}>
+                        <span>Quantità</span>
+                        <span className="lista-card-fine">
+                          <Space.Compact>
+                            <Button
+                              icon={<MinusOutlined />}
+                              onClick={() => adegua(a, -1)}
+                              disabled={(a.quantita ?? 0) <= 0}
+                            />
+                            <Button style={{ pointerEvents: 'none', minWidth: 56 }}>
+                              <b style={{ color: (a.quantita ?? 0) === 0 ? '#b1352f' : undefined }}>
+                                {a.quantita ?? 0}
+                              </b>
+                            </Button>
+                            <Button icon={<PlusOutlined />} onClick={() => adegua(a, +1)} />
+                          </Space.Compact>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           ) : (
             <Table
               rowKey="id"
@@ -317,8 +391,8 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
             </Form.Item>
           )}
           {conScadenza && (
-            <Form.Item label="Data di scadenza (facoltativa)" name="scadenza">
-              <Input type="date" />
+            <Form.Item label="Data di scadenza (facoltativa)" name="scadenza" {...propsCampoData}>
+              <DataPicker />
             </Form.Item>
           )}
           {conNote && (

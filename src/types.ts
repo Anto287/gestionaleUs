@@ -20,6 +20,8 @@ export interface Giocatore {
   ruoloPreferito?: string
   /** ruoli in cui è adattabile */
   ruoliAdattati?: string[]
+  /** bravura/qualità su scala 1–5 (facoltativa); usata dal generatore di formazione */
+  bravura?: number
   /** dati per la distinta */
   nascita?: string
   tessera?: string

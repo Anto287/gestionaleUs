@@ -8,6 +8,7 @@ import {
   Col,
   Empty,
   Form,
+  Grid,
   Input,
   InputNumber,
   Modal,
@@ -33,7 +34,11 @@ import {
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
+import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
+import dayjs from 'dayjs'
+import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData, formatEuro } from '../lib/format'
+import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { BilancioMensile, type MeseBilancio, type TipoBilancio } from './conti/BilancioMensile'
 import { leggiBilancio } from './conti/importaBilancio'
 import type { Movimento } from '../types'
@@ -49,6 +54,8 @@ function labelMese(chiave: string) {
 export function Conti() {
   const { items, add, update, remove, replace } = useCollection<Movimento>('conti')
   const { modal, message } = AntApp.useApp()
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Movimento | null>(null)
   const [importando, setImportando] = useState(false)
@@ -71,7 +78,33 @@ export function Conti() {
   const [q, setQ] = useState('')
   const [tipo, setTipo] = useState<string | undefined>()
   const [stato, setStato] = useState<string | undefined>()
+  const [annoF, setAnnoF] = useState<string | undefined>()
+  const [meseF, setMeseF] = useState<string | undefined>()
   const [tipoBilancio, setTipoBilancio] = useState<TipoBilancio>('barre')
+  const [periodoBilancio, setPeriodoBilancio] = useState<PeriodoChart>('tutto')
+
+  const anni = useMemo(() => {
+    const chiavi = new Set(items.map((m) => m.data.slice(0, 4)))
+    return [...chiavi].sort((a, b) => b.localeCompare(a)).map((y) => ({ value: y, label: y }))
+  }, [items])
+
+  // i mesi disponibili si restringono all'anno scelto
+  const mesi = useMemo(() => {
+    const chiavi = new Set(
+      items.filter((m) => !annoF || m.data.slice(0, 4) === annoF).map((m) => m.data.slice(0, 7)),
+    )
+    return [...chiavi]
+      .sort((a, b) => b.localeCompare(a))
+      .map((k) => ({ value: k, label: labelMese(k) }))
+  }, [items, annoF])
+
+  const nFiltri = [tipo, stato, annoF, meseF].filter(Boolean).length
+  function azzeraFiltri() {
+    setTipo(undefined)
+    setStato(undefined)
+    setAnnoF(undefined)
+    setMeseF(undefined)
+  }
 
   // saldo progressivo su TUTTI i movimenti (i filtri non alterano la cassa)
   const vista = useMemo(() => {
@@ -92,9 +125,11 @@ export function Conti() {
         if (tipo && m.tipo !== tipo) return false
         if (stato === 'saldato' && !m.saldato) return false
         if (stato === 'aperto' && m.saldato) return false
+        if (annoF && m.data.slice(0, 4) !== annoF) return false
+        if (meseF && m.data.slice(0, 7) !== meseF) return false
         return true
       }),
-    [vista, q, tipo, stato],
+    [vista, q, tipo, stato, annoF, meseF],
   )
 
   const saldo = items
@@ -116,11 +151,19 @@ export function Conti() {
       else v.uscite += m.importo
       perMese.set(k, v)
     }
-    return [...perMese.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-6)
-      .map(([k, v]) => ({ mese: labelMese(k), entrate: v.entrate, uscite: v.uscite }))
-  }, [items])
+    const ordinati = [...perMese.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    // restringe alla finestra scelta (di default 'tutto' = tutti i mesi)
+    const mesi = mesiPeriodo(periodoBilancio)
+    const sel =
+      mesi && ordinati.length
+        ? (() => {
+            const ultimo = ordinati[ordinati.length - 1][0]
+            const cutoff = dayjs(ultimo + '-01').subtract(mesi - 1, 'month').format('YYYY-MM')
+            return ordinati.filter(([k]) => k >= cutoff)
+          })()
+        : ordinati
+    return sel.map(([k, v]) => ({ mese: labelMese(k), entrate: v.entrate, uscite: v.uscite }))
+  }, [items, periodoBilancio])
 
   function apriNuovo() {
     setInModifica(null)
@@ -294,20 +337,29 @@ export function Conti() {
         </Col>
       </Row>
 
-      {bilancio.length > 0 && (
+      {items.length > 0 && (
         <Card
           title="Bilancio mensile"
           style={{ marginBottom: 16 }}
           extra={
-            <Segmented
-              size="small"
-              value={tipoBilancio}
-              onChange={(v) => setTipoBilancio(v as TipoBilancio)}
-              options={[
-                { label: 'Entrate/Uscite', value: 'barre' },
-                { label: 'Saldo', value: 'saldo' },
-              ]}
-            />
+            <Space wrap>
+              <Select
+                size="small"
+                value={periodoBilancio}
+                onChange={(v) => setPeriodoBilancio(v as PeriodoChart)}
+                options={OPZIONI_PERIODO}
+                style={{ width: 150 }}
+              />
+              <Segmented
+                size="small"
+                value={tipoBilancio}
+                onChange={(v) => setTipoBilancio(v as TipoBilancio)}
+                options={[
+                  { label: 'Entrate/Uscite', value: 'barre' },
+                  { label: 'Saldo', value: 'saldo' },
+                ]}
+              />
+            </Space>
           }
         >
           <BilancioMensile dati={bilancio} tipo={tipoBilancio} />
@@ -325,47 +377,123 @@ export function Conti() {
         </Empty>
       ) : (
         <>
-          <Space wrap style={{ marginBottom: 16 }}>
+          <div className="lista-toolbar">
             <Input
+              className="lista-cerca"
               allowClear
+              autoComplete="off"
               prefix={<SearchOutlined />}
               placeholder="Cerca descrizione"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              style={{ width: 220 }}
             />
-            <Select
-              allowClear
-              placeholder="Tipo"
-              value={tipo}
-              onChange={setTipo}
-              style={{ width: 140 }}
-              options={[
-                { value: 'entrata', label: 'Entrate' },
-                { value: 'uscita', label: 'Uscite' },
-              ]}
+            <FiltriDrawer count={nFiltri} onReset={azzeraFiltri}>
+              <FiltroCampo label="Tipo">
+                <Select
+                  allowClear
+                  placeholder="Entrate e uscite"
+                  value={tipo}
+                  onChange={setTipo}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'entrata', label: 'Entrate' },
+                    { value: 'uscita', label: 'Uscite' },
+                  ]}
+                />
+              </FiltroCampo>
+              <FiltroCampo label="Stato">
+                <Select
+                  allowClear
+                  placeholder="Qualsiasi"
+                  value={stato}
+                  onChange={setStato}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'saldato', label: 'Saldati' },
+                    { value: 'aperto', label: 'Da saldare' },
+                  ]}
+                />
+              </FiltroCampo>
+              <FiltroCampo label="Anno">
+                <Select
+                  allowClear
+                  placeholder="Tutti gli anni"
+                  value={annoF}
+                  onChange={(v) => {
+                    setAnnoF(v)
+                    setMeseF(undefined)
+                  }}
+                  style={{ width: '100%' }}
+                  options={anni}
+                />
+              </FiltroCampo>
+              <FiltroCampo label="Periodo">
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Tutti i mesi"
+                  value={meseF}
+                  onChange={setMeseF}
+                  style={{ width: '100%' }}
+                  options={mesi}
+                />
+              </FiltroCampo>
+            </FiltriDrawer>
+          </div>
+          {isMobile ? (
+            <div className="lista-mobile">
+              {vistaFiltrata.map((r) => (
+                <div key={r.m.id} className="lista-card" onClick={() => apriModifica(r.m)}>
+                  <div className="lista-card-top">
+                    <div>
+                      <div className="lista-card-title">{r.m.descrizione}</div>
+                      <div className="lista-card-meta" style={{ marginTop: 5 }}>
+                        {formatData(r.m.data, true)}
+                        {r.m.controparte && <span>· {r.m.controparte}</span>}
+                        {!r.m.saldato && (
+                          <Tag color="warning">{r.m.tipo === 'entrata' ? 'Da incassare' : 'Da dare'}</Tag>
+                        )}
+                      </div>
+                    </div>
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <Popconfirm
+                        title="Eliminare questo movimento?"
+                        okText="Elimina"
+                        cancelText="Annulla"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => remove(r.m.id)}
+                      >
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                      </Popconfirm>
+                    </span>
+                  </div>
+                  <div className="lista-card-meta">
+                    <span
+                      className="lista-card-num"
+                      style={{ fontSize: 15, color: r.m.tipo === 'entrata' ? '#3f7a52' : '#b1352f' }}
+                    >
+                      {r.m.tipo === 'entrata' ? '+ ' : '− '}
+                      {formatEuro(r.m.importo)}
+                    </span>
+                    <span className="lista-card-fine">
+                      cassa <b className="lista-card-num">{formatEuro(r.cassa)}</b>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Table
+              rowKey={(r) => r.m.id}
+              dataSource={vistaFiltrata}
+              columns={columns}
+              pagination={false}
+              size="middle"
+              scroll={{ x: 'max-content' }}
+              onRow={(r) => ({ onClick: () => apriModifica(r.m), style: { cursor: 'pointer' } })}
             />
-            <Select
-              allowClear
-              placeholder="Stato"
-              value={stato}
-              onChange={setStato}
-              style={{ width: 150 }}
-              options={[
-                { value: 'saldato', label: 'Saldati' },
-                { value: 'aperto', label: 'Da saldare' },
-              ]}
-            />
-          </Space>
-          <Table
-            rowKey={(r) => r.m.id}
-            dataSource={vistaFiltrata}
-            columns={columns}
-            pagination={false}
-            size="middle"
-            scroll={{ x: 'max-content' }}
-            onRow={(r) => ({ onClick: () => apriModifica(r.m), style: { cursor: 'pointer' } })}
-          />
+          )}
         </>
       )}
 
@@ -388,21 +516,21 @@ export function Conti() {
               ]}
             />
           </Form.Item>
-          <Form.Item label="Data" name="data">
-            <Input type="date" />
+          <Form.Item label="Data" name="data" {...propsCampoData}>
+            <DataPicker />
           </Form.Item>
           <Form.Item
             label="Descrizione"
             name="descrizione"
             rules={[{ required: true, message: 'Inserisci una descrizione' }]}
           >
-            <Input placeholder="es. Sponsor, Pagamento campo…" />
+            <Input placeholder="es. Sponsor, Pagamento campo…" autoComplete="off" />
           </Form.Item>
           <Form.Item label="Importo (€)" name="importo" rules={[{ required: true, message: 'Inserisci l’importo' }]}>
             <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Controparte (facoltativa)" name="controparte">
-            <Input placeholder="fornitore, sponsor…" />
+            <Input placeholder="fornitore, sponsor…" autoComplete="off" />
           </Form.Item>
           <Form.Item name="saldato" valuePropName="checked">
             <Checkbox>Già saldato (movimento chiuso, incide sulla cassa)</Checkbox>
