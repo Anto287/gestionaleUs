@@ -761,6 +761,149 @@ body {
   opacity: 0.65;
 }
 
+/* card statistica che apre un dettaglio (panoramica e conti) */
+.stat-card-azione {
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stat-card-azione:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(36, 29, 22, 0.05), 0 18px 40px -20px rgba(36, 29, 22, 0.32);
+}
+
+.stat-card-azione:active {
+  transform: scale(0.99);
+}
+
+.stat-card-azione:focus-visible {
+  outline: 2px solid var(--rosso);
+  outline-offset: 2px;
+}
+
+/* freccina nel titolo: segnala che la card si può toccare */
+.stat-card .stat-freccia {
+  font-size: 10px;
+  color: var(--testo-2);
+  opacity: 0.7;
+}
+
+.stat-card-azione:hover .stat-freccia {
+  color: var(--rosso);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card-azione {
+    transition: none;
+  }
+  .stat-card-azione:hover {
+    transform: none;
+  }
+}
+
+/* ---------- Drawer dettaglio conti ---------- */
+
+.dettaglio-totale {
+  margin-bottom: 14px;
+}
+
+.dettaglio-totale-num {
+  font-size: 27px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.dettaglio-nota {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.dettaglio-riga {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #f1eadd;
+}
+
+.dettaglio-riga-cliccabile {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dettaglio-riga-cliccabile:hover,
+.dettaglio-riga-cliccabile:active {
+  background: #faf6ef;
+}
+
+.dettaglio-riga-cliccabile:focus-visible {
+  outline: 2px solid var(--rosso);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.dettaglio-riga-sx {
+  min-width: 0;
+}
+
+.dettaglio-riga-titolo {
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.dettaglio-riga-meta {
+  color: var(--testo-2);
+  font-size: 13px;
+}
+
+.dettaglio-riga-dx {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.dettaglio-importo {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dettaglio-cassa {
+  color: var(--testo-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* blocco per controparte nelle viste "da incassare"/"da dare" */
+.dettaglio-gruppo {
+  border: 1px solid #f1eadd;
+  border-radius: 12px;
+  padding: 2px 14px;
+  margin-bottom: 10px;
+}
+
+.dettaglio-gruppo-testa {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  font-weight: 600;
+}
+
+.dettaglio-gruppo-chi {
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Tessere dashboard ---------- */
 
 .tile-card {

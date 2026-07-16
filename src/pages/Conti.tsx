@@ -17,7 +17,6 @@ import {
   Segmented,
   Select,
   Space,
-  Statistic,
   Table,
   Tag,
   Typography,
@@ -35,6 +34,8 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
+import { StatCard } from '../components/StatCard'
+import { DettaglioMovimenti, type VistaDettaglio } from '../components/DettaglioMovimenti'
 import dayjs from 'dayjs'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData, formatEuro } from '../lib/format'
@@ -58,6 +59,7 @@ export function Conti() {
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Movimento | null>(null)
+  const [dettaglio, setDettaglio] = useState<VistaDettaglio | null>(null)
   const [importando, setImportando] = useState(false)
   // l'import resta nascosto: si sblocca con 5 tocchi rapidi sul titolo
   const [importSbloccato, setImportSbloccato] = useState(false)
@@ -322,30 +324,34 @@ export function Conti() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={8}>
-          <Card className="stat-card">
-            <WalletOutlined className="stat-icon" aria-hidden />
-            <Statistic
-              title="Totale in cassa"
-              value={formatEuro(saldo)}
-              valueStyle={{ color: saldo < 0 ? '#b1352f' : undefined }}
-            />
-          </Card>
+          <StatCard
+            icona={<WalletOutlined />}
+            titolo="Totale in cassa"
+            valore={formatEuro(saldo)}
+            colore={saldo < 0 ? '#b1352f' : undefined}
+            onApri={() => setDettaglio('cassa')}
+            apriLabel="vedi gli ultimi movimenti"
+          />
         </Col>
         <Col xs={12} sm={8}>
-          <Card className="stat-card">
-            <RiseOutlined className="stat-icon" aria-hidden />
-            <Statistic title="Da incassare" value={formatEuro(daIncassare)} valueStyle={{ color: '#3f7a52' }} />
-          </Card>
+          <StatCard
+            icona={<RiseOutlined />}
+            titolo="Da incassare"
+            valore={formatEuro(daIncassare)}
+            colore="#3f7a52"
+            onApri={() => setDettaglio('daIncassare')}
+            apriLabel="vedi da chi dobbiamo ricevere soldi"
+          />
         </Col>
         <Col xs={12} sm={8}>
-          <Card className="stat-card">
-            <FallOutlined className="stat-icon" aria-hidden />
-            <Statistic
-              title="Da dare"
-              value={formatEuro(daPagare)}
-              valueStyle={{ color: daPagare > 0 ? '#9a6b1e' : undefined }}
-            />
-          </Card>
+          <StatCard
+            icona={<FallOutlined />}
+            titolo="Da dare"
+            valore={formatEuro(daPagare)}
+            colore={daPagare > 0 ? '#9a6b1e' : undefined}
+            onApri={() => setDettaglio('daPagare')}
+            apriLabel="vedi a chi dobbiamo dare soldi"
+          />
         </Col>
       </Row>
 
@@ -508,6 +514,16 @@ export function Conti() {
           )}
         </>
       )}
+
+      <DettaglioMovimenti
+        vista={dettaglio}
+        movimenti={items}
+        onClose={() => setDettaglio(null)}
+        onApriMovimento={(m) => {
+          setDettaglio(null)
+          apriModifica(m)
+        }}
+      />
 
       <Modal
         title={inModifica ? 'Modifica movimento' : 'Nuovo movimento'}
