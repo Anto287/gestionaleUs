@@ -34,9 +34,17 @@ export function Distinte() {
   // bump a ogni carica/nuova per rimontare i form con i nuovi valori di partenza
   const [resetKey, setResetKey] = useState(0)
 
-  const rows = useMemo(
-    () =>
-      items.map((g) => ({
+  const rows = useMemo(() => {
+    // gli omonimi (stesso nome E cognome) si distinguono con la data di nascita
+    const conteggio = new Map<string, number>()
+    for (const g of items) {
+      const k = `${g.nome} ${g.cognome}`.trim().toLowerCase()
+      conteggio.set(k, (conteggio.get(k) ?? 0) + 1)
+    }
+    return items.map((g) => {
+      const nomeCompleto = `${g.nome} ${g.cognome}`.trim()
+      const omonimi = (conteggio.get(nomeCompleto.toLowerCase()) ?? 0) > 1
+      return {
         Id: g.id,
         Nome: g.nome,
         Cognome: g.cognome,
@@ -44,9 +52,13 @@ export function Distinte() {
         DataNascita: g.nascita ?? '',
         Tessera: g.tessera ?? '',
         DataRilascio: g.dataRilascio ?? '',
-      })),
-    [items],
-  )
+        // etichetta mostrata nel selettore (la stampa usa i campi qui sopra)
+        Etichetta: omonimi
+          ? `${nomeCompleto} (${g.nascita ? formatData(g.nascita, true) : 'senza data di nascita'})`
+          : nomeCompleto,
+      }
+    })
+  }, [items])
 
   const salvate = useMemo(
     () => [...distinte.items].sort((a, b) => (b.creata ?? '').localeCompare(a.creata ?? '')),
@@ -61,7 +73,7 @@ export function Distinte() {
     const rowById = new Map(rows.map((r) => [String(r.Id), r]))
     const convocati = (d.convocati ?? []).map((c) => {
       const row = rowById.get(String(c.id))
-      return row ? { ...c, raw: row, label: `${row.Nome} ${row.Cognome}`.trim() } : c
+      return row ? { ...c, raw: row, label: row.Etichetta } : c
     })
     setCaricataId(id)
     setInitTestata(d.testata ?? {})

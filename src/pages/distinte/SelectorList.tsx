@@ -51,7 +51,8 @@ export function SelectorList({
         // chiave stabile sull'id del giocatore, così una distinta ripresa
         // ritrova gli stessi convocati anche se la rosa è cambiata
         key: String(r.Id ?? idx),
-        label: `${r[labelKey1] || ''} ${r[labelKey2] || ''}`.trim(),
+        // Etichetta può disambiguare gli omonimi (es. con la data di nascita)
+        label: String(r.Etichetta ?? `${r[labelKey1] || ''} ${r[labelKey2] || ''}`.trim()),
         raw: r,
       })),
     [rows],

@@ -803,6 +803,36 @@ body {
   }
 }
 
+/* box "scrivi e compilo io" nella modale del magazzino */
+.compila-box {
+  margin: 8px 0 16px;
+  padding: 10px 12px;
+  background: #faf6ef;
+  border: 1px dashed #e0d4bd;
+  border-radius: 10px;
+}
+
+/* microfono che "respira" mentre la dettatura è in ascolto */
+.mic-attivo {
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(194, 32, 38, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(194, 32, 38, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-attivo {
+    animation: none;
+  }
+}
+
 /* ---------- Drawer dettaglio conti ---------- */
 
 .dettaglio-totale {

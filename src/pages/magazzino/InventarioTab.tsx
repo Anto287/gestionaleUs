@@ -17,11 +17,20 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { PlusOutlined, MinusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
+import {
+  PlusOutlined,
+  MinusOutlined,
+  DeleteOutlined,
+  SearchOutlined,
+  ThunderboltOutlined,
+  AudioOutlined,
+} from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
+import { useDettatura } from '../../hooks/useDettatura'
 import { DataPicker, propsCampoData } from '../../components/DataPicker'
 import { formatData } from '../../lib/format'
 import { statoScadenza, giorniAllaScadenza, GIORNI_ALLARME } from '../../lib/scadenza'
+import { compilaVoce } from '../../lib/compilaVoce'
 import type { VoceMagazzino } from '../../types'
 
 const { Text } = Typography
@@ -49,6 +58,12 @@ export interface ConfigInventario {
   conNote?: boolean
   /** testo dello stato vuoto */
   vuotoText?: string
+  /** campo "scrivi e compilo io" nella modale di aggiunta (frase libera in italiano) */
+  conCompilazione?: boolean
+  /** esempio mostrato nel campo di compilazione rapida */
+  esempioCompilazione?: string
+  /** parole chiave per indovinare la categoria dalla frase (categoria → parole/radici) */
+  paroleCategoria?: Record<string, string[]>
 }
 
 type Bozza = Omit<VoceMagazzino, 'id'>
@@ -61,7 +76,9 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<VoceMagazzino | null>(null)
+  const [rapida, setRapida] = useState('')
   const [form] = Form.useForm()
+  const dettatura = useDettatura((testo) => aggiornaRapida(testo))
 
   const [q, setQ] = useState('')
   const [cat, setCat] = useState<string | undefined>()
@@ -124,6 +141,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   }
   function apriNuovo() {
     setInModifica(null)
+    setRapida('')
     form.resetFields()
     form.setFieldsValue({
       ...(categorie ? { categoria: categorie[0] } : {}),
@@ -131,6 +149,35 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
     })
     setModale(true)
   }
+
+  /** compilazione rapida: interpreta la frase e riempie i campi del form */
+  function aggiornaRapida(testo: string) {
+    setRapida(testo)
+    if (!testo.trim()) return
+    const r = compilaVoce(testo, config.paroleCategoria)
+    form.setFieldsValue({
+      nome: r.nome ?? '',
+      ...(conQuantita ? { quantita: r.quantita ?? 1 } : {}),
+      ...(conScadenza ? { scadenza: r.scadenza } : {}),
+      ...(r.categoria && categorie ? { categoria: r.categoria } : {}),
+    })
+  }
+
+  const anteprimaRapida = rapida.trim() ? compilaVoce(rapida, config.paroleCategoria) : null
+
+  function chiudiModale() {
+    dettatura.ferma()
+    setModale(false)
+  }
+
+  const cosaCapisco = [
+    conQuantita && 'quantità',
+    'nome',
+    conScadenza && 'scadenza',
+    categorie && 'categoria',
+  ]
+    .filter(Boolean)
+    .join(', ')
   function apriModifica(a: VoceMagazzino) {
     setInModifica(a)
     form.setFieldsValue(a)
@@ -139,6 +186,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   function salva(valori: Bozza) {
     if (inModifica) update(inModifica.id, valori)
     else add(valori)
+    dettatura.ferma()
     setModale(false)
   }
 
@@ -382,13 +430,77 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
       <Modal
         title={inModifica ? `Modifica ${singolare}` : nuovoLabel}
         open={modale}
-        onCancel={() => setModale(false)}
+        onCancel={chiudiModale}
         onOk={() => form.submit()}
         okText={inModifica ? 'Salva' : 'Aggiungi'}
         cancelText="Annulla"
         maskClosable={false}
         forceRender
       >
+        {config.conCompilazione && !inModifica && (
+          <div className="compila-box">
+            <Text strong style={{ display: 'block', marginBottom: 6 }}>
+              <ThunderboltOutlined style={{ color: 'var(--oro)' }} /> Scrivi (o detta) e compilo io
+            </Text>
+            <Space.Compact style={{ width: '100%' }}>
+              <Input
+                allowClear
+                autoComplete="off"
+                placeholder={
+                  dettatura.ascolto
+                    ? 'Parla pure, ti ascolto…'
+                    : (config.esempioCompilazione ?? 'es. "4 patatine chips che scadono il 28/08/2026"')
+                }
+                value={rapida}
+                onChange={(e) => aggiornaRapida(e.target.value)}
+              />
+              {dettatura.supportata && (
+                <Button
+                  icon={<AudioOutlined />}
+                  danger={dettatura.ascolto}
+                  type={dettatura.ascolto ? 'primary' : 'default'}
+                  className={dettatura.ascolto ? 'mic-attivo' : undefined}
+                  onClick={() => (dettatura.ascolto ? dettatura.ferma() : dettatura.avvia())}
+                  aria-label={dettatura.ascolto ? 'Ferma la dettatura' : 'Detta a voce'}
+                  title={dettatura.ascolto ? 'Sto ascoltando: tocca per fermare' : 'Detta a voce'}
+                />
+              )}
+            </Space.Compact>
+            {anteprimaRapida && (
+              <Space wrap size={4} style={{ marginTop: 8 }}>
+                {anteprimaRapida.nome ||
+                anteprimaRapida.quantita != null ||
+                anteprimaRapida.scadenza ||
+                anteprimaRapida.categoria ? (
+                  <>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      Ho capito:
+                    </Text>
+                    {conQuantita && anteprimaRapida.quantita != null && (
+                      <Tag>{anteprimaRapida.quantita} pz</Tag>
+                    )}
+                    {anteprimaRapida.nome && <Tag>{anteprimaRapida.nome}</Tag>}
+                    {conScadenza && anteprimaRapida.scadenza && (
+                      <Tag color="gold">scade {formatData(anteprimaRapida.scadenza, true)}</Tag>
+                    )}
+                    {anteprimaRapida.categoria && (
+                      <Tag color={coloreCategoria(anteprimaRapida.categoria)}>
+                        {anteprimaRapida.categoria}
+                      </Tag>
+                    )}
+                  </>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Non ho riconosciuto niente: compila i campi qui sotto.
+                  </Text>
+                )}
+              </Space>
+            )}
+            <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
+              Capisco {cosaCapisco}; puoi sempre correggere i campi a mano.
+            </Text>
+          </div>
+        )}
         <Form form={form} layout="vertical" onFinish={salva} requiredMark={false}>
           <Form.Item label="Nome" name="nome" rules={[{ required: true, message: 'Inserisci il nome' }]}>
             <Input placeholder={config.placeholderNome} />
