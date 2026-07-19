@@ -4,8 +4,18 @@
  * coordinate reali (tela 1080×h). L'editor la disegna e la rende modificabile;
  * l'export la ridisegna a piena risoluzione.
  */
-const DISPLAY = "'Barlow Condensed', 'Inter', sans-serif"
-const BASE = "'Inter', sans-serif"
+export const DISPLAY = "'Barlow Condensed', 'Inter', sans-serif"
+export const BASE = "'Inter', sans-serif"
+
+/** Font offerti nell'editor: i due caricati dall'app + alcuni di sistema. */
+export const FONTS: { label: string; value: string }[] = [
+  { label: 'Barlow Condensed', value: DISPLAY },
+  { label: 'Inter', value: BASE },
+  { label: 'Georgia', value: "Georgia, 'Times New Roman', serif" },
+  { label: 'Times', value: "'Times New Roman', Times, serif" },
+  { label: 'Impact', value: "Impact, 'Arial Black', sans-serif" },
+  { label: 'Courier', value: "'Courier New', Courier, monospace" },
+]
 
 export const ROSSO = '#c22026'
 export const ORO = '#e5a800'
@@ -22,6 +32,10 @@ interface Base {
   rotation: number
   /** blocca la selezione/spostamento (decorazioni gestite a parte non usano questo) */
   bloccato?: boolean
+  /** trasparenza 0–1 (assente = 1) */
+  opacita?: number
+  /** ombra morbida sotto l'elemento */
+  ombra?: boolean
 }
 
 export interface ElTesto extends Base {
@@ -37,6 +51,11 @@ export interface ElTesto extends Base {
   letterSpacing: number
   align: 'left' | 'center' | 'right'
   width: number
+  /** interlinea (assente = 1) */
+  interlinea?: number
+  /** contorno del testo (colore + spessore), stile "sticker" */
+  contorno?: string
+  contornoSpessore?: number
   /** marcatore stabile per ritrovare un testo speciale (es. il piè di pagina) */
   chiave?: 'piede'
 }
@@ -56,13 +75,20 @@ export interface ElRett extends Base {
   /** riempimento a tema: 'accento' (colore accento) o 'tile' (tessera trasferta) */
   ruoloFill?: 'accento' | 'tile'
   fill?: string
+  /** bordo (colore + spessore), se presente */
+  stroke?: string
+  strokeWidth?: number
 }
 
 export interface ElCerchio extends Base {
   tipo: 'cerchio'
   raggio: number
   strokeRuolo?: 'accento'
+  /** colore bordo scelto a mano: vince su strokeRuolo */
+  stroke?: string
   strokeWidth: number
+  /** riempimento, se presente (i cerchi dei template sono solo bordo) */
+  fill?: string
 }
 
 export type Elemento = ElTesto | ElImmagine | ElRett | ElCerchio
@@ -74,6 +100,8 @@ export interface Sfondo {
   y: number
   scala: number
   velo: number
+  /** tinta unita al posto del gradiente del tema (solo senza foto) */
+  colore?: string
 }
 
 export interface Scena {
@@ -81,6 +109,9 @@ export interface Scena {
   accento: string
   sfondo: Sfondo
   elementi: Elemento[]
+  /** decorazioni del template: fascia bicolore in alto e cornice sottile */
+  fascia: boolean
+  cornice: boolean
 }
 
 export interface ColoriTema {
@@ -134,6 +165,16 @@ export function coloreRuolo(ruolo: Ruolo, col: ColoriTema, accento: string): str
   }
 }
 
+/** Riempimento effettivo di un rettangolo: override manuale o ruolo a tema. */
+export function fillRett(el: ElRett, col: ColoriTema, accento: string): string {
+  return el.fill ?? (el.ruoloFill === 'accento' ? accento : el.ruoloFill === 'tile' ? col.tile : '#888888')
+}
+
+/** Colore effettivo del bordo di un cerchio: override manuale o ruolo a tema. */
+export function strokeCerchio(el: ElCerchio, col: ColoriTema, accento: string): string {
+  return el.stroke ?? (el.strokeRuolo === 'accento' ? accento : col.testo)
+}
+
 function withAlpha(hex: string, a: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
   if (!m) return hex
@@ -166,14 +207,27 @@ export interface FixtureRiga {
   luogo?: string
 }
 
+/** L'undici titolare per la grafica "Formazione" (dal generatore). */
+export interface FormazioneGrafica {
+  /** etichetta del modulo, es. "4-4-2" */
+  modulo: string
+  /** titolari con posizione 0..1 sul campo (y: 0 = difesa, 1 = attacco) */
+  titolari: { nome: string; role: string; x: number; y: number }[]
+  /** cognomi della panchina */
+  panchina: string[]
+  /** timestamp di generazione (per la chiave della scena) */
+  creata?: number
+}
+
 export interface BuildInput {
-  kind: 'annuncio' | 'risultato' | 'mese'
+  kind: 'annuncio' | 'risultato' | 'mese' | 'formazione'
   formato: { w: number; h: number }
   crestSrc: string
   piede: string
   giorno?: DatiGiorno
   meseTxt?: string
   fixtures?: FixtureRiga[]
+  formazione?: FormazioneGrafica
 }
 
 function testo(
@@ -200,6 +254,7 @@ function testo(
     align: opt.align ?? 'center',
     width: opt.width ?? 1080,
     fill: opt.fill,
+    ombra: opt.ombra,
     chiave: opt.chiave,
   }
 }
@@ -256,6 +311,52 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     }
     push(testo(84, 1258, 'STAGIONE 2026/27', 22, 'testo', { bold: false, fontFamily: BASE, align: 'left', width: 420 }))
     push(testo(W - 504, 1258, input.piede, 22, 'accento', { bold: false, fontFamily: BASE, align: 'right', width: 420, chiave: 'piede' }))
+  } else if (input.kind === 'formazione') {
+    const H = input.formato.h
+    const f = input.formazione
+    push(crest(cx - 55, 44, 110))
+    push(testo(0, 172, 'FORMAZIONE', 26, 'accento', { letterSpacing: 8, width: W }))
+    push(testo(0, 206, f?.modulo ?? '', 84, 'titolo', { width: W }))
+
+    if (!f || f.titolari.length === 0) {
+      push(testo(0, H / 2 - 40, 'Genera prima la formazione\nnella pagina Formazione', 44, 'sub', { width: W, interlinea: 1.3 }))
+    } else {
+      // campo verticale con righe bianche
+      const top = 330
+      const bottom = H - 190
+      const ch = bottom - top
+      const bianco = 'rgba(255,255,255,0.85)'
+      push({ id: nid(), tipo: 'rett', x: 70, y: top, rotation: 0, larghezza: 940, altezza: ch, cornerRadius: 18, fill: '#2f8f4e' })
+      push({ id: nid(), tipo: 'rett', x: 76, y: top + ch / 2 - 2, rotation: 0, larghezza: 928, altezza: 4, cornerRadius: 2, fill: bianco })
+      push({ id: nid(), tipo: 'cerchio', x: cx, y: top + ch / 2, rotation: 0, raggio: 92, stroke: bianco, strokeWidth: 3 })
+      push({ id: nid(), tipo: 'rett', x: cx - 230, y: top, rotation: 0, larghezza: 460, altezza: 110, cornerRadius: 0, fill: 'rgba(0,0,0,0)', stroke: bianco, strokeWidth: 3 })
+      push({ id: nid(), tipo: 'rett', x: cx - 230, y: bottom - 110, rotation: 0, larghezza: 460, altezza: 110, cornerRadius: 0, fill: 'rgba(0,0,0,0)', stroke: bianco, strokeWidth: 3 })
+
+      // titolari: gettone rosso + ruolo dentro + cognome sotto
+      for (const t of f.titolari) {
+        const px = 70 + (0.06 + t.x * 0.88) * 940
+        const py = top + (0.07 + (1 - t.y) * 0.84) * ch
+        push({ id: nid(), tipo: 'cerchio', x: px, y: py, rotation: 0, raggio: 42, fill: ROSSO, stroke: '#ffffff', strokeWidth: 3, ombra: true })
+        push(testo(px - 60, py - 13, t.role, 24, 'inverso', { width: 120 }))
+        push(testo(px - 110, py + 48, t.nome.toUpperCase(), 27, 'inverso', { width: 220, ombra: true }))
+      }
+
+      if (f.panchina.length) {
+        push(testo(76, H - 172, 'PANCHINA', 22, 'accento', { letterSpacing: 4, align: 'left', width: 400 }))
+        push(
+          testo(76, H - 140, f.panchina.join(' · '), 24, 'sub', {
+            bold: false,
+            fontFamily: BASE,
+            align: 'left',
+            width: W - 152,
+            interlinea: 1.25,
+          }),
+        )
+      }
+    }
+
+    push(testo(84, H - 52, 'STAGIONE 2026/27', 20, 'testo', { bold: false, fontFamily: BASE, align: 'left', width: 420 }))
+    push(testo(W - 504, H - 52, input.piede, 20, 'accento', { bold: false, fontFamily: BASE, align: 'right', width: 420, chiave: 'piede' }))
   } else {
     // mese
     push(testo(76, 96, 'APPUNTAMENTI', 24, 'accento', { fontFamily: BASE, align: 'left', letterSpacing: 3, width: 700 }))
@@ -309,5 +410,7 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     accento,
     sfondo: { x: 0, y: 0, scala: 1, velo: 0.55 },
     elementi: el,
+    fascia: true,
+    cornice: input.kind === 'annuncio' || input.kind === 'risultato',
   }
 }

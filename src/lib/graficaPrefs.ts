@@ -5,7 +5,7 @@
  * Resta nel browser di questo dispositivo (localStorage). Il contenuto
  * (testi/posizioni di una singola grafica) NON si salva qui.
  */
-export type KindGrafica = 'annuncio' | 'risultato' | 'mese'
+export type KindGrafica = 'annuncio' | 'risultato' | 'mese' | 'formazione'
 
 export interface GraficaPrefs {
   tema?: 'carta' | 'notte'
@@ -13,6 +13,11 @@ export interface GraficaPrefs {
   piede?: string
   sfondoSrc?: string
   velo?: number
+  /** tinta unita di sfondo (senza foto) */
+  sfondoColore?: string
+  /** decorazioni del template */
+  fascia?: boolean
+  cornice?: boolean
 }
 
 type Tutte = Partial<Record<KindGrafica, GraficaPrefs>>

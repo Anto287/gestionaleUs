@@ -12,6 +12,8 @@ export const COLLECTIONS = [
   'giocatori',
   'allenamenti',
   'partite',
+  'appuntamenti',
+  'promemoria',
   'distinte',
   'magazzino',
   'materiale',

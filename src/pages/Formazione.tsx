@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button, Card, Empty, Segmented, Space, Tag, Typography } from 'antd'
-import { ThunderboltOutlined, ClearOutlined } from '@ant-design/icons'
+import { ThunderboltOutlined, ClearOutlined, InstagramOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { coloreRuolo } from '../ruoli'
@@ -21,6 +22,7 @@ const { Text } = Typography
 export function Formazione() {
   const giocatori = useCollection<Giocatore>('giocatori')
   const allenamenti = useCollection<Allenamento>('allenamenti')
+  const navigate = useNavigate()
 
   const [moduloId, setModuloId] = useState(MODULI[0].id)
   const [selezione, setSelezione] = useState<Set<string>>(new Set())
@@ -39,12 +41,16 @@ export function Formazione() {
     return c
   }, [allenamenti.items])
 
-  // solo i giocatori tesserati (con numero di tessera), niente dirigenti puri
+  // solo i giocatori tesserati (con numero di tessera), niente dirigenti puri né infortunati
   const tesserati = useMemo(
     () =>
       giocatori.items
-        .filter((g) => isGiocatore(g) && !!g.tessera)
+        .filter((g) => isGiocatore(g) && !!g.tessera && !g.infortunato)
         .sort((a, b) => `${a.cognome}${a.nome}`.localeCompare(`${b.cognome}${b.nome}`)),
+    [giocatori.items],
+  )
+  const infortunati = useMemo(
+    () => giocatori.items.filter((g) => isGiocatore(g) && !!g.tessera && g.infortunato),
     [giocatori.items],
   )
 
@@ -103,6 +109,30 @@ export function Formazione() {
 
   const nSchierati = titolari ? titolari.filter(Boolean).length : 0
   const nVuoti = titolari ? titolari.length - nSchierati : 0
+
+  /** Passa l'undici alla pagina Grafiche IG (tipo «Formazione»). */
+  function grafIG() {
+    if (!titolari) return
+    const payload = {
+      creata: Date.now(),
+      modulo: modulo.label,
+      titolari: titolari
+        .map((a, i) =>
+          a
+            ? {
+                nome: byId.get(a.giocatoreId)?.cognome || byId.get(a.giocatoreId)?.nome || '—',
+                role: modulo.slots[i].role,
+                x: modulo.slots[i].x,
+                y: modulo.slots[i].y,
+              }
+            : null,
+        )
+        .filter(Boolean),
+      panchina: panchina.map((id) => byId.get(id)?.cognome || byId.get(id)?.nome || '—'),
+    }
+    sessionStorage.setItem('usriolunato:grafFormazione', JSON.stringify(payload))
+    navigate('/social?kind=formazione')
+  }
 
   if (tesserati.length === 0) {
     return (
@@ -197,6 +227,14 @@ export function Formazione() {
             )
           })}
         </Space>
+        {infortunati.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12.5 }}>
+              🚑 Esclusi perché infortunati:{' '}
+              {infortunati.map((g) => `${g.cognome}${g.rientroInfortunio ? ` (rientro ${g.rientroInfortunio.split('-').reverse().join('/')})` : ''}`).join(', ')}
+            </Text>
+          </div>
+        )}
       </Card>
 
       <Space wrap style={{ marginBottom: 16 }}>
@@ -211,6 +249,11 @@ export function Formazione() {
         {titolari && (
           <Button icon={<ClearOutlined />} onClick={() => setTitolari(null)}>
             Cancella
+          </Button>
+        )}
+        {titolari && nSchierati > 0 && (
+          <Button icon={<InstagramOutlined />} onClick={grafIG}>
+            Grafica IG
           </Button>
         )}
         {disponibili.length > 0 && !titolari && (

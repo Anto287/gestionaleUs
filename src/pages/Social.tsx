@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import {
   App,
   Button,
   Card,
+  Collapse,
   Form,
   Grid,
   Input,
@@ -35,7 +36,20 @@ import { leggiPrefs } from '../lib/graficaPrefs'
 import { driveAttivo, uploadGrafica } from '../services/driveStore'
 import type { Giocatore, Partita } from '../types'
 import { Editor } from './social/editor/Editor'
-import type { BuildInput, FixtureRiga } from './social/editor/scene'
+import type { BuildInput, FixtureRiga, FormazioneGrafica } from './social/editor/scene'
+
+/** Chiave del passaggio dati dalla pagina Formazione (sessionStorage). */
+export const CHIAVE_GRAF_FORMAZIONE = 'usriolunato:grafFormazione'
+
+function leggiFormazioneGrafica(): FormazioneGrafica | undefined {
+  try {
+    const raw = sessionStorage.getItem(CHIAVE_GRAF_FORMAZIONE)
+    const obj = raw ? (JSON.parse(raw) as FormazioneGrafica) : undefined
+    return obj && Array.isArray(obj.titolari) ? obj : undefined
+  } catch {
+    return undefined
+  }
+}
 
 const LOGO = `${import.meta.env.BASE_URL}logo.png`
 
@@ -62,7 +76,7 @@ function labelAppuntamento(a: Appuntamento) {
   return `${formatData(a.data, true)}${a.ora ? ' ' + a.ora : ''} · ${a.avversario} (${a.inCasa ? 'casa' : 'trasf.'})`
 }
 
-type Kind = 'annuncio' | 'risultato' | 'mese'
+type Kind = 'annuncio' | 'risultato' | 'mese' | 'formazione'
 
 export function Social() {
   const { items: partite } = useCollection<Partita>('partite')
@@ -71,9 +85,15 @@ export function Social() {
   const { message } = App.useApp()
   const screens = Grid.useBreakpoint()
   const affianca = screens.lg
+  const [searchParams] = useSearchParams()
 
-  const [kind, setKind] = useState<Kind>('annuncio')
+  const [kind, setKind] = useState<Kind>(() => {
+    const k = searchParams.get('kind')
+    return k === 'risultato' || k === 'mese' || k === 'formazione' ? k : 'annuncio'
+  })
   const [formatoChiave, setFormatoChiave] = useState<FormatoIG['chiave']>('post')
+  // l'undici arriva dalla pagina Formazione (bottone «Grafica IG»)
+  const formazioneGrafica = useMemo(() => leggiFormazioneGrafica(), [])
 
   // annuncio (dati inseriti a mano, mono-uso)
   const [avversario, setAvversario] = useState('')
@@ -171,6 +191,14 @@ export function Social() {
         nomeFile: p ? `riolunato-${p.data}-${slug(p.avversario)}.png` : 'riolunato-risultato.png',
       }
     }
+    if (kind === 'formazione') {
+      const inp: BuildInput = { ...base, kind: 'formazione', formazione: formazioneGrafica }
+      return {
+        input: inp,
+        seedKey: `formazione|${formatoChiave}|${formazioneGrafica?.creata ?? 'vuota'}`,
+        nomeFile: `riolunato-formazione-${slug(formazioneGrafica?.modulo ?? 'xi')}.png`,
+      }
+    }
     const inp: BuildInput = {
       ...base,
       kind: 'mese',
@@ -197,6 +225,7 @@ export function Social() {
     meseAttivo,
     fixtures,
     apptOrdinati,
+    formazioneGrafica,
   ])
 
   function salvaAppuntamento(v: { data: string; ora?: string; avversario: string; inCasa: boolean; luogo?: string }) {
@@ -240,8 +269,8 @@ export function Social() {
     }
   }
 
-  const controlli = (
-    <Card size="small" variant="borderless" style={{ boxShadow: 'var(--ombra-card)' }}>
+  const selettori = (
+    <>
       <div className="social-campo">
         <span className="social-label">Grafica</span>
         <Segmented
@@ -252,6 +281,7 @@ export function Social() {
             { value: 'annuncio', label: 'Partita del giorno' },
             { value: 'risultato', label: 'Risultato' },
             { value: 'mese', label: 'Mese' },
+            { value: 'formazione', label: 'Formazione' },
           ]}
         />
       </div>
@@ -265,7 +295,11 @@ export function Social() {
           options={FORMATI_IG.map((f) => ({ value: f.chiave, label: f.label }))}
         />
       </div>
+    </>
+  )
 
+  const campiDati = (
+    <>
       {kind === 'annuncio' && (
         <>
           <div className="social-campo">
@@ -329,6 +363,23 @@ export function Social() {
         </div>
       )}
 
+      {kind === 'formazione' && (
+        <div className="social-campo">
+          <span className="social-label">Undici titolare</span>
+          {formazioneGrafica ? (
+            <div className="social-vuoto">
+              Modulo <b>{formazioneGrafica.modulo}</b> · {formazioneGrafica.titolari.length} titolari
+              {formazioneGrafica.panchina.length ? ` · ${formazioneGrafica.panchina.length} in panchina` : ''}.{' '}
+              <Link to="/formazione">Rigenera</Link> per cambiarlo.
+            </div>
+          ) : (
+            <div className="social-vuoto">
+              Genera l'undici nella pagina <Link to="/formazione">Formazione</Link> e poi tocca «Grafica IG».
+            </div>
+          )}
+        </div>
+      )}
+
       {kind === 'mese' && (
         <div className="social-campo">
           <span className="social-label">Mese</span>
@@ -351,8 +402,24 @@ export function Social() {
       )}
 
       <div className="social-suggerimento">
-        Trascini e modifichi gli elementi nell'editor a fianco. Instagram: {formato.w}×{formato.h}px.
+        Trascina e modifica gli elementi direttamente sulla tela. Instagram: {formato.w}×{formato.h}px.
       </div>
+    </>
+  )
+
+  const controlli = (
+    <Card size="small" variant="borderless" style={{ boxShadow: 'var(--ombra-card)' }}>
+      {selettori}
+      {affianca ? (
+        campiDati
+      ) : (
+        <Collapse
+          ghost
+          size="small"
+          defaultActiveKey={['dati']}
+          items={[{ key: 'dati', label: 'Dati della grafica', children: campiDati }]}
+        />
+      )}
     </Card>
   )
 

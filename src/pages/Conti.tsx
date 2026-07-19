@@ -32,6 +32,7 @@ import {
   WalletOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { StatCard } from '../components/StatCard'
@@ -56,6 +57,7 @@ export function Conti() {
   const { items, add, update, remove, replace } = useCollection<Movimento>('conti')
   const { modal, message } = AntApp.useApp()
   const screens = Grid.useBreakpoint()
+  const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Movimento | null>(null)
@@ -395,7 +397,7 @@ export function Conti() {
         </Empty>
       ) : (
         <>
-          <div className="lista-toolbar">
+          <div className="lista-toolbar" ref={toolbarRef}>
             <Input
               className="lista-cerca"
               allowClear
@@ -508,6 +510,7 @@ export function Conti() {
               columns={columns}
               pagination={false}
               size="middle"
+              sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
               onRow={(r) => ({ onClick: () => apriModifica(r.m), style: { cursor: 'pointer' } })}
             />

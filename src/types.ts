@@ -16,6 +16,8 @@ export interface Giocatore {
   nome: string
   cognome: string
   categoria?: Categoria
+  /** incarico in dirigenza, testo libero (es. "Presidente"); solo per dirigenti */
+  ruoloDirigenza?: string
   /** codice ruolo stile FIFA (vedi src/ruoli.ts), es. 'DC', 'COC' */
   ruoloPreferito?: string
   /** ruoli in cui è adattabile */
@@ -26,11 +28,59 @@ export interface Giocatore {
   nascita?: string
   tessera?: string
   dataRilascio?: string
-  /** certificato medico */
+  /** certificato medico (non riguarda chi è solo dirigente) */
   certificatoMedico?: boolean
   scadenzaCertificato?: string
-  /** quota associativa pagata: riparte da false a ogni nuova stagione */
+  /** quota associativa pagata: riparte da false a ogni nuova stagione (non riguarda chi è solo dirigente) */
   quotaPagata?: boolean
+  /** importo della quota stagionale in euro; se impostato, lo stato quota deriva dai versamenti */
+  quotaImporto?: number
+  /** versamenti della quota (acconti/saldo); ognuno può avere il movimento gemello nei Conti */
+  versamentiQuota?: VersamentoQuota[]
+  /** attualmente infortunato: escluso dal generatore di formazione */
+  infortunato?: boolean
+  /** data prevista di rientro dall'infortunio (informativa) */
+  rientroInfortunio?: string
+  /** annotazioni libere (taglia maglia, recapiti, ecc.) */
+  note?: string
+}
+
+/** Un versamento della quota associativa. */
+export interface VersamentoQuota {
+  id: string
+  data: string
+  importo: number
+  note?: string
+  /** id del movimento creato nei Conti, per rimuoverlo insieme */
+  movimentoId?: string
+}
+
+/** Una cosa da fare inserita a mano nel pannello della dashboard. */
+export interface Promemoria {
+  id: string
+  /** cosa c'è da fare, es. "chiudere le buche delle talpe" */
+  testo: string
+  /** entro quando ('YYYY-MM-DD', facoltativa) */
+  entro?: string
+  urgente?: boolean
+  /** chi se ne sta occupando (facoltativo) */
+  assegnatoA?: string
+  fatto?: boolean
+  /** data di inserimento ('YYYY-MM-DD') */
+  creato?: string
+}
+
+/** Una partita in programma inserita a mano (calendario e grafiche del mese). */
+export interface Appuntamento {
+  id: string
+  /** data in formato ISO 'YYYY-MM-DD' */
+  data: string
+  /** orario di inizio, es. "15:30" */
+  ora?: string
+  avversario: string
+  inCasa: boolean
+  /** campo/luogo (facoltativo), es. "Comunale di Riolunato" */
+  luogo?: string
 }
 
 /** Gol o assist attribuiti a un giocatore in una partita. */

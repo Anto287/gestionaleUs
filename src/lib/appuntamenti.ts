@@ -1,30 +1,18 @@
 /**
- * Appuntamenti (partite in programma) inseriti a mano nella pagina "Grafiche IG".
- * Sono mono-uso: vivono solo finché si resta sulla pagina, non vengono salvati.
+ * Appuntamenti (partite in programma) inseriti a mano: usati dal calendario e
+ * dalla grafica IG del mese. Dal 2026-07 sono una raccolta sul Drive
+ * ('appuntamenti', foglio creato al primo salvataggio), non più mono-uso.
  */
-import { useState } from 'react'
+import { useCollection } from '../hooks/useCollection'
+import type { Appuntamento } from '../types'
 
-export interface Appuntamento {
-  id: string
-  /** data in formato ISO 'YYYY-MM-DD' */
-  data: string
-  /** orario di inizio, es. "15:30" */
-  ora?: string
-  avversario: string
-  inCasa: boolean
-  /** campo/luogo (facoltativo), es. "Comunale di Riolunato" */
-  luogo?: string
-}
+export type { Appuntamento }
 
 export function useAppuntamenti() {
-  const [list, setList] = useState<Appuntamento[]>([])
+  const { items, add, remove } = useCollection<Appuntamento>('appuntamenti')
 
-  const aggiungi = (a: Omit<Appuntamento, 'id'>): string => {
-    const item: Appuntamento = { ...a, id: crypto.randomUUID() }
-    setList((l) => [...l, item])
-    return item.id
-  }
-  const rimuovi = (id: string) => setList((l) => l.filter((x) => x.id !== id))
+  const aggiungi = (a: Omit<Appuntamento, 'id'>): string => add(a)
+  const rimuovi = (id: string) => remove(id)
 
-  return { list, aggiungi, rimuovi }
+  return { list: items, aggiungi, rimuovi }
 }

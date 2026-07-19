@@ -17,6 +17,7 @@ import {
 } from 'antd'
 import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
@@ -46,6 +47,7 @@ export function Partite() {
   const { items, add, remove } = useCollection<Partita>('partite')
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
+  const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [form] = Form.useForm()
@@ -219,7 +221,7 @@ export function Partite() {
         </Empty>
       ) : (
         <>
-          <div className="lista-toolbar">
+          <div className="lista-toolbar" ref={toolbarRef}>
             <Input
               className="lista-cerca"
               allowClear
@@ -348,6 +350,7 @@ export function Partite() {
               columns={columns}
               pagination={false}
               size="middle"
+              sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
               onRow={(p) => ({ onClick: () => navigate(`/partite/${p.id}`), style: { cursor: 'pointer' } })}
             />

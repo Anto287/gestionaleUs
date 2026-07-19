@@ -20,3 +20,17 @@ export const LABEL_CATEGORIA: Record<Categoria, string> = {
 export const OPZIONI_CATEGORIA = (
   Object.entries(LABEL_CATEGORIA) as [Categoria, string][]
 ).map(([value, label]) => ({ value, label }))
+
+/** Incarichi tipici della dirigenza: suggerimenti per il campo (testo libero). */
+export const RUOLI_DIRIGENZA = [
+  'Presidente',
+  'Vicepresidente',
+  'Segretario',
+  'Direttore sportivo',
+  'Team manager',
+  'Dirigente accompagnatore',
+  'Addetto agli arbitri',
+  'Magazziniere',
+]
+
+export const OPZIONI_RUOLI_DIRIGENZA = RUOLI_DIRIGENZA.map((r) => ({ value: r }))

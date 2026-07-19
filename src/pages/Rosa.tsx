@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  AutoComplete,
   Button,
   Empty,
   Form,
   Grid,
   Input,
+  InputNumber,
   Modal,
   Popconfirm,
   Rate,
@@ -16,14 +18,16 @@ import {
   Table,
   Tag,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, MedicineBoxOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
-import { isDirigente, isGiocatore, OPZIONI_CATEGORIA } from '../lib/categoria'
+import { statoQuota } from '../lib/quota'
+import { isDirigente, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
 
 type Bozza = Pick<
@@ -31,6 +35,7 @@ type Bozza = Pick<
   | 'nome'
   | 'cognome'
   | 'categoria'
+  | 'ruoloDirigenza'
   | 'ruoloPreferito'
   | 'ruoliAdattati'
   | 'bravura'
@@ -40,6 +45,10 @@ type Bozza = Pick<
   | 'certificatoMedico'
   | 'scadenzaCertificato'
   | 'quotaPagata'
+  | 'quotaImporto'
+  | 'infortunato'
+  | 'rientroInfortunio'
+  | 'note'
 >
 
 export function Rosa() {
@@ -48,8 +57,14 @@ export function Rosa() {
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
   const isMobile = !screens.sm
+  const { toolbarRef, offsetHeader } = useAggancioLista()
   const [modale, setModale] = useState(false)
   const [form] = Form.useForm()
+  // chi è SOLO dirigente non ha campi da giocatore (ruoli, certificato, quota)
+  const categoriaForm = Form.useWatch('categoria', form)
+  const campiGiocatore = categoriaForm !== 'dirigente'
+  const campiDirigente = categoriaForm === 'dirigente' || categoriaForm === 'entrambi'
+  const infortunatoForm = Form.useWatch('infortunato', form)
   const [q, setQ] = useState('')
   const [ruoloF, setRuoloF] = useState<string | undefined>()
   const [categoriaF, setCategoriaF] = useState<string | undefined>()
@@ -95,9 +110,10 @@ export function Rosa() {
           return false
         if (categoriaF === 'giocatore' && !isGiocatore(g)) return false
         if (categoriaF === 'dirigente' && !isDirigente(g)) return false
-        if (certF && statoCertificato(g).stato !== certF) return false
-        if (quotaF === 'pagata' && !g.quotaPagata) return false
-        if (quotaF === 'no' && g.quotaPagata) return false
+        if (certF && (!isGiocatore(g) || statoCertificato(g).stato !== certF)) return false
+        if (quotaF && !isGiocatore(g)) return false
+        if (quotaF === 'pagata' && !statoQuota(g).completa) return false
+        if (quotaF === 'no' && statoQuota(g).completa) return false
         if (tesseraF === 'si' && !g.tessera) return false
         if (tesseraF === 'no' && g.tessera) return false
         return true
@@ -117,6 +133,24 @@ export function Rosa() {
   }
 
   function salva(valori: Bozza) {
+    // il form nasconde i campi che non riguardano la categoria scelta: qui si
+    // scartano anche i valori rimasti da un cambio di categoria
+    if (valori.categoria === 'dirigente') {
+      valori = {
+        ...valori,
+        ruoloPreferito: undefined,
+        ruoliAdattati: undefined,
+        bravura: undefined,
+        certificatoMedico: undefined,
+        scadenzaCertificato: undefined,
+        quotaPagata: undefined,
+        quotaImporto: undefined,
+        infortunato: undefined,
+        rientroInfortunio: undefined,
+      }
+    }
+    if (valori.categoria === 'giocatore') valori = { ...valori, ruoloDirigenza: undefined }
+    if (!valori.infortunato) valori = { ...valori, rientroInfortunio: undefined }
     add(valori)
     setModale(false)
   }
@@ -146,6 +180,11 @@ export function Rosa() {
               {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
             </Tag>
           )}
+          {isGiocatore(g) && g.infortunato && (
+            <Tag color="red" icon={<MedicineBoxOutlined />} style={{ marginLeft: 8 }}>
+              Infortunato
+            </Tag>
+          )}
         </span>
       ),
     },
@@ -155,8 +194,11 @@ export function Rosa() {
       width: 100,
       sorter: (a: Giocatore, b: Giocatore) =>
         (a.ruoloPreferito ?? '').localeCompare(b.ruoloPreferito ?? ''),
-      render: (_: unknown, g: Giocatore) =>
-        g.ruoloPreferito ? <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag> : '—',
+      render: (_: unknown, g: Giocatore) => {
+        if (g.ruoloPreferito) return <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag>
+        if (!isGiocatore(g) && g.ruoloDirigenza) return <Tag color="purple">{g.ruoloDirigenza}</Tag>
+        return '—'
+      },
     },
     {
       title: 'Adattato',
@@ -181,7 +223,7 @@ export function Rosa() {
       align: 'right' as const,
       width: 80,
       sorter: (a: Giocatore, b: Giocatore) => (presenze[a.id] ?? 0) - (presenze[b.id] ?? 0),
-      render: (_: unknown, g: Giocatore) => presenze[g.id] ?? 0,
+      render: (_: unknown, g: Giocatore) => (isGiocatore(g) ? (presenze[g.id] ?? 0) : '—'),
     },
     {
       title: 'Certificato',
@@ -190,6 +232,7 @@ export function Rosa() {
       sorter: (a: Giocatore, b: Giocatore) =>
         (a.scadenzaCertificato ?? '').localeCompare(b.scadenzaCertificato ?? ''),
       render: (_: unknown, g: Giocatore) => {
+        if (!isGiocatore(g)) return '—'
         const s = statoCertificato(g)
         return <Tag color={s.color}>{s.label}</Tag>
       },
@@ -214,15 +257,21 @@ export function Rosa() {
       width: 100,
       sorter: (a: Giocatore, b: Giocatore) => Number(!!a.quotaPagata) - Number(!!b.quotaPagata),
       ...stopCell,
-      render: (_: unknown, g: Giocatore) => (
-        <Switch
-          size="small"
-          checked={!!g.quotaPagata}
-          checkedChildren="Pagata"
-          unCheckedChildren="No"
-          onChange={(v) => update(g.id, { quotaPagata: v })}
-        />
-      ),
+      render: (_: unknown, g: Giocatore) => {
+        if (!isGiocatore(g)) return '—'
+        const q = statoQuota(g)
+        // con l'importo impostato lo stato deriva dai versamenti (scheda giocatore)
+        if (q.totale) return <Tag color={q.completa ? 'green' : q.parziale ? 'orange' : 'red'}>{q.label}</Tag>
+        return (
+          <Switch
+            size="small"
+            checked={!!g.quotaPagata}
+            checkedChildren="Pagata"
+            unCheckedChildren="No"
+            onChange={(v) => update(g.id, { quotaPagata: v })}
+          />
+        )
+      },
     },
     {
       title: '',
@@ -265,7 +314,7 @@ export function Rosa() {
         </Empty>
       ) : (
         <>
-          <div className="lista-toolbar">
+          <div className="lista-toolbar" ref={toolbarRef}>
             <Input
               className="lista-cerca"
               allowClear
@@ -358,10 +407,17 @@ export function Rosa() {
                               {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
                             </Tag>
                           )}
+                          {isGiocatore(g) && g.infortunato && (
+                            <Tag color="red" style={{ marginLeft: 6 }}>
+                              Infortunato
+                            </Tag>
+                          )}
                         </div>
                         <div className="lista-card-meta" style={{ marginTop: 5 }}>
                           {g.ruoloPreferito ? (
                             <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag>
+                          ) : !isGiocatore(g) ? (
+                            g.ruoloDirigenza && <Tag color="purple">{g.ruoloDirigenza}</Tag>
                           ) : (
                             <span>Ruolo n.d.</span>
                           )}
@@ -385,7 +441,7 @@ export function Rosa() {
                       </span>
                     </div>
                     <div className="lista-card-meta">
-                      <Tag color={cert.color}>{cert.label}</Tag>
+                      {isGiocatore(g) && <Tag color={cert.color}>{cert.label}</Tag>}
                       {g.tessera ? (
                         <Tag>{g.tessera}</Tag>
                       ) : (
@@ -393,17 +449,30 @@ export function Rosa() {
                           Tessera mancante
                         </Tag>
                       )}
-                      <span>· {presenze[g.id] ?? 0} pres.</span>
-                      <span className="lista-card-fine" onClick={(e) => e.stopPropagation()}>
-                        Quota
-                        <Switch
-                          size="small"
-                          checked={!!g.quotaPagata}
-                          checkedChildren="Sì"
-                          unCheckedChildren="No"
-                          onChange={(v) => update(g.id, { quotaPagata: v })}
-                        />
-                      </span>
+                      {isGiocatore(g) && <span>· {presenze[g.id] ?? 0} pres.</span>}
+                      {isGiocatore(g) &&
+                        (statoQuota(g).totale ? (
+                          <span className="lista-card-fine">
+                            Quota{' '}
+                            <Tag
+                              color={statoQuota(g).completa ? 'green' : statoQuota(g).parziale ? 'orange' : 'red'}
+                              style={{ marginInlineEnd: 0 }}
+                            >
+                              {statoQuota(g).label}
+                            </Tag>
+                          </span>
+                        ) : (
+                          <span className="lista-card-fine" onClick={(e) => e.stopPropagation()}>
+                            Quota
+                            <Switch
+                              size="small"
+                              checked={!!g.quotaPagata}
+                              checkedChildren="Sì"
+                              unCheckedChildren="No"
+                              onChange={(v) => update(g.id, { quotaPagata: v })}
+                            />
+                          </span>
+                        ))}
                     </div>
                   </div>
                 )
@@ -416,6 +485,7 @@ export function Rosa() {
               columns={columns}
               pagination={false}
               size="middle"
+              sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
               onRow={(g) => ({ onClick: () => navigate(`/rosa/${g.id}`), style: { cursor: 'pointer' } })}
             />
@@ -447,22 +517,38 @@ export function Rosa() {
           <Form.Item label="Categoria" name="categoria">
             <Select options={OPZIONI_CATEGORIA} />
           </Form.Item>
-          <Form.Item label="Ruolo preferito" name="ruoloPreferito">
-            <Select options={OPZIONI_RUOLI} placeholder="es. DC — Difensore centrale" allowClear showSearch optionFilterProp="label" />
-          </Form.Item>
-          <Form.Item label="Ruoli adattati" name="ruoliAdattati">
-            <Select
-              mode="multiple"
-              options={OPZIONI_RUOLI}
-              placeholder="uno o più ruoli"
-              allowClear
-              showSearch
-              optionFilterProp="label"
-            />
-          </Form.Item>
-          <Form.Item label="Bravura" name="bravura" tooltip="Quanto è forte, da 1 a 5: pesa nel generatore di formazione">
-            <Rate />
-          </Form.Item>
+          {campiDirigente && (
+            <Form.Item label="Ruolo in dirigenza (facoltativo)" name="ruoloDirigenza">
+              <AutoComplete
+                options={OPZIONI_RUOLI_DIRIGENZA}
+                placeholder="es. Presidente, Segretario…"
+                allowClear
+                filterOption={(input, opt) =>
+                  String(opt?.value ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+          )}
+          {campiGiocatore && (
+            <>
+              <Form.Item label="Ruolo preferito" name="ruoloPreferito">
+                <Select options={OPZIONI_RUOLI} placeholder="es. DC — Difensore centrale" allowClear showSearch optionFilterProp="label" />
+              </Form.Item>
+              <Form.Item label="Ruoli adattati" name="ruoliAdattati">
+                <Select
+                  mode="multiple"
+                  options={OPZIONI_RUOLI}
+                  placeholder="uno o più ruoli"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                />
+              </Form.Item>
+              <Form.Item label="Bravura" name="bravura" tooltip="Quanto è forte, da 1 a 5: pesa nel generatore di formazione">
+                <Rate />
+              </Form.Item>
+            </>
+          )}
           <Form.Item label="Data di nascita (gg/mm/aaaa)" name="nascita">
             <Input placeholder="es. 12/03/2001" autoComplete="off" />
           </Form.Item>
@@ -472,14 +558,36 @@ export function Rosa() {
           <Form.Item label="Data rilascio tessera" name="dataRilascio">
             <Input placeholder="es. 01/09/2026" autoComplete="off" />
           </Form.Item>
-          <Form.Item label="Certificato medico consegnato" name="certificatoMedico" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item label="Scadenza certificato" name="scadenzaCertificato" {...propsCampoData}>
-            <DataPicker />
-          </Form.Item>
-          <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
-            <Switch />
+          {campiGiocatore && (
+            <>
+              <Form.Item label="Certificato medico consegnato" name="certificatoMedico" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+              <Form.Item label="Scadenza certificato" name="scadenzaCertificato" {...propsCampoData}>
+                <DataPicker />
+              </Form.Item>
+              <Form.Item
+                label="Importo quota (€)"
+                name="quotaImporto"
+                tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati nella scheda"
+              >
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="es. 150" />
+              </Form.Item>
+              <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+              <Form.Item label="Infortunato" name="infortunato" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+              {infortunatoForm && (
+                <Form.Item label="Rientro previsto" name="rientroInfortunio" {...propsCampoData}>
+                  <DataPicker />
+                </Form.Item>
+              )}
+            </>
+          )}
+          <Form.Item label="Note" name="note">
+            <Input.TextArea rows={3} placeholder="es. taglia maglia, recapiti, incarichi…" autoComplete="off" />
           </Form.Item>
         </Form>
       </Modal>

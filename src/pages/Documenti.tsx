@@ -155,16 +155,18 @@ export function Documenti() {
         </Empty>
       ) : (
         <>
-          <Space wrap className="filtri-inline" style={{ marginBottom: 16 }}>
-            <Input
-              allowClear
-              prefix={<SearchOutlined />}
-              placeholder="Cerca documento"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              style={{ width: 260 }}
-            />
-          </Space>
+          <div className="filtri-aggancio">
+            <Space wrap className="filtri-inline">
+              <Input
+                allowClear
+                prefix={<SearchOutlined />}
+                placeholder="Cerca documento"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                style={{ width: 260 }}
+              />
+            </Space>
+          </div>
           <List
             bordered
             className="documenti-list"

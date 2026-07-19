@@ -26,6 +26,7 @@ import {
   AudioOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
+import { useAggancioLista } from '../../hooks/useAggancioLista'
 import { useDettatura } from '../../hooks/useDettatura'
 import { DataPicker, propsCampoData } from '../../components/DataPicker'
 import { formatData } from '../../lib/format'
@@ -73,6 +74,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
     config
   const { items, add, update, remove } = useCollection<VoceMagazzino>(collezione)
   const screens = Grid.useBreakpoint()
+  const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<VoceMagazzino | null>(null)
@@ -302,7 +304,8 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
         </Empty>
       ) : (
         <>
-          <Space wrap className="filtri-inline" style={{ marginBottom: 16 }}>
+          <div className="filtri-aggancio" ref={toolbarRef}>
+          <Space wrap className="filtri-inline">
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -337,6 +340,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
               </Checkbox>
             )}
           </Space>
+          </div>
 
           {filtrati.length === 0 ? (
             <Empty description="Nessun risultato con questi filtri" />
@@ -417,6 +421,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
               columns={columns}
               pagination={false}
               size="middle"
+              sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
               rowClassName={(a) =>
                 conScadenza && statoScadenza(a.scadenza).critico ? 'riga-scadenza-allarme' : ''

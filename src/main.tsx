@@ -3,8 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import '@ant-design/v5-patch-for-react-19'
 import { App as AntApp, ConfigProvider } from 'antd'
-import itIT from 'antd/locale/it_IT'
+import itIT from 'antd/es/locale/it_IT'
+import dayjs from 'dayjs'
+import 'dayjs/locale/it'
 import 'antd/dist/reset.css'
+
+dayjs.locale('it')
 import { AuthProvider } from './auth/AuthContext'
 import './styles/global.css'
 import App from './App.tsx'
