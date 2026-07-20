@@ -1,11 +1,12 @@
 import { createElement, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Layout as AntLayout, Menu, Button, Drawer, Grid, Typography } from 'antd'
-import { LogoutOutlined, MenuOutlined } from '@ant-design/icons'
+import { LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
 import { config } from '../config'
 import { navItems } from '../nav'
 import { useAuth } from '../auth/AuthContext'
 import { useSeason } from '../season/SeasonContext'
+import { useTema } from '../theme/TemaProvider'
 import { DataProvider } from '../data/DataProvider'
 
 const { Sider, Header, Content } = AntLayout
@@ -23,6 +24,7 @@ function Brand() {
 
 export function Layout() {
   const { esci } = useAuth()
+  const { tema, alterna } = useTema()
   const { attiva } = useSeason()
   const navigate = useNavigate()
   const location = useLocation()
@@ -53,6 +55,14 @@ export function Layout() {
       <Brand />
       <div className="sidebar-nav">{menu}</div>
       <div className="sidebar-foot">
+        <Button
+          block
+          icon={tema === 'scuro' ? <SunOutlined /> : <MoonOutlined />}
+          onClick={alterna}
+          style={{ marginBottom: 8 }}
+        >
+          {tema === 'scuro' ? 'Tema chiaro' : 'Tema scuro'}
+        </Button>
         <Button block icon={<LogoutOutlined />} onClick={esci}>
           Esci
         </Button>
@@ -87,6 +97,13 @@ export function Layout() {
             <span className="topbar-title">
               {navItems.find((n) => n.to === location.pathname)?.label ?? config.clubName}
             </span>
+            <Button
+              type="text"
+              style={{ marginLeft: 'auto' }}
+              icon={tema === 'scuro' ? <SunOutlined /> : <MoonOutlined />}
+              onClick={alterna}
+              aria-label={tema === 'scuro' ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
+            />
           </Header>
         )}
         <Content className="app-content">

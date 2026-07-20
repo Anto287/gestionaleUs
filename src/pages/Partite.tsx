@@ -17,12 +17,13 @@ import {
 } from 'antd'
 import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
-import type { Partita } from '../types'
+import type { Partita, Torneo } from '../types'
 
 function oggiIso() {
   return new Date().toISOString().slice(0, 10)
@@ -44,7 +45,10 @@ function esito(p: Partita): { label: string; color: string } {
 }
 
 export function Partite() {
-  const { items, add, remove } = useCollection<Partita>('partite')
+  const partiteColl = useCollection<Partita>('partite')
+  const { items, add } = partiteColl
+  const tornei = useCollection<Torneo>('tornei')
+  const eliminaConUndo = useEliminaUndo()
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
   const { toolbarRef, offsetHeader } = useAggancioLista()
@@ -58,6 +62,7 @@ export function Partite() {
   const [meseF, setMeseF] = useState<string | undefined>()
   const [portaF, setPortaF] = useState<string | undefined>()
   const [statoF, setStatoF] = useState<string | undefined>()
+  const [torneoF, setTorneoF] = useState<string | undefined>()
 
   const partite = useMemo(() => [...items].sort((a, b) => b.data.localeCompare(a.data)), [items])
 
@@ -68,14 +73,17 @@ export function Partite() {
       .map((k) => ({ value: k, label: labelMese(k) }))
   }, [partite])
 
-  const nFiltri = [dove, esitoF, meseF, portaF, statoF].filter(Boolean).length
+  const nFiltri = [dove, esitoF, meseF, portaF, statoF, torneoF].filter(Boolean).length
   function azzeraFiltri() {
     setDove(undefined)
     setEsitoF(undefined)
     setMeseF(undefined)
     setPortaF(undefined)
     setStatoF(undefined)
+    setTorneoF(undefined)
   }
+
+  const nomeTorneo = (id?: string) => tornei.items.find((t) => t.id === id)?.nome
 
   const filtrate = useMemo(
     () =>
@@ -92,9 +100,10 @@ export function Partite() {
         if (portaF === 'inviolata' && p.golSubiti !== 0) return false
         if (portaF === 'subito' && p.golSubiti === 0) return false
         if (meseF && p.data.slice(0, 7) !== meseF) return false
+        if (torneoF && p.torneoId !== torneoF) return false
         return true
       }),
-    [partite, q, dove, esitoF, meseF, portaF, statoF],
+    [partite, q, dove, esitoF, meseF, portaF, statoF, torneoF],
   )
 
   function apriNuova() {
@@ -108,6 +117,7 @@ export function Partite() {
     ora?: string
     avversario: string
     inCasa: boolean
+    torneoId?: string
     giocata?: boolean
     golFatti: number
     golSubiti: number
@@ -119,6 +129,7 @@ export function Partite() {
       ora: v.ora?.trim() || undefined,
       avversario: v.avversario.trim(),
       inCasa: v.inCasa,
+      torneoId: v.torneoId || undefined,
       giocata,
       golFatti: giocata ? (v.golFatti ?? 0) : 0,
       golSubiti: giocata ? (v.golSubiti ?? 0) : 0,
@@ -156,6 +167,7 @@ export function Partite() {
             {p.avversario}
           </b>{' '}
           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
+          {nomeTorneo(p.torneoId) && <Tag color="geekblue">{nomeTorneo(p.torneoId)}</Tag>}
         </span>
       ),
     },
@@ -191,7 +203,7 @@ export function Partite() {
           okText="Elimina"
           cancelText="Annulla"
           okButtonProps={{ danger: true }}
-          onConfirm={() => remove(p.id)}
+          onConfirm={() => eliminaConUndo(partiteColl, p, `Partita con ${p.avversario} eliminata.`)}
         >
           <Button type="text" danger icon={<DeleteOutlined />} />
         </Popconfirm>
@@ -272,6 +284,18 @@ export function Partite() {
                   ]}
                 />
               </FiltroCampo>
+              {tornei.items.length > 0 && (
+                <FiltroCampo label="Competizione">
+                  <Select
+                    allowClear
+                    placeholder="Tutte"
+                    value={torneoF}
+                    onChange={setTorneoF}
+                    style={{ width: '100%' }}
+                    options={tornei.items.map((t) => ({ value: t.id, label: t.nome }))}
+                  />
+                </FiltroCampo>
+              )}
               <FiltroCampo label="Periodo">
                 <Select
                   allowClear
@@ -313,6 +337,7 @@ export function Partite() {
                           {formatData(p.data, true)}
                           {p.ora && <span>· {p.ora}</span>}
                           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
+                          {nomeTorneo(p.torneoId) && <Tag color="geekblue">{nomeTorneo(p.torneoId)}</Tag>}
                         </div>
                       </div>
                       <span onClick={(ev) => ev.stopPropagation()}>
@@ -321,7 +346,7 @@ export function Partite() {
                           okText="Elimina"
                           cancelText="Annulla"
                           okButtonProps={{ danger: true }}
-                          onConfirm={() => remove(p.id)}
+                          onConfirm={() => eliminaConUndo(partiteColl, p, `Partita con ${p.avversario} eliminata.`)}
                         >
                           <Button type="text" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
@@ -395,6 +420,15 @@ export function Partite() {
               ]}
             />
           </Form.Item>
+          {tornei.items.length > 0 && (
+            <Form.Item label="Competizione (facoltativa)" name="torneoId">
+              <Select
+                allowClear
+                placeholder="es. Campionato, Coppa…"
+                options={tornei.items.map((t) => ({ value: t.id, label: t.nome }))}
+              />
+            </Form.Item>
+          )}
           <Form.Item
             label="Partita già giocata"
             name="giocata"

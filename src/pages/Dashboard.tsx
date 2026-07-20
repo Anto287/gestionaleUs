@@ -8,6 +8,7 @@ import {
   DeleteOutlined,
   EuroOutlined,
   IdcardOutlined,
+  InboxOutlined,
   MedicineBoxOutlined,
   PlusOutlined,
   RightOutlined,
@@ -20,8 +21,10 @@ import { config } from '../config'
 import { navItems } from '../nav'
 import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
+import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { formatData, formatEuro } from '../lib/format'
 import { statoScadenza } from '../lib/scadenza'
+import { sottoScorta } from '../lib/scorta'
 import { statoCertificato } from '../lib/certificato'
 import { statoQuota } from '../lib/quota'
 import { isGiocatore } from '../lib/categoria'
@@ -39,9 +42,12 @@ export function Dashboard() {
   const allenamenti = useCollection<Allenamento>('allenamenti')
   const distinte = useCollection<Distinta>('distinte')
   const magazzino = useCollection<Articolo>('magazzino')
+  const materiale = useCollection<VoceMagazzino>('materiale')
+  const manutenzione = useCollection<VoceMagazzino>('manutenzione')
   const borsaMedica = useCollection<VoceMagazzino>('borsaMedica')
   const conti = useCollection<Movimento>('conti')
   const promemoria = useCollection<Promemoria>('promemoria')
+  const eliminaConUndo = useEliminaUndo()
   const [dettaglio, setDettaglio] = useState<VistaDettaglio | null>(null)
   const [modalePromemoria, setModalePromemoria] = useState(false)
   const [formP] = Form.useForm()
@@ -83,6 +89,12 @@ export function Dashboard() {
     const senzaTessera = giocatori.items.filter((g) => !g.tessera)
     const infortunati = soloGiocatori.filter((g) => g.infortunato)
     const borsaScaduta = borsaMedica.items.filter((v) => statoScadenza(v.scadenza).critico)
+    const daRiordinare = [
+      ...magazzino.items,
+      ...materiale.items,
+      ...manutenzione.items,
+      ...borsaMedica.items,
+    ].filter(sottoScorta)
 
     const voci = [
       {
@@ -131,6 +143,15 @@ export function Dashboard() {
         to: '/magazzino',
       },
       {
+        key: 'scorte',
+        icona: <InboxOutlined />,
+        colore: '#9a6b1e',
+        testo: 'Articoli sotto scorta da riordinare',
+        dettaglio: daRiordinare.map((v) => v.nome).join(', '),
+        n: daRiordinare.length,
+        to: '/magazzino',
+      },
+      {
         key: 'infortuni',
         icona: <MedicineBoxOutlined />,
         colore: '#9a6b1e',
@@ -141,7 +162,7 @@ export function Dashboard() {
       },
     ]
     return voci.filter((v) => v.n > 0)
-  }, [giocatori.items, borsaMedica.items])
+  }, [giocatori.items, borsaMedica.items, magazzino.items, materiale.items, manutenzione.items])
 
   const saldo = conti.items
     .filter((m) => m.saldato)
@@ -293,7 +314,7 @@ export function Dashboard() {
                     okText="Elimina"
                     cancelText="Annulla"
                     okButtonProps={{ danger: true }}
-                    onConfirm={() => promemoria.remove(p.id)}
+                    onConfirm={() => eliminaConUndo(promemoria, p, 'Promemoria eliminato.')}
                   >
                     <Button type="text" danger size="small" icon={<DeleteOutlined />} />
                   </Popconfirm>

@@ -49,6 +49,8 @@ export function Distinte() {
         Nome: g.nome,
         Cognome: g.cognome,
         Categoria: g.categoria ?? 'giocatore',
+        // numero di maglia abituale: proposto quando lo si convoca
+        NumeroMaglia: g.numeroMaglia ?? null,
         DataNascita: g.nascita ?? '',
         Tessera: g.tessera ?? '',
         DataRilascio: g.dataRilascio ?? '',

@@ -18,8 +18,16 @@ import {
   Table,
   Tag,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, MedicineBoxOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons'
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  FileExcelOutlined,
+  MedicineBoxOutlined,
+  SearchOutlined,
+  WarningOutlined,
+} from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
@@ -27,6 +35,7 @@ import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
 import { statoQuota } from '../lib/quota'
+import { esportaExcel } from '../lib/excel'
 import { isDirigente, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
 
@@ -39,6 +48,7 @@ type Bozza = Pick<
   | 'ruoloPreferito'
   | 'ruoliAdattati'
   | 'bravura'
+  | 'numeroMaglia'
   | 'nascita'
   | 'tessera'
   | 'dataRilascio'
@@ -52,7 +62,9 @@ type Bozza = Pick<
 >
 
 export function Rosa() {
-  const { items, add, remove, update } = useCollection<Giocatore>('giocatori')
+  const giocatori = useCollection<Giocatore>('giocatori')
+  const { items, add, update } = giocatori
+  const eliminaConUndo = useEliminaUndo()
   const allenamenti = useCollection<Allenamento>('allenamenti')
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
@@ -141,6 +153,7 @@ export function Rosa() {
         ruoloPreferito: undefined,
         ruoliAdattati: undefined,
         bravura: undefined,
+        numeroMaglia: undefined,
         certificatoMedico: undefined,
         scadenzaCertificato: undefined,
         quotaPagata: undefined,
@@ -159,6 +172,15 @@ export function Rosa() {
   const stopCell = { onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }) }
 
   const columns = [
+    {
+      title: 'N.',
+      key: 'numero',
+      width: 56,
+      align: 'center' as const,
+      sorter: (a: Giocatore, b: Giocatore) => (a.numeroMaglia ?? 999) - (b.numeroMaglia ?? 999),
+      render: (_: unknown, g: Giocatore) =>
+        g.numeroMaglia != null ? <b style={{ fontVariantNumeric: 'tabular-nums' }}>{g.numeroMaglia}</b> : '—',
+    },
     {
       title: 'Giocatore',
       key: 'nome',
@@ -284,13 +306,40 @@ export function Rosa() {
           okText="Elimina"
           cancelText="Annulla"
           okButtonProps={{ danger: true }}
-          onConfirm={() => remove(g.id)}
+          onConfirm={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)}
         >
           <Button type="text" danger icon={<DeleteOutlined />} />
         </Popconfirm>
       ),
     },
   ]
+
+  /** Scarica la lista visibile (con i filtri applicati) in un foglio Excel. */
+  function esporta() {
+    esportaExcel('rosa.xlsx', [
+      {
+        nome: 'Rosa',
+        righe: filtrati.map((g) => ({
+          Cognome: g.cognome,
+          Nome: g.nome,
+          Categoria: g.categoria ?? 'giocatore',
+          'Ruolo dirigenza': g.ruoloDirigenza ?? '',
+          Ruolo: g.ruoloPreferito ?? '',
+          'Ruoli adattati': (g.ruoliAdattati ?? []).join(', '),
+          'N. maglia': g.numeroMaglia ?? '',
+          Nascita: g.nascita ?? '',
+          Tessera: g.tessera ?? '',
+          'Rilascio tessera': g.dataRilascio ?? '',
+          Certificato: isGiocatore(g) ? statoCertificato(g).label : '',
+          'Scadenza certificato': g.scadenzaCertificato ?? '',
+          Quota: isGiocatore(g) ? statoQuota(g).label : '',
+          Infortunato: g.infortunato ? 'Sì' : '',
+          'Presenze allenamenti': isGiocatore(g) ? (presenze[g.id] ?? 0) : '',
+          Note: g.note ?? '',
+        })),
+      },
+    ])
+  }
 
   return (
     <>
@@ -299,9 +348,14 @@ export function Rosa() {
         sottotitolo={`${items.length} tesserati · tocca un nome per la scheda`}
         azioni={
           items.length > 0 && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
-              Aggiungi giocatore
-            </Button>
+            <Space wrap>
+              <Button icon={<FileExcelOutlined />} onClick={esporta}>
+                Esporta Excel
+              </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
+                Aggiungi giocatore
+              </Button>
+            </Space>
           )
         }
       />
@@ -401,6 +455,9 @@ export function Rosa() {
                     <div className="lista-card-top">
                       <div>
                         <div className="lista-card-title">
+                          {g.numeroMaglia != null && (
+                            <span style={{ color: 'var(--testo-2)', marginRight: 6 }}>{g.numeroMaglia}</span>
+                          )}
                           {g.cognome} {g.nome}
                           {isDirigente(g) && (
                             <Tag color="purple" style={{ marginLeft: 6 }}>
@@ -434,7 +491,7 @@ export function Rosa() {
                           okText="Elimina"
                           cancelText="Annulla"
                           okButtonProps={{ danger: true }}
-                          onConfirm={() => remove(g.id)}
+                          onConfirm={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)}
                         >
                           <Button type="text" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
@@ -546,6 +603,13 @@ export function Rosa() {
               </Form.Item>
               <Form.Item label="Bravura" name="bravura" tooltip="Quanto è forte, da 1 a 5: pesa nel generatore di formazione">
                 <Rate />
+              </Form.Item>
+              <Form.Item
+                label="Numero di maglia (facoltativo)"
+                name="numeroMaglia"
+                tooltip="Precompila la distinta e la grafica della formazione"
+              >
+                <InputNumber min={1} max={99} style={{ width: '100%' }} placeholder="es. 10" />
               </Form.Item>
             </>
           )}

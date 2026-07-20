@@ -11,12 +11,30 @@
   --inchiostro: #241d16;
   --testo-2: #75695a;
   --carta: #f5f2eb;
+  --cartoncino: #ffffff;
+  --panna: #faf7f0;
   --linea: #e9e1d2;
+  --rosso-tenue: #f9ebe6;
   --bg: var(--carta);
   /* la fascia del capitano: rosso e oro del crest */
   --fascia: linear-gradient(90deg, var(--rosso) 0 62%, var(--oro) 62% 100%);
   --font-display: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
   --ombra-card: 0 1px 2px rgba(36, 29, 22, 0.05), 0 14px 34px -22px rgba(36, 29, 22, 0.3);
+}
+
+/* ---------- Tema scuro ----------
+   Attivato dal TemaProvider con data-tema sul root; i componenti antd
+   passano al darkAlgorithm, qui si adattano le variabili di contorno. */
+:root[data-tema='scuro'] {
+  --rosso: #d4373d;
+  --inchiostro: #ece5da;
+  --testo-2: #a89c8c;
+  --carta: #16120d;
+  --cartoncino: #211b14;
+  --panna: #2a2318;
+  --linea: #3a3227;
+  --rosso-tenue: rgba(212, 55, 61, 0.16);
+  --ombra-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 14px 34px -22px rgba(0, 0, 0, 0.7);
 }
 
 body {
@@ -89,6 +107,23 @@ body {
   background:
     radial-gradient(120% 90% at 50% -20%, #fcefcd 0%, transparent 45%),
     radial-gradient(140% 120% at 50% -10%, #ffffff 0%, var(--carta) 60%);
+}
+
+:root[data-tema='scuro'] .gate {
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(229, 168, 0, 0.12) 0%, transparent 45%),
+    radial-gradient(140% 120% at 50% -10%, #241d13 0%, var(--carta) 60%);
+}
+
+:root[data-tema='scuro'] .gate::before {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07)) center / 100% 1px no-repeat,
+    radial-gradient(
+      circle at center,
+      transparent 229px,
+      rgba(255, 255, 255, 0.07) 230px 231px,
+      transparent 232px
+    );
 }
 
 /* accenno di centrocampo dietro la card: linea mediana + cerchio */
@@ -243,7 +278,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: #fff !important;
+  background: var(--cartoncino) !important;
   padding: 0 0.75rem !important;
   line-height: normal;
   height: 56px !important;
@@ -298,7 +333,7 @@ body {
 .mini-bar {
   width: 72px;
   height: 8px;
-  background: #f0ece4;
+  background: var(--linea);
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
@@ -312,7 +347,7 @@ body {
 
 /* riquadro riepilogo in cima alla finestra presenze */
 .presenze-toolbar {
-  background: #faf7f0;
+  background: var(--panna);
   border: 1px solid var(--linea);
   border-radius: 12px;
   padding: 14px 16px;
@@ -329,8 +364,8 @@ body {
   font-weight: 500;
   line-height: 1.2;
   border-radius: 9px;
-  border: 1px solid #ddd6ca;
-  background: #fff;
+  border: 1px solid var(--linea);
+  background: var(--cartoncino);
   color: var(--inchiostro);
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
@@ -368,7 +403,7 @@ body {
   position: sticky;
   top: var(--aggancio-alto);
   z-index: 30;
-  background: #f5f2eb;
+  background: var(--carta);
   padding: 10px 0 14px;
   margin: -10px 0 8px;
 }
@@ -378,7 +413,7 @@ body {
   position: sticky;
   top: var(--aggancio-alto);
   z-index: 30;
-  background: #f5f2eb;
+  background: var(--carta);
   padding: 10px 0 14px;
   margin: -10px 0 8px;
 }
@@ -420,8 +455,8 @@ body {
 }
 
 .lista-card {
-  background: #fff;
-  border: 1px solid #f1eadd;
+  background: var(--cartoncino);
+  border: 1px solid var(--linea);
   border-radius: 14px;
   box-shadow: var(--ombra-card);
   padding: 13px 15px;
@@ -480,6 +515,10 @@ body {
 .lista-card.card-allarme {
   border-color: #f0c4c0;
   box-shadow: inset 3px 0 0 var(--rosso), var(--ombra-card);
+}
+
+:root[data-tema='scuro'] .lista-card.card-allarme {
+  border-color: #6a2f2a;
 }
 
 /* ---------- Formazione: campo e token ---------- */
@@ -602,7 +641,7 @@ body {
   padding: 4px 10px;
   border: 1px solid var(--linea);
   border-radius: 20px;
-  background: #fff;
+  background: var(--cartoncino);
   font-size: 13px;
 }
 .panchina-stelle {
@@ -652,7 +691,7 @@ body {
 
 /* cartoncini morbidi, senza bordi duri */
 .ant-card {
-  border-color: #f1eadd;
+  border-color: var(--linea);
   box-shadow: var(--ombra-card);
 }
 
@@ -690,8 +729,8 @@ body {
 
 /* tabelle come fogli: intestazioni in maiuscoletto, numeri incolonnati */
 .ant-table-wrapper {
-  background: #fff;
-  border: 1px solid #f1eadd;
+  background: var(--cartoncino);
+  border: 1px solid var(--linea);
   border-radius: 14px;
   box-shadow: var(--ombra-card);
   overflow: clip;
@@ -746,10 +785,32 @@ body {
   50% { background-color: #ffc7c2; }
 }
 
+:root[data-tema='scuro'] .riga-scadenza-allarme > td {
+  animation-name: scadenza-lampeggia-scuro;
+}
+
+/* articolo sotto la scorta minima: fondo ambrato fermo (niente lampeggio) */
+.riga-scorta-bassa > td {
+  background-color: #fdf4dd;
+}
+
+:root[data-tema='scuro'] .riga-scorta-bassa > td {
+  background-color: #38300f;
+}
+
+@keyframes scadenza-lampeggia-scuro {
+  0%, 100% { background-color: #3a1512; }
+  50% { background-color: #5e211c; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .riga-scadenza-allarme > td {
     animation: none;
     background-color: #ffdad6;
+  }
+  :root[data-tema='scuro'] .riga-scadenza-allarme > td {
+    animation: none;
+    background-color: #4a1b17;
   }
 }
 
@@ -833,8 +894,8 @@ body {
 .compila-box {
   margin: 8px 0 16px;
   padding: 10px 12px;
-  background: #faf6ef;
-  border: 1px dashed #e0d4bd;
+  background: var(--panna);
+  border: 1px dashed var(--linea);
   border-radius: 10px;
 }
 
@@ -884,7 +945,7 @@ body {
   align-items: flex-start;
   gap: 12px;
   padding: 10px 0;
-  border-top: 1px solid #f1eadd;
+  border-top: 1px solid var(--linea);
 }
 
 .dettaglio-riga-cliccabile {
@@ -894,7 +955,7 @@ body {
 
 .dettaglio-riga-cliccabile:hover,
 .dettaglio-riga-cliccabile:active {
-  background: #faf6ef;
+  background: var(--panna);
 }
 
 .dettaglio-riga-cliccabile:focus-visible {
@@ -941,7 +1002,7 @@ body {
 
 /* blocco per controparte nelle viste "da incassare"/"da dare" */
 .dettaglio-gruppo {
-  border: 1px solid #f1eadd;
+  border: 1px solid var(--linea);
   border-radius: 12px;
   padding: 2px 14px;
   margin-bottom: 10px;
@@ -985,7 +1046,7 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: #f9ebe6;
+  background: var(--rosso-tenue);
   color: var(--rosso);
   font-size: 20px;
   margin-bottom: 0.5rem;
@@ -1203,7 +1264,7 @@ body {
   border-bottom: none;
 }
 .dafare-riga:hover {
-  background: #faf6ee;
+  background: var(--panna);
 }
 .dafare-icona {
   font-size: 18px;
@@ -1320,7 +1381,7 @@ body {
   border-radius: 8px;
   font-size: 13px;
   color: var(--testo-2);
-  background: #faf7f0;
+  background: var(--panna);
 }
 
 .social-appt-form {
@@ -1356,7 +1417,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--cartoncino);
   border: 1px solid var(--linea);
   border-radius: 10px;
   box-shadow: var(--ombra-card);
@@ -1410,7 +1471,7 @@ body {
   flex-direction: column;
   gap: 14px;
   padding: 12px;
-  background: #fff;
+  background: var(--cartoncino);
   border: 1px solid var(--linea);
   border-radius: 12px;
   box-shadow: var(--ombra-card);
@@ -1482,7 +1543,7 @@ body {
   gap: 6px;
   overflow-x: auto;
   padding: 6px 8px;
-  background: #fff;
+  background: var(--cartoncino);
   border: 1px solid var(--linea);
   border-radius: 10px;
   scrollbar-width: none;

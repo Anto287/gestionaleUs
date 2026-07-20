@@ -14,11 +14,15 @@ export interface RigaConteggio {
 
 export interface DatiReport {
   stagione: string
+  /** nome della competizione, se il report è filtrato (es. "Campionato") */
+  competizione?: string
   giocate: Partita[]
   record: { v: number; p: number; s: number; gf: number; gs: number }
   marcatori: RigaConteggio[]
   assist: RigaConteggio[]
   presenze: RigaConteggio[]
+  /** presenze in partita (titolari + subentrati), se segnate */
+  presenzePartita?: RigaConteggio[]
   totaleSedute: number
   bilancio: { entrate: number; uscite: number; saldo: number }
 }
@@ -60,7 +64,7 @@ export async function esportaReportStagione(d: DatiReport): Promise<void> {
   box.innerHTML = `
     <div style="position:relative;text-align:center;margin-bottom:20px;">
       <img src="${import.meta.env.BASE_URL}logo.png" alt="" style="position:absolute;top:0;right:0;height:64px;" />
-      <h2 style="font-size:22px;font-weight:bold;margin:0 0 6px;">REPORT STAGIONE ${d.stagione}</h2>
+      <h2 style="font-size:22px;font-weight:bold;margin:0 0 6px;">REPORT STAGIONE ${d.stagione}${d.competizione ? ` — ${d.competizione.toUpperCase()}` : ''}</h2>
       <div style="font-size:13px;">U.S. RIOLUNATO</div>
     </div>
 
@@ -87,6 +91,7 @@ export async function esportaReportStagione(d: DatiReport): Promise<void> {
 
     ${tabella('Classifica marcatori', ['#', 'Giocatore', 'Gol'], conteggi(d.marcatori))}
     ${tabella('Classifica assist', ['#', 'Giocatore', 'Assist'], conteggi(d.assist))}
+    ${tabella('Presenze in partita', ['#', 'Giocatore', 'Presenze'], conteggi(d.presenzePartita ?? []))}
     ${tabella(
       `Presenze agli allenamenti (${d.totaleSedute} sedute)`,
       ['#', 'Giocatore', 'Presenze'],
@@ -112,7 +117,8 @@ export async function esportaReportStagione(d: DatiReport): Promise<void> {
       pdf.addImage(imgData, 'PNG', 0, pos, w, hgt)
       left -= pdf.internal.pageSize.getHeight()
     }
-    pdf.save(`report-stagione-${d.stagione.replace('/', '-')}.pdf`)
+    const suffisso = d.competizione ? `-${d.competizione.toLowerCase().replace(/\s+/g, '-')}` : ''
+    pdf.save(`report-stagione-${d.stagione.replace('/', '-')}${suffisso}.pdf`)
   } finally {
     box.remove()
   }

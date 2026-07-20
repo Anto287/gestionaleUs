@@ -122,6 +122,7 @@ export function Formazione() {
             ? {
                 nome: byId.get(a.giocatoreId)?.cognome || byId.get(a.giocatoreId)?.nome || '—',
                 role: modulo.slots[i].role,
+                numero: byId.get(a.giocatoreId)?.numeroMaglia,
                 x: modulo.slots[i].x,
                 y: modulo.slots[i].y,
               }

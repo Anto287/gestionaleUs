@@ -21,16 +21,20 @@ import {
   PlusOutlined,
   MinusOutlined,
   DeleteOutlined,
+  FileExcelOutlined,
   SearchOutlined,
   ThunderboltOutlined,
   AudioOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
+import { useEliminaUndo } from '../../hooks/useEliminaUndo'
 import { useAggancioLista } from '../../hooks/useAggancioLista'
 import { useDettatura } from '../../hooks/useDettatura'
 import { DataPicker, propsCampoData } from '../../components/DataPicker'
 import { formatData } from '../../lib/format'
 import { statoScadenza, giorniAllaScadenza, GIORNI_ALLARME } from '../../lib/scadenza'
+import { sottoScorta } from '../../lib/scorta'
+import { esportaExcel } from '../../lib/excel'
 import { compilaVoce } from '../../lib/compilaVoce'
 import type { VoceMagazzino } from '../../types'
 
@@ -72,7 +76,9 @@ type Bozza = Omit<VoceMagazzino, 'id'>
 export function InventarioTab({ config }: { config: ConfigInventario }) {
   const { collezione, nuovoLabel, singolare, plurale, categorie, conQuantita, conScadenza, conNote } =
     config
-  const { items, add, update, remove } = useCollection<VoceMagazzino>(collezione)
+  const coll = useCollection<VoceMagazzino>(collezione)
+  const { items, add, update } = coll
+  const eliminaConUndo = useEliminaUndo()
   const screens = Grid.useBreakpoint()
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
@@ -86,6 +92,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   const [cat, setCat] = useState<string | undefined>()
   const [entroGiorni, setEntroGiorni] = useState<number | null>(null)
   const [soloEsauriti, setSoloEsauriti] = useState(false)
+  const [soloSottoScorta, setSoloSottoScorta] = useState(false)
 
   function coloreCategoria(c?: string): string {
     const i = categorie?.indexOf(c ?? '') ?? -1
@@ -120,9 +127,10 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
           if (g == null || g > entroGiorni) return false
         }
         if (conQuantita && soloEsauriti && (a.quantita ?? 0) > 0) return false
+        if (conQuantita && soloSottoScorta && !sottoScorta(a)) return false
         return true
       }),
-    [ordinati, q, cat, entroGiorni, soloEsauriti, categorie, conScadenza, conQuantita, conNote],
+    [ordinati, q, cat, entroGiorni, soloEsauriti, soloSottoScorta, categorie, conScadenza, conQuantita, conNote],
   )
 
   const { scaduti, inScadenzaSoon } = useMemo(() => {
@@ -137,6 +145,11 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
       }
     return { scaduti, inScadenzaSoon }
   }, [items, conScadenza])
+
+  const nSottoScorta = useMemo(
+    () => (conQuantita ? items.filter(sottoScorta).length : 0),
+    [items, conQuantita],
+  )
 
   function adegua(a: VoceMagazzino, delta: number) {
     update(a.id, { quantita: Math.max(0, (a.quantita ?? 0) + delta) })
@@ -240,17 +253,31 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   const quantitaCol = {
     title: 'Quantità',
     align: 'center' as const,
-    width: 170,
+    width: 190,
     sorter: (a: VoceMagazzino, b: VoceMagazzino) => (a.quantita ?? 0) - (b.quantita ?? 0),
     ...stopCell,
     render: (_: unknown, a: VoceMagazzino) => (
-      <Space.Compact>
-        <Button icon={<MinusOutlined />} onClick={() => adegua(a, -1)} disabled={(a.quantita ?? 0) <= 0} />
-        <Button style={{ pointerEvents: 'none', minWidth: 56 }}>
-          <b style={{ color: (a.quantita ?? 0) === 0 ? '#b1352f' : undefined }}>{a.quantita ?? 0}</b>
-        </Button>
-        <Button icon={<PlusOutlined />} onClick={() => adegua(a, +1)} />
-      </Space.Compact>
+      <Space size={6}>
+        <Space.Compact>
+          <Button icon={<MinusOutlined />} onClick={() => adegua(a, -1)} disabled={(a.quantita ?? 0) <= 0} />
+          <Button style={{ pointerEvents: 'none', minWidth: 56 }}>
+            <b
+              style={{
+                color:
+                  (a.quantita ?? 0) === 0 ? '#b1352f' : sottoScorta(a) ? '#9a6b1e' : undefined,
+              }}
+            >
+              {a.quantita ?? 0}
+            </b>
+          </Button>
+          <Button icon={<PlusOutlined />} onClick={() => adegua(a, +1)} />
+        </Space.Compact>
+        {sottoScorta(a) && (
+          <Tag color="gold" style={{ marginInlineEnd: 0 }} title={`Scorta minima: ${a.scortaMinima}`}>
+            Riordina
+          </Tag>
+        )}
+      </Space>
     ),
   }
   const azioniCol = {
@@ -264,11 +291,27 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
         okText="Elimina"
         cancelText="Annulla"
         okButtonProps={{ danger: true }}
-        onConfirm={() => remove(a.id)}
+        onConfirm={() => eliminaConUndo(coll, a, `${a.nome} eliminato.`)}
       >
         <Button type="text" danger icon={<DeleteOutlined />} />
       </Popconfirm>
     ),
+  }
+
+  /** Scarica la lista visibile (con i filtri applicati) in un foglio Excel. */
+  function esporta() {
+    esportaExcel(`${collezione}.xlsx`, [
+      {
+        nome: plurale[0].toUpperCase() + plurale.slice(1),
+        righe: filtrati.map((a) => ({
+          Nome: a.nome,
+          ...(categorie ? { Categoria: a.categoria ?? '' } : {}),
+          ...(conQuantita ? { Quantità: a.quantita ?? 0, 'Scorta minima': a.scortaMinima ?? '' } : {}),
+          ...(conScadenza ? { Scadenza: a.scadenza ?? '' } : {}),
+          ...(conNote ? { Note: a.note ?? '' } : {}),
+        })),
+      },
+    ])
   }
 
   const columns = [
@@ -288,11 +331,17 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
           </Text>
           {scaduti > 0 && <Tag color="red">{scaduti} scadut{scaduti > 1 ? 'i' : 'o'}</Tag>}
           {inScadenzaSoon > 0 && <Tag color="gold">{inScadenzaSoon} in scadenza</Tag>}
+          {nSottoScorta > 0 && <Tag color="gold">{nSottoScorta} sotto scorta</Tag>}
         </Space>
         {items.length > 0 && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
-            {nuovoLabel}
-          </Button>
+          <Space wrap>
+            <Button icon={<FileExcelOutlined />} onClick={esporta}>
+              Esporta Excel
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
+              {nuovoLabel}
+            </Button>
+          </Space>
         )}
       </Flex>
 
@@ -337,6 +386,11 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
             {conQuantita && (
               <Checkbox checked={soloEsauriti} onChange={(e) => setSoloEsauriti(e.target.checked)}>
                 Solo esauriti
+              </Checkbox>
+            )}
+            {conQuantita && nSottoScorta > 0 && (
+              <Checkbox checked={soloSottoScorta} onChange={(e) => setSoloSottoScorta(e.target.checked)}>
+                Solo sotto scorta
               </Checkbox>
             )}
           </Space>
@@ -384,7 +438,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                           okText="Elimina"
                           cancelText="Annulla"
                           okButtonProps={{ danger: true }}
-                          onConfirm={() => remove(a.id)}
+                          onConfirm={() => eliminaConUndo(coll, a, `${a.nome} eliminato.`)}
                         >
                           <Button type="text" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
@@ -393,6 +447,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                     {conQuantita && (
                       <div className="lista-card-meta" onClick={(e) => e.stopPropagation()}>
                         <span>Quantità</span>
+                        {sottoScorta(a) && <Tag color="gold">Riordina</Tag>}
                         <span className="lista-card-fine">
                           <Space.Compact>
                             <Button
@@ -424,7 +479,11 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
               sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
               rowClassName={(a) =>
-                conScadenza && statoScadenza(a.scadenza).critico ? 'riga-scadenza-allarme' : ''
+                conScadenza && statoScadenza(a.scadenza).critico
+                  ? 'riga-scadenza-allarme'
+                  : conQuantita && sottoScorta(a)
+                    ? 'riga-scorta-bassa'
+                    : ''
               }
               onRow={(a) => ({ onClick: () => apriModifica(a), style: { cursor: 'pointer' } })}
             />
@@ -518,6 +577,15 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
           {conQuantita && (
             <Form.Item label="Quantità" name="quantita">
               <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+          )}
+          {conQuantita && (
+            <Form.Item
+              label="Scorta minima (facoltativa)"
+              name="scortaMinima"
+              tooltip="Quando la quantità scende a questa soglia l'articolo viene segnalato da riordinare"
+            >
+              <InputNumber min={1} style={{ width: '100%' }} placeholder="es. 5" />
             </Form.Item>
           )}
           {conScadenza && (

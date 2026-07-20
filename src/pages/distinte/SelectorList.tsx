@@ -112,6 +112,14 @@ export function SelectorList({
     }
   }, [lastUsedNumber, selectedCheckbox])
 
+  // il numero di maglia abituale del giocatore scelto ha la precedenza, se è libero
+  useEffect(() => {
+    const preferito = Number(selectedRaw?.NumeroMaglia)
+    if (!selectedRaw || !Number.isFinite(preferito) || preferito < 1) return
+    if (selectedCheckbox && SPECIAL_CHECKBOXES.includes(selectedCheckbox)) return
+    if (!list.some((it) => it.amount === preferito && !hasSpecialCheckbox(it))) setAmount(preferito)
+  }, [selectedRaw, selectedCheckbox, list])
+
   useEffect(() => {
     onListChange?.(list)
   }, [list, onListChange])

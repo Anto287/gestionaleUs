@@ -19,19 +19,23 @@ import {
 } from 'antd'
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
 import { isGiocatore } from '../lib/categoria'
 import { EventoEditor } from './partite/EventoEditor'
-import type { EventoGol, Giocatore, Partita } from '../types'
+import type { EventoGol, Giocatore, Partita, Torneo } from '../types'
 
 const { Title, Text } = Typography
 
 export function PartitaDettaglio() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { items, update, remove } = useCollection<Partita>('partite')
+  const partiteColl = useCollection<Partita>('partite')
+  const { items, update } = partiteColl
   const giocatori = useCollection<Giocatore>('giocatori')
+  const tornei = useCollection<Torneo>('tornei')
+  const eliminaConUndo = useEliminaUndo()
   const [modale, setModale] = useState(false)
   const [form] = Form.useForm()
   const giocataForm = Form.useWatch('giocata', form)
@@ -77,11 +81,14 @@ export function PartitaDettaglio() {
       giocata,
       ora: v.ora?.trim() || undefined,
       avversario: (v.avversario ?? p!.avversario).trim(),
+      torneoId: v.torneoId || undefined,
       golFatti: giocata ? (v.golFatti ?? 0) : 0,
       golSubiti: giocata ? (v.golSubiti ?? 0) : 0,
     })
     setModale(false)
   }
+
+  const nomeTorneo = tornei.items.find((t) => t.id === p.torneoId)?.nome
 
   const programma = p.giocata === false
   const esitoColore =
@@ -104,6 +111,7 @@ export function PartitaDettaglio() {
             <Text type="secondary">
               {formatData(p.data)}
               {p.ora ? ` · ore ${p.ora}` : ''} · {p.inCasa ? 'In casa' : 'In trasferta'}
+              {nomeTorneo ? ` · ${nomeTorneo}` : ''}
             </Text>
             <Title level={3} style={{ margin: '4px 0 0' }}>
               U.S. Riolunato{' '}
@@ -130,7 +138,7 @@ export function PartitaDettaglio() {
               cancelText="Annulla"
               okButtonProps={{ danger: true }}
               onConfirm={() => {
-                remove(p.id)
+                eliminaConUndo(partiteColl, p, `Partita con ${p.avversario} eliminata.`)
                 navigate('/partite')
               }}
             >
@@ -141,6 +149,56 @@ export function PartitaDettaglio() {
       </Card>
 
       <Row gutter={[16, 16]}>
+        {!programma && (
+          <>
+            <Col xs={24} md={12}>
+              <Card
+                title={`Titolari${p.titolari?.length ? ` (${p.titolari.length})` : ''}`}
+                size="small"
+                extra={
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    chi è sceso in campo dal 1'
+                  </Text>
+                }
+              >
+                <Select
+                  mode="multiple"
+                  style={{ width: '100%' }}
+                  placeholder="Giocatori titolari"
+                  showSearch
+                  optionFilterProp="label"
+                  maxTagCount="responsive"
+                  value={p.titolari ?? []}
+                  options={opzioniGiocatori(p.titolari ?? [])}
+                  onChange={(titolari) => update(p.id, { titolari })}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} md={12}>
+              <Card
+                title={`Subentrati${p.subentrati?.length ? ` (${p.subentrati.length})` : ''}`}
+                size="small"
+                extra={
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    entrati dalla panchina
+                  </Text>
+                }
+              >
+                <Select
+                  mode="multiple"
+                  style={{ width: '100%' }}
+                  placeholder="Giocatori subentrati"
+                  showSearch
+                  optionFilterProp="label"
+                  maxTagCount="responsive"
+                  value={p.subentrati ?? []}
+                  options={opzioniGiocatori(p.subentrati ?? [])}
+                  onChange={(subentrati) => update(p.id, { subentrati })}
+                />
+              </Card>
+            </Col>
+          </>
+        )}
         <Col xs={24} md={12}>
           <Card title="Marcatori" size="small">
             <EventoEditor
@@ -223,6 +281,15 @@ export function PartitaDettaglio() {
               ]}
             />
           </Form.Item>
+          {tornei.items.length > 0 && (
+            <Form.Item label="Competizione (facoltativa)" name="torneoId">
+              <Select
+                allowClear
+                placeholder="es. Campionato, Coppa…"
+                options={tornei.items.map((t) => ({ value: t.id, label: t.nome }))}
+              />
+            </Form.Item>
+          )}
           <Form.Item
             label="Partita già giocata"
             name="giocata"

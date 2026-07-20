@@ -20,6 +20,8 @@ interface DataValue {
   add: <T>(collection: string, item: Omit<T, 'id'>) => string
   update: <T>(collection: string, id: string, patch: Partial<T>) => void
   remove: (collection: string, id: string) => void
+  /** Rimette un record eliminato, con lo stesso id (per l'«Annulla»). */
+  restore: (collection: string, item: { id: string }) => void
   /** Sostituisce l'intera raccolta (usato dall'import dei conti). */
   replaceAll: <T extends { id: string }>(collection: string, items: T[]) => void
   uploadDoc: (file: File) => Promise<void>
@@ -125,6 +127,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [attiva, fallita],
   )
 
+  const restore = useCallback(
+    (c: string, item: { id: string }) => {
+      // il put del Drive fa upsert per id, quindi basta riaggiungerlo com'era
+      setData((s) => (s[c] ?? []).some((i) => i.id === item.id) ? s : { ...s, [c]: [...(s[c] ?? []), item] })
+      store.put(c, seasonDi(c, attiva), item).catch(fallita)
+    },
+    [attiva, fallita],
+  )
+
   const replaceAll = useCallback(
     <T extends { id: string }>(c: string, items: T[]) => {
       setData((s) => ({ ...s, [c]: items }))
@@ -160,7 +171,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return <DriveSplash errore={erroreCaricamento} onRiprova={() => setTentativo((t) => t + 1)} />
 
   return (
-    <DataContext.Provider value={{ getItems, add, update, remove, replaceAll, uploadDoc, createDoc }}>
+    <DataContext.Provider value={{ getItems, add, update, remove, restore, replaceAll, uploadDoc, createDoc }}>
       {erroreSync && (
         <Alert
           type="warning"

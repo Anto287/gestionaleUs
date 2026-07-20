@@ -5,6 +5,8 @@ export interface Collection<T> {
   add: (item: Omit<T, 'id'>) => string
   update: (id: string, patch: Partial<T>) => void
   remove: (id: string) => void
+  /** rimette un record eliminato con lo stesso id (per l'«Annulla») */
+  ripristina: (item: T) => void
   replace: (next: T[]) => void
 }
 
@@ -20,6 +22,7 @@ export function useCollection<T extends { id: string }>(nome: string): Collectio
     add: (item) => data.add<T>(nome, item),
     update: (id, patch) => data.update<T>(nome, id, patch),
     remove: (id) => data.remove(nome, id),
+    ripristina: (item) => data.restore(nome, item),
     replace: (next) => data.replaceAll(nome, next),
   }
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Col, Empty, Row, Space, Statistic, Tag, Typography } from 'antd'
+import { Button, Card, Col, Empty, Row, Select, Space, Statistic, Tag, Typography } from 'antd'
 import {
   Bar,
   BarChart,
@@ -16,11 +16,11 @@ import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { COLORI } from '../lib/chart'
 import { esitoPartita } from '../lib/social'
-import { statisticheGiocatore } from '../lib/statistiche'
+import { partiteConPresenze, statisticheGiocatore } from '../lib/statistiche'
 import { isGiocatore } from '../lib/categoria'
 import { ClassificaPresenze, type RigaClassifica } from './allenamenti/classifica'
 import { esportaReportStagione } from './statistiche/report'
-import type { Allenamento, Giocatore, Movimento, Partita } from '../types'
+import type { Allenamento, Giocatore, Movimento, Partita, Torneo } from '../types'
 
 const { Text } = Typography
 
@@ -36,13 +36,28 @@ export function Statistiche() {
   const { items: giocatori } = useCollection<Giocatore>('giocatori')
   const { items: allenamenti } = useCollection<Allenamento>('allenamenti')
   const { items: conti } = useCollection<Movimento>('conti')
+  const { items: tornei } = useCollection<Torneo>('tornei')
   const { attiva } = useSeason()
   const [esportando, setEsportando] = useState(false)
+  // 'tutte' oppure l'id di un torneo: tutte le statistiche si restringono
+  const [competizione, setCompetizione] = useState<string>('tutte')
 
   const giocate = useMemo(
-    () => partite.filter((p) => p.giocata !== false).sort((a, b) => a.data.localeCompare(b.data)),
-    [partite],
+    () =>
+      partite
+        .filter((p) => p.giocata !== false)
+        .filter((p) => competizione === 'tutte' || p.torneoId === competizione)
+        .sort((a, b) => a.data.localeCompare(b.data)),
+    [partite, competizione],
   )
+
+  // il filtro compare solo se qualche partita ha una competizione assegnata
+  const torneiUsati = useMemo(
+    () => tornei.filter((t) => partite.some((p) => p.torneoId === t.id)),
+    [tornei, partite],
+  )
+  const nomeCompetizione =
+    competizione === 'tutte' ? undefined : tornei.find((t) => t.id === competizione)?.nome
 
   const record = useMemo(() => {
     const r = { v: 0, p: 0, s: 0, gf: 0, gs: 0 }
@@ -117,6 +132,25 @@ export function Statistiche() {
     return { marcatori, assist, disciplina }
   }, [giocatori, giocate, record.gf])
 
+  // presenze in partita (se segnate nel dettaglio della partita)
+  const nConPresenze = useMemo(() => partiteConPresenze(giocate), [giocate])
+  const presenzePartita: RigaClassifica[] = useMemo(() => {
+    if (!nConPresenze) return []
+    return giocatori
+      .filter(isGiocatore)
+      .map((g) => {
+        const s = statisticheGiocatore(g.id, giocate)
+        return {
+          id: g.id,
+          nome: `${g.cognome} ${g.nome}`,
+          presenze: s.presenzePartita,
+          perc: Math.round((s.presenzePartita / nConPresenze) * 100),
+        }
+      })
+      .filter((r) => r.presenze > 0)
+      .sort((a, b) => b.presenze - a.presenze || a.nome.localeCompare(b.nome))
+  }, [giocatori, giocate, nConPresenze])
+
   const presenzeAllenamenti: RigaClassifica[] = useMemo(() => {
     const conteggio: Record<string, number> = {}
     for (const a of allenamenti) {
@@ -144,11 +178,13 @@ export function Statistiche() {
       const uscite = conti.filter((m) => m.saldato && m.tipo === 'uscita').reduce((s, m) => s + m.importo, 0)
       await esportaReportStagione({
         stagione: attiva,
+        competizione: nomeCompetizione,
         giocate,
         record,
         marcatori: marcatori.map((r) => ({ nome: r.nome, n: r.presenze })),
         assist: assist.map((r) => ({ nome: r.nome, n: r.presenze })),
         presenze: presenzeAllenamenti.map((r) => ({ nome: r.nome, n: r.presenze })),
+        presenzePartita: presenzePartita.map((r) => ({ nome: r.nome, n: r.presenze })),
         totaleSedute: allenamenti.length,
         bilancio: { entrate, uscite, saldo: entrate - uscite },
       })
@@ -157,7 +193,7 @@ export function Statistiche() {
     }
   }
 
-  if (giocate.length === 0) {
+  if (giocate.length === 0 && competizione === 'tutte') {
     return (
       <>
         <PageHeader titolo="Statistiche" />
@@ -168,17 +204,43 @@ export function Statistiche() {
 
   const diff = record.gf - record.gs
 
-  return (
-    <>
-      <PageHeader
-        titolo="Statistiche"
-        sottotitolo={`${giocate.length} partite giocate nella stagione ${attiva}`}
-        azioni={
+  const header = (
+    <PageHeader
+      titolo="Statistiche"
+      sottotitolo={`${giocate.length} partite giocate nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`}
+      azioni={
+        <Space wrap>
+          {torneiUsati.length > 0 && (
+            <Select
+              value={competizione}
+              onChange={setCompetizione}
+              style={{ minWidth: 170 }}
+              options={[
+                { value: 'tutte', label: 'Tutte le competizioni' },
+                ...torneiUsati.map((t) => ({ value: t.id, label: t.nome })),
+              ]}
+            />
+          )}
           <Button icon={<FilePdfOutlined />} onClick={esporta} loading={esportando}>
             Report stagione (PDF)
           </Button>
-        }
-      />
+        </Space>
+      }
+    />
+  )
+
+  if (giocate.length === 0) {
+    return (
+      <>
+        {header}
+        <Empty description="Nessuna partita giocata in questa competizione." />
+      </>
+    )
+  }
+
+  return (
+    <>
+      {header}
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
@@ -299,6 +361,23 @@ export function Statistiche() {
           </Card>
         </Col>
       </Row>
+
+      {presenzePartita.length > 0 && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} md={12}>
+            <Card
+              title="Presenze in partita"
+              extra={
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  su {nConPresenze} partite con presenze segnate
+                </Text>
+              }
+            >
+              <ClassificaPresenze righe={presenzePartita} totale={nConPresenze} />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
       {disciplina.length > 0 && (
         <Card title="Disciplina" size="small">

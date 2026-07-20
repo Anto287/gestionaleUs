@@ -34,6 +34,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
@@ -52,7 +53,9 @@ function iniziali(g: Giocatore) {
 export function GiocatoreDettaglio() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { items, update, remove } = useCollection<Giocatore>('giocatori')
+  const giocatori = useCollection<Giocatore>('giocatori')
+  const { items, update } = giocatori
+  const eliminaConUndo = useEliminaUndo()
   const allenamenti = useCollection<Allenamento>('allenamenti')
   const partite = useCollection<Partita>('partite')
   const conti = useCollection<Movimento>('conti')
@@ -78,7 +81,10 @@ export function GiocatoreDettaglio() {
   }, [allenamenti.items, g])
 
   const stat = useMemo(
-    () => (g ? statisticheGiocatore(g.id, partite.items) : { gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 }),
+    () =>
+      g
+        ? statisticheGiocatore(g.id, partite.items)
+        : { gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0, presenzePartita: 0, daTitolare: 0 },
     [g, partite.items],
   )
 
@@ -112,6 +118,7 @@ export function GiocatoreDettaglio() {
         ruoloPreferito: undefined,
         ruoliAdattati: undefined,
         bravura: undefined,
+        numeroMaglia: undefined,
         certificatoMedico: undefined,
         scadenzaCertificato: undefined,
         quotaPagata: undefined,
@@ -141,6 +148,7 @@ export function GiocatoreDettaglio() {
       importo: v.importo,
       saldato: true,
       controparte: `${g!.cognome} ${g!.nome}`,
+      categoria: 'Quote',
     })
     const nuovo: VersamentoQuota = {
       id: crypto.randomUUID(),
@@ -159,7 +167,7 @@ export function GiocatoreDettaglio() {
     update(g!.id, { versamentiQuota: (g!.versamentiQuota ?? []).filter((x) => x.id !== v.id) })
   }
   function elimina() {
-    remove(g!.id)
+    eliminaConUndo(giocatori, g!, `${g!.cognome} ${g!.nome} eliminato.`)
     navigate('/rosa')
   }
 
@@ -253,20 +261,33 @@ export function GiocatoreDettaglio() {
           >
             {!soloDirigente && (
               <Row gutter={[16, 16]}>
-                <Col xs={12} sm={6}>
+                <Col xs={12} sm={8}>
+                  <Statistic
+                    title="Presenze partita"
+                    value={stat.presenzePartita}
+                    suffix={
+                      stat.presenzePartita > 0 ? (
+                        <Text type="secondary" style={{ fontSize: 13 }}>
+                          di cui {stat.daTitolare} dal 1'
+                        </Text>
+                      ) : undefined
+                    }
+                  />
+                </Col>
+                <Col xs={12} sm={8}>
                   <Statistic title="Gol" value={stat.gol} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={12} sm={8}>
                   <Statistic title="Assist" value={stat.assist} />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={12} sm={8}>
                   <Statistic
                     title="Ammonizioni"
                     value={stat.ammonizioni}
                     valueStyle={{ color: stat.ammonizioni > 0 ? '#9a6b1e' : undefined }}
                   />
                 </Col>
-                <Col xs={12} sm={6}>
+                <Col xs={12} sm={8}>
                   <Statistic
                     title="Espulsioni"
                     value={stat.espulsioni}
@@ -288,6 +309,9 @@ export function GiocatoreDettaglio() {
                 <Descriptions.Item label="Bravura">
                   {g.bravura ? <Rate disabled value={g.bravura} style={{ fontSize: 14 }} /> : '—'}
                 </Descriptions.Item>
+              )}
+              {!soloDirigente && (
+                <Descriptions.Item label="N. maglia">{g.numeroMaglia ?? '—'}</Descriptions.Item>
               )}
               <Descriptions.Item label="Data di nascita">{g.nascita || '—'}</Descriptions.Item>
               <Descriptions.Item label="N. tessera">
@@ -459,6 +483,13 @@ export function GiocatoreDettaglio() {
               </Form.Item>
               <Form.Item label="Bravura" name="bravura" tooltip="Da 1 a 5: pesa nel generatore di formazione">
                 <Rate />
+              </Form.Item>
+              <Form.Item
+                label="Numero di maglia (facoltativo)"
+                name="numeroMaglia"
+                tooltip="Precompila la distinta e la grafica della formazione"
+              >
+                <InputNumber min={1} max={99} style={{ width: '100%' }} placeholder="es. 10" />
               </Form.Item>
             </>
           )}

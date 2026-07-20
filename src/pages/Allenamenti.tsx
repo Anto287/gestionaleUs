@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
+  App as AntApp,
   Button,
   Card,
+  Checkbox,
   Col,
   Empty,
   Form,
@@ -22,6 +24,7 @@ import {
   DeleteOutlined,
   CheckOutlined,
   FilePdfOutlined,
+  RetweetOutlined,
   RightOutlined,
   CalendarOutlined,
   TeamOutlined,
@@ -29,6 +32,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import dayjs from 'dayjs'
 import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
@@ -57,17 +61,33 @@ function coloreAffluenza(perc: number) {
   return COLORI.rosso
 }
 
+/** I giorni della settimana per le sedute ricorrenti (day() di dayjs: 0 = domenica). */
+const GIORNI_SETTIMANA = [
+  { value: 1, label: 'Lun' },
+  { value: 2, label: 'Mar' },
+  { value: 3, label: 'Mer' },
+  { value: 4, label: 'Gio' },
+  { value: 5, label: 'Ven' },
+  { value: 6, label: 'Sab' },
+  { value: 0, label: 'Dom' },
+]
+
 export function Allenamenti() {
-  const { items, add, update, remove } = useCollection<Allenamento>('allenamenti')
+  const allenamentiColl = useCollection<Allenamento>('allenamenti')
+  const { items, add, update } = allenamentiColl
+  const eliminaConUndo = useEliminaUndo()
   const giocatori = useCollection<Giocatore>('giocatori')
   const { attiva } = useSeason()
+  const { message } = AntApp.useApp()
   const [modaleNuova, setModaleNuova] = useState(false)
+  const [modaleRicorrenti, setModaleRicorrenti] = useState(false)
   const [apertaId, setApertaId] = useState<string | null>(null)
   const [esportando, setEsportando] = useState(false)
   const [tipoChart, setTipoChart] = useState<TipoAffluenza>('barre')
   const [periodoChart, setPeriodoChart] = useState<PeriodoChart>('tutto')
   const [ricerca, setRicerca] = useState('')
   const [form] = Form.useForm()
+  const [formR] = Form.useForm()
 
   // agli allenamenti si segnano i giocatori, non i dirigenti puri
   const rosa = useMemo(
@@ -139,6 +159,34 @@ export function Allenamenti() {
     setModaleNuova(false)
   }
 
+  /** Crea in un colpo solo le sedute ricorrenti (es. ogni martedì e giovedì). */
+  function creaRicorrenti(v: { dal: string; al: string; giorni: number[]; note?: string }) {
+    if (v.al < v.dal) {
+      message.error('La data di fine viene prima di quella di inizio.')
+      return
+    }
+    const esistenti = new Set(items.map((s) => s.data))
+    const giorni = new Set(v.giorni)
+    let create = 0
+    let saltate = 0
+    for (let d = dayjs(v.dal); !d.isAfter(dayjs(v.al)); d = d.add(1, 'day')) {
+      if (!giorni.has(d.day())) continue
+      const iso = d.format('YYYY-MM-DD')
+      if (esistenti.has(iso)) {
+        saltate++
+        continue
+      }
+      add({ data: iso, note: v.note?.trim() || undefined, presenze: {} })
+      create++
+    }
+    setModaleRicorrenti(false)
+    if (create === 0) message.warning('Nessuna seduta creata: le date erano già tutte presenti.')
+    else
+      message.success(
+        `Create ${create} sedute${saltate ? ` (${saltate} saltate perché già presenti)` : ''}.`,
+      )
+  }
+
   function togglePresenza(s: Allenamento, giocatoreId: string) {
     update(s.id, { presenze: { ...s.presenze, [giocatoreId]: !s.presenze[giocatoreId] } })
   }
@@ -172,17 +220,29 @@ export function Allenamenti() {
         titolo="Allenamenti"
         sottotitolo={sedute.length ? `${sedute.length} sedute registrate` : 'Nessuna seduta ancora'}
         azioni={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              form.resetFields()
-              form.setFieldsValue({ data: oggiIso() })
-              setModaleNuova(true)
-            }}
-          >
-            Nuova seduta
-          </Button>
+          <Space wrap>
+            <Button
+              icon={<RetweetOutlined />}
+              onClick={() => {
+                formR.resetFields()
+                formR.setFieldsValue({ dal: oggiIso(), giorni: [] })
+                setModaleRicorrenti(true)
+              }}
+            >
+              Più sedute
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                form.resetFields()
+                form.setFieldsValue({ data: oggiIso() })
+                setModaleNuova(true)
+              }}
+            >
+              Nuova seduta
+            </Button>
+          </Space>
         }
       />
 
@@ -311,6 +371,57 @@ export function Allenamenti() {
         </Form>
       </Modal>
 
+      {/* Sedute ricorrenti */}
+      <Modal
+        title="Crea più sedute"
+        open={modaleRicorrenti}
+        onCancel={() => setModaleRicorrenti(false)}
+        onOk={() => formR.submit()}
+        okText="Crea le sedute"
+        cancelText="Annulla"
+        maskClosable={false}
+        forceRender
+      >
+        <Form form={formR} layout="vertical" onFinish={creaRicorrenti} requiredMark={false}>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                label="Dal"
+                name="dal"
+                rules={[{ required: true, message: 'Scegli la data di inizio' }]}
+                {...propsCampoData}
+              >
+                <DataPicker />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Al"
+                name="al"
+                rules={[{ required: true, message: 'Scegli la data di fine' }]}
+                {...propsCampoData}
+              >
+                <DataPicker />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item
+            label="Nei giorni"
+            name="giorni"
+            rules={[{ required: true, message: 'Scegli almeno un giorno della settimana' }]}
+          >
+            <Checkbox.Group options={GIORNI_SETTIMANA} />
+          </Form.Item>
+          <Form.Item label="Note per tutte le sedute (facoltative)" name="note">
+            <Input placeholder="es. seduta serale" autoComplete="off" />
+          </Form.Item>
+        </Form>
+        <Text type="secondary" style={{ fontSize: 12.5 }}>
+          Le date in cui esiste già una seduta vengono saltate; le presenze si segnano poi seduta per
+          seduta.
+        </Text>
+      </Modal>
+
       {/* Presenze della seduta */}
       <Modal
         title={sessioneAperta ? `Presenze · ${formatData(sessioneAperta.data)}` : ''}
@@ -411,7 +522,11 @@ export function Allenamenti() {
               cancelText="Annulla"
               okButtonProps={{ danger: true }}
               onConfirm={() => {
-                remove(sessioneAperta.id)
+                eliminaConUndo(
+                  allenamentiColl,
+                  sessioneAperta,
+                  `Seduta del ${formatData(sessioneAperta.data, true)} eliminata.`,
+                )
                 setApertaId(null)
               }}
             >

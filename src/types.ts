@@ -24,6 +24,8 @@ export interface Giocatore {
   ruoliAdattati?: string[]
   /** bravura/qualità su scala 1–5 (facoltativa); usata dal generatore di formazione */
   bravura?: number
+  /** numero di maglia abituale; precompila distinta e grafica formazione */
+  numeroMaglia?: number
   /** dati per la distinta */
   nascita?: string
   tessera?: string
@@ -97,6 +99,8 @@ export interface Partita {
   ora?: string
   avversario: string
   inCasa: boolean
+  /** id del torneo/competizione (vedi Torneo); assente = non assegnata */
+  torneoId?: string
   /**
    * true = già giocata (ha un risultato); false = in programma (nessun
    * risultato ancora). Assente vale già giocata, per i dati precedenti.
@@ -110,6 +114,10 @@ export interface Partita {
   ammoniti: string[]
   /** id giocatori espulsi */
   espulsi: string[]
+  /** id giocatori scesi in campo dal 1' (per le presenze partita) */
+  titolari?: string[]
+  /** id giocatori subentrati dalla panchina */
+  subentrati?: string[]
   note?: string
 }
 
@@ -218,6 +226,8 @@ export interface VoceMagazzino {
   nome: string
   categoria?: string
   quantita?: number
+  /** sotto questa quantità l'articolo va riordinato (facoltativa) */
+  scortaMinima?: number
   /** data di scadenza (per il bar e la borsa medica) */
   scadenza?: string
   note?: string
@@ -233,6 +243,8 @@ export interface Movimento {
   /** false = ancora da incassare (entrata) o da pagare (uscita) */
   saldato: boolean
   controparte?: string
+  /** categoria di spesa/incasso (es. Quote, Bar, Arbitri…), testo libero */
+  categoria?: string
 }
 
 /** Un documento della società. Il file vero vive nella cartella Documenti sul Drive. */

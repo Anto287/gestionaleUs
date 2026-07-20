@@ -212,7 +212,7 @@ export interface FormazioneGrafica {
   /** etichetta del modulo, es. "4-4-2" */
   modulo: string
   /** titolari con posizione 0..1 sul campo (y: 0 = difesa, 1 = attacco) */
-  titolari: { nome: string; role: string; x: number; y: number }[]
+  titolari: { nome: string; role: string; x: number; y: number; numero?: number }[]
   /** cognomi della panchina */
   panchina: string[]
   /** timestamp di generazione (per la chiave della scena) */
@@ -332,12 +332,13 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
       push({ id: nid(), tipo: 'rett', x: cx - 230, y: top, rotation: 0, larghezza: 460, altezza: 110, cornerRadius: 0, fill: 'rgba(0,0,0,0)', stroke: bianco, strokeWidth: 3 })
       push({ id: nid(), tipo: 'rett', x: cx - 230, y: bottom - 110, rotation: 0, larghezza: 460, altezza: 110, cornerRadius: 0, fill: 'rgba(0,0,0,0)', stroke: bianco, strokeWidth: 3 })
 
-      // titolari: gettone rosso + ruolo dentro + cognome sotto
+      // titolari: gettone rosso + numero di maglia (o ruolo) dentro + cognome sotto
       for (const t of f.titolari) {
         const px = 70 + (0.06 + t.x * 0.88) * 940
         const py = top + (0.07 + (1 - t.y) * 0.84) * ch
+        const dentro = t.numero != null ? String(t.numero) : t.role
         push({ id: nid(), tipo: 'cerchio', x: px, y: py, rotation: 0, raggio: 42, fill: ROSSO, stroke: '#ffffff', strokeWidth: 3, ombra: true })
-        push(testo(px - 60, py - 13, t.role, 24, 'inverso', { width: 120 }))
+        push(testo(px - 60, py - (t.numero != null ? 16 : 13), dentro, t.numero != null ? 32 : 24, 'inverso', { width: 120 }))
         push(testo(px - 110, py + 48, t.nome.toUpperCase(), 27, 'inverso', { width: 220, ombra: true }))
       }
 
