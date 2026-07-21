@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   App as AntApp,
   Button,
@@ -29,6 +29,7 @@ import { useCollection } from '../hooks/useCollection'
 import { useData } from '../data/DataProvider'
 import { driveAttivo } from '../services/driveStore'
 import { PageHeader } from '../components/PageHeader'
+import { PalloneSpinner } from '../components/PalloneSpinner'
 import { formatData, formatKB } from '../lib/format'
 import type { Documento } from '../types'
 
@@ -70,6 +71,79 @@ function anteprimaDi(d: Documento): Anteprima | null {
     if (d.tipo === 'application/pdf') return { modo: 'iframe', src: d.dataUrl }
   }
   return null
+}
+
+/**
+ * A questa larghezza il visualizzatore di Google mostra l'impaginazione da
+ * stampa; sotto, passa alla vista mobile "riflowata". Per questo l'iframe
+ * viene sempre reso così largo e poi rimpicciolito in scala nel riquadro.
+ */
+const LARGHEZZA_STAMPA = 880
+
+function AnteprimaDocumento({ doc }: { doc: Documento }) {
+  const vista = anteprimaDi(doc)
+  const [pronto, setPronto] = useState(false)
+  const [larghezza, setLarghezza] = useState(0)
+  const riquadro = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = riquadro.current
+    if (!el) return
+    const osserva = new ResizeObserver(() => setLarghezza(el.clientWidth))
+    osserva.observe(el)
+    setLarghezza(el.clientWidth)
+    return () => osserva.disconnect()
+  }, [])
+
+  if (!vista) return null
+
+  const caricamento = !pronto && (
+    <div className="anteprima-caricamento">
+      <PalloneSpinner />
+      <Typography.Text type="secondary">Apro l'anteprima…</Typography.Text>
+    </div>
+  )
+
+  if (vista.modo === 'immagine')
+    return (
+      <div className="anteprima-doc">
+        <img
+          src={vista.src}
+          alt={doc.nome}
+          onLoad={() => setPronto(true)}
+          style={{
+            display: pronto ? 'block' : 'none',
+            maxWidth: '100%',
+            maxHeight: '70vh',
+            margin: '0 auto',
+          }}
+        />
+        {caricamento}
+      </div>
+    )
+
+  const scala = larghezza > 0 ? larghezza / LARGHEZZA_STAMPA : 1
+  return (
+    <div ref={riquadro} className="anteprima-doc anteprima-doc-iframe">
+      {larghezza > 0 && (
+        <iframe
+          src={vista.src}
+          title={doc.nome}
+          allow="autoplay"
+          onLoad={() => setPronto(true)}
+          style={{
+            width: LARGHEZZA_STAMPA,
+            height: `${70 / scala}vh`,
+            border: 0,
+            transform: `scale(${scala})`,
+            transformOrigin: 'top left',
+            visibility: pronto ? 'visible' : 'hidden',
+          }}
+        />
+      )}
+      {caricamento}
+    </div>
+  )
 }
 
 export function Documenti() {
@@ -337,28 +411,11 @@ export function Documenti() {
             </Button>
           )
         }
-        width="min(920px, calc(100vw - 32px))"
+        width="min(920px, calc(100vw - 12px))"
+        className="modale-anteprima"
         destroyOnHidden
       >
-        {anteprima &&
-          (() => {
-            const vista = anteprimaDi(anteprima)
-            if (!vista) return null
-            return vista.modo === 'immagine' ? (
-              <img
-                src={vista.src}
-                alt={anteprima.nome}
-                style={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', margin: '0 auto' }}
-              />
-            ) : (
-              <iframe
-                src={vista.src}
-                title={anteprima.nome}
-                style={{ width: '100%', height: '70vh', border: 0 }}
-                allow="autoplay"
-              />
-            )
-          })()}
+        {anteprima && <AnteprimaDocumento doc={anteprima} />}
       </Modal>
     </>
   )

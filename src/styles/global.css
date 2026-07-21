@@ -1198,6 +1198,41 @@ body {
   white-space: normal;
 }
 
+/* Anteprima nel modale: il documento è reso a larghezza da stampa e
+   rimpicciolito in scala (vedi AnteprimaDocumento); il riquadro taglia
+   quel che sborda e ospita lo spinner finché il contenuto non arriva */
+.anteprima-doc {
+  position: relative;
+}
+.anteprima-doc-iframe {
+  height: 70vh;
+  overflow: hidden;
+}
+.anteprima-caricamento {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 38vh;
+}
+.anteprima-doc-iframe .anteprima-caricamento {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+/* su telefono il modale d'anteprima usa quasi tutto lo schermo: meno
+   bordo attorno = pagina più leggibile a parità di scala */
+@media (max-width: 575.98px) {
+  .modale-anteprima {
+    max-width: calc(100vw - 12px);
+  }
+  .modale-anteprima .ant-modal-content {
+    padding-inline: 8px;
+  }
+}
+
 /* ---------- Caricamento ---------- */
 
 .drive-splash {
