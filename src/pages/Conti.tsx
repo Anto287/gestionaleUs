@@ -108,6 +108,10 @@ export function Conti() {
   const [annoF, setAnnoF] = useState<string | undefined>()
   const [meseF, setMeseF] = useState<string | undefined>()
   const [categoriaF, setCategoriaF] = useState<string | undefined>()
+  const [controparteF, setControparteF] = useState<string | undefined>()
+  // filtro importo: soglia + verso (≥ dalla soglia in su, ≤ dalla soglia in giù)
+  const [importoF, setImportoF] = useState<number | null>(null)
+  const [importoOp, setImportoOp] = useState<'maggiore' | 'minore'>('maggiore')
   const [tipoBilancio, setTipoBilancio] = useState<TipoBilancio>('barre')
   const [periodoBilancio, setPeriodoBilancio] = useState<PeriodoChart>('tutto')
   const [tipoCategorie, setTipoCategorie] = useState<'uscita' | 'entrata'>('uscita')
@@ -128,14 +132,25 @@ export function Conti() {
       .map((k) => ({ value: k, label: labelMese(k) }))
   }, [items, annoF])
 
-  const nFiltri = [tipo, stato, annoF, meseF, categoriaF].filter(Boolean).length
+  const nFiltri =
+    [tipo, stato, annoF, meseF, categoriaF, controparteF].filter(Boolean).length +
+    (importoF != null ? 1 : 0)
   function azzeraFiltri() {
     setTipo(undefined)
     setStato(undefined)
     setAnnoF(undefined)
     setMeseF(undefined)
     setCategoriaF(undefined)
+    setControparteF(undefined)
+    setImportoF(null)
+    setImportoOp('maggiore')
   }
+
+  // le controparti già usate, per il filtro a tendina
+  const controparti = useMemo(() => {
+    const usate = new Set(items.map((m) => m.controparte?.trim()).filter(Boolean) as string[])
+    return [...usate].sort((a, b) => a.localeCompare(b))
+  }, [items])
 
   // le categorie già usate, per filtro e suggerimenti del form
   const categorieUsate = useMemo(() => {
@@ -171,9 +186,12 @@ export function Conti() {
         if (meseF && m.data.slice(0, 7) !== meseF) return false
         if (categoriaF === SENZA_CATEGORIA && m.categoria?.trim()) return false
         if (categoriaF && categoriaF !== SENZA_CATEGORIA && m.categoria?.trim() !== categoriaF) return false
+        if (controparteF && m.controparte?.trim() !== controparteF) return false
+        if (importoF != null && (importoOp === 'maggiore' ? m.importo < importoF : m.importo > importoF))
+          return false
         return true
       }),
-    [vista, q, tipo, stato, annoF, meseF, categoriaF],
+    [vista, q, tipo, stato, annoF, meseF, categoriaF, controparteF, importoF, importoOp],
   )
 
   const saldo = items
@@ -571,6 +589,41 @@ export function Conti() {
                   />
                 </FiltroCampo>
               )}
+              {controparti.length > 0 && (
+                <FiltroCampo label="Controparte">
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Tutte"
+                    value={controparteF}
+                    onChange={setControparteF}
+                    style={{ width: '100%' }}
+                    options={controparti.map((c) => ({ value: c, label: c }))}
+                  />
+                </FiltroCampo>
+              )}
+              <FiltroCampo label="Importo (entrate e uscite)">
+                <Space.Compact style={{ width: '100%' }}>
+                  <Select
+                    value={importoOp}
+                    onChange={setImportoOp}
+                    style={{ width: 90 }}
+                    options={[
+                      { value: 'maggiore', label: '≥' },
+                      { value: 'minore', label: '≤' },
+                    ]}
+                  />
+                  <InputNumber
+                    min={0}
+                    step={0.01}
+                    placeholder="es. 100 o 130,40"
+                    value={importoF}
+                    onChange={setImportoF}
+                    style={{ width: '100%' }}
+                  />
+                </Space.Compact>
+              </FiltroCampo>
               <FiltroCampo label="Anno">
                 <Select
                   allowClear

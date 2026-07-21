@@ -10,10 +10,16 @@ export function isDirigente(g: Pick<Giocatore, 'categoria'>): boolean {
   return g.categoria === 'dirigente' || g.categoria === 'entrambi'
 }
 
+/** Giocatore "extra": viene una tantum, va tenuto in lista ma non è sempre presente. */
+export function isExtra(g: Pick<Giocatore, 'categoria'>): boolean {
+  return g.categoria === 'extra'
+}
+
 export const LABEL_CATEGORIA: Record<Categoria, string> = {
   giocatore: 'Giocatore',
   dirigente: 'Dirigente',
   entrambi: 'Giocatore e dirigente',
+  extra: 'Giocatore Extra',
 }
 
 /** Opzioni per i Select. */

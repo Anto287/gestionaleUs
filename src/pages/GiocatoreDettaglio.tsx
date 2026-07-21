@@ -20,25 +20,31 @@ import {
   Row,
   Select,
   Space,
-  Statistic,
   Switch,
   Tag,
   Typography,
 } from 'antd'
 import {
+  AimOutlined,
   ArrowLeftOutlined,
+  CalendarOutlined,
   EditOutlined,
   DeleteOutlined,
   EuroOutlined,
   MedicineBoxOutlined,
   PlusOutlined,
+  StopOutlined,
+  ThunderboltOutlined,
+  TrophyOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
+import { StatCard } from '../components/StatCard'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
-import { isDirigente, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
+import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
 import { statisticheGiocatore } from '../lib/statistiche'
 import { statoQuota } from '../lib/quota'
 import { formatData, formatEuro } from '../lib/format'
@@ -127,7 +133,8 @@ export function GiocatoreDettaglio() {
         rientroInfortunio: undefined,
       }
     }
-    if (valori.categoria === 'giocatore') valori = { ...valori, ruoloDirigenza: undefined }
+    if (valori.categoria === 'giocatore' || valori.categoria === 'extra')
+      valori = { ...valori, ruoloDirigenza: undefined }
     if (!valori.infortunato) valori = { ...valori, rientroInfortunio: undefined }
     update(g!.id, valori)
     setModale(false)
@@ -198,6 +205,7 @@ export function GiocatoreDettaglio() {
                   {g.ruoloDirigenza ? ` · ${g.ruoloDirigenza}` : ''}
                 </Tag>
               )}
+              {isExtra(g) && <Tag color="cyan">Giocatore Extra</Tag>}
               {isGiocatore(g) && g.infortunato && (
                 <Tag color="red" icon={<MedicineBoxOutlined />}>
                   Infortunato{g.rientroInfortunio ? ` · rientro ${formatData(g.rientroInfortunio, true)}` : ''}
@@ -234,65 +242,62 @@ export function GiocatoreDettaglio() {
         </div>
       </Card>
 
-      <Row gutter={[16, 16]}>
-        {!soloDirigente && (
-          <Col xs={24} md={8}>
-            <Card style={{ textAlign: 'center' }}>
-              <Text type="secondary">Presenze agli allenamenti</Text>
-              <div style={{ margin: '12px 0' }}>
-                <Progress type="dashboard" percent={percPresenze} strokeColor="#c22026" size={140} />
-              </div>
-              <Text strong>
-                {presenze.fatte} su {presenze.totali} sedute
-              </Text>
-            </Card>
+      {!soloDirigente && (
+        <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+          <Col xs={12} sm={8} lg={4}>
+            <StatCard
+              icona={<CalendarOutlined />}
+              titolo="Allenamenti"
+              valore={`${percPresenze}%`}
+              sotto={
+                <>
+                  <Progress
+                    percent={percPresenze}
+                    showInfo={false}
+                    strokeColor="#c22026"
+                    size={['100%', 5]}
+                    style={{ display: 'block', margin: '2px 0' }}
+                  />
+                  {presenze.fatte} su {presenze.totali} sedute
+                </>
+              }
+            />
           </Col>
-        )}
-        <Col xs={24} md={soloDirigente ? 24 : 16}>
-          <Card title={soloDirigente ? 'Anagrafica e tesseramento' : 'Statistiche'}>
-            {!soloDirigente && (
-              <Row gutter={[16, 16]}>
-                <Col xs={12} sm={8}>
-                  <Statistic
-                    title="Presenze partita"
-                    value={stat.presenzePartita}
-                    suffix={
-                      stat.presenzePartita > 0 ? (
-                        <Text type="secondary" style={{ fontSize: 13 }}>
-                          di cui {stat.daTitolare} dal 1'
-                        </Text>
-                      ) : undefined
-                    }
-                  />
-                </Col>
-                <Col xs={12} sm={8}>
-                  <Statistic title="Gol" value={stat.gol} />
-                </Col>
-                <Col xs={12} sm={8}>
-                  <Statistic title="Assist" value={stat.assist} />
-                </Col>
-                <Col xs={12} sm={8}>
-                  <Statistic
-                    title="Ammonizioni"
-                    value={stat.ammonizioni}
-                    valueStyle={{ color: stat.ammonizioni > 0 ? '#9a6b1e' : undefined }}
-                  />
-                </Col>
-                <Col xs={12} sm={8}>
-                  <Statistic
-                    title="Espulsioni"
-                    value={stat.espulsioni}
-                    valueStyle={{ color: stat.espulsioni > 0 ? '#b1352f' : undefined }}
-                  />
-                </Col>
-              </Row>
-            )}
-            <Descriptions
-              column={{ xs: 1, sm: 2 }}
-              size="small"
-              style={soloDirigente ? undefined : { marginTop: 20 }}
-              title={soloDirigente ? undefined : 'Anagrafica e tesseramento'}
-            >
+          <Col xs={12} sm={8} lg={4}>
+            <StatCard
+              icona={<TrophyOutlined />}
+              titolo="Presenze partita"
+              valore={stat.presenzePartita}
+              sotto={stat.presenzePartita > 0 ? `di cui ${stat.daTitolare} dal 1'` : undefined}
+            />
+          </Col>
+          <Col xs={12} sm={8} lg={4}>
+            <StatCard icona={<AimOutlined />} titolo="Gol" valore={stat.gol} />
+          </Col>
+          <Col xs={12} sm={8} lg={4}>
+            <StatCard icona={<ThunderboltOutlined />} titolo="Assist" valore={stat.assist} />
+          </Col>
+          <Col xs={12} sm={8} lg={4}>
+            <StatCard
+              icona={<WarningOutlined />}
+              titolo="Ammonizioni"
+              valore={stat.ammonizioni}
+              colore={stat.ammonizioni > 0 ? '#9a6b1e' : undefined}
+            />
+          </Col>
+          <Col xs={12} sm={8} lg={4}>
+            <StatCard
+              icona={<StopOutlined />}
+              titolo="Espulsioni"
+              valore={stat.espulsioni}
+              colore={stat.espulsioni > 0 ? '#b1352f' : undefined}
+            />
+          </Col>
+        </Row>
+      )}
+
+      <Card title="Anagrafica e tesseramento">
+        <Descriptions column={{ xs: 1, sm: 2, md: 2, lg: 3, xl: 3, xxl: 3 }} size="small">
               {isDirigente(g) && (
                 <Descriptions.Item label="Ruolo in dirigenza">{g.ruoloDirigenza || '—'}</Descriptions.Item>
               )}
@@ -327,13 +332,11 @@ export function GiocatoreDettaglio() {
                   })()}
                 </Descriptions.Item>
               )}
-              <Descriptions.Item label="Note" span={2}>
+              <Descriptions.Item label="Note" span={{ xs: 1, sm: 2, lg: 3 }}>
                 {g.note?.trim() ? <span style={{ whiteSpace: 'pre-wrap' }}>{g.note}</span> : '—'}
               </Descriptions.Item>
             </Descriptions>
           </Card>
-        </Col>
-      </Row>
 
       {!soloDirigente && (
         <Card

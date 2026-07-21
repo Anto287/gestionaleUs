@@ -3,8 +3,9 @@
  * Ogni raccolta diventerà un foglio/file sul Drive quando sarà collegato.
  */
 
-/** Categoria del tesserato: chi manca del campo (dati esistenti) è giocatore. */
-export type Categoria = 'giocatore' | 'dirigente' | 'entrambi'
+/** Categoria del tesserato: chi manca del campo (dati esistenti) è giocatore.
+ *  'extra' = giocatore una tantum: utile tenerlo in lista, ma non c'è sempre. */
+export type Categoria = 'giocatore' | 'dirigente' | 'entrambi' | 'extra'
 
 /**
  * Un giocatore della rosa. Presenze (dagli allenamenti) e statistiche

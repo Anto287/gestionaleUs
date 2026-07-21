@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   Bar,
   BarChart,
@@ -37,6 +38,15 @@ function asseEuro(v: number): string {
  * larghezza minima per mese e scorre in orizzontale.
  */
 export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]; tipo?: TipoBilancio }) {
+  const scatola = useRef<HTMLDivElement>(null)
+
+  // all'apertura parte scorso in fondo: i mesi più recenti, non i più vecchi
+  // (ri-ancorato anche quando cambiano i mesi o la vista, che cambia larghezza)
+  useEffect(() => {
+    const el = scatola.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [dati.length, tipo])
+
   if (dati.length === 0) {
     return <div style={{ color: COLORI.testo, padding: '2rem 0', textAlign: 'center' }}>Nessun movimento</div>
   }
@@ -65,7 +75,7 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
   )
 
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div ref={scatola} style={{ overflowX: 'auto' }}>
       <div style={{ minWidth, height: H }}>
         <ResponsiveContainer width="100%" height="100%">
           {tipo === 'saldo' ? (

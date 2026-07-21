@@ -32,11 +32,11 @@ import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI } from '../ruoli'
+import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE, type Area } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
 import { statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
-import { isDirigente, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
+import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, LABEL_CATEGORIA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
 
 type Bozza = Pick<
@@ -78,19 +78,28 @@ export function Rosa() {
   const campiDirigente = categoriaForm === 'dirigente' || categoriaForm === 'entrambi'
   const infortunatoForm = Form.useWatch('infortunato', form)
   const [q, setQ] = useState('')
+  const [repartoF, setRepartoF] = useState<Area | undefined>()
   const [ruoloF, setRuoloF] = useState<string | undefined>()
   const [categoriaF, setCategoriaF] = useState<string | undefined>()
   const [certF, setCertF] = useState<string | undefined>()
   const [quotaF, setQuotaF] = useState<string | undefined>()
   const [tesseraF, setTesseraF] = useState<string | undefined>()
 
-  const nFiltri = [ruoloF, categoriaF, certF, quotaF, tesseraF].filter(Boolean).length
+  const nFiltri = [repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF].filter(Boolean).length
   function azzeraFiltri() {
+    setRepartoF(undefined)
     setRuoloF(undefined)
     setCategoriaF(undefined)
     setCertF(undefined)
     setQuotaF(undefined)
     setTesseraF(undefined)
+  }
+
+  /** Può giocare nel reparto? Conta il ruolo preferito e quelli adattati. */
+  function inReparto(g: Giocatore, area: Area): boolean {
+    return [g.ruoloPreferito, ...(g.ruoliAdattati ?? [])].some(
+      (code) => code && RUOLO_BY_CODE[code]?.area === area,
+    )
   }
 
   const presenze = useMemo(() => {
@@ -118,10 +127,12 @@ export function Rosa() {
       ordinati.filter((g) => {
         const nome = `${g.cognome} ${g.nome}`.toLowerCase()
         if (q && !nome.includes(q.toLowerCase())) return false
+        if (repartoF && !inReparto(g, repartoF)) return false
         if (ruoloF && g.ruoloPreferito !== ruoloF && !(g.ruoliAdattati ?? []).includes(ruoloF))
           return false
         if (categoriaF === 'giocatore' && !isGiocatore(g)) return false
         if (categoriaF === 'dirigente' && !isDirigente(g)) return false
+        if (categoriaF === 'extra' && !isExtra(g)) return false
         if (certF && (!isGiocatore(g) || statoCertificato(g).stato !== certF)) return false
         if (quotaF && !isGiocatore(g)) return false
         if (quotaF === 'pagata' && !statoQuota(g).completa) return false
@@ -130,7 +141,8 @@ export function Rosa() {
         if (tesseraF === 'no' && g.tessera) return false
         return true
       }),
-    [ordinati, q, ruoloF, categoriaF, certF, quotaF, tesseraF],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ordinati, q, repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF],
   )
 
   function apriNuovo() {
@@ -162,7 +174,8 @@ export function Rosa() {
         rientroInfortunio: undefined,
       }
     }
-    if (valori.categoria === 'giocatore') valori = { ...valori, ruoloDirigenza: undefined }
+    if (valori.categoria === 'giocatore' || valori.categoria === 'extra')
+      valori = { ...valori, ruoloDirigenza: undefined }
     if (!valori.infortunato) valori = { ...valori, rientroInfortunio: undefined }
     add(valori)
     setModale(false)
@@ -200,6 +213,11 @@ export function Rosa() {
           {isDirigente(g) && (
             <Tag color="purple" style={{ marginLeft: 8 }}>
               {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
+            </Tag>
+          )}
+          {isExtra(g) && (
+            <Tag color="cyan" style={{ marginLeft: 8 }}>
+              Extra
             </Tag>
           )}
           {isGiocatore(g) && g.infortunato && (
@@ -322,7 +340,7 @@ export function Rosa() {
         righe: filtrati.map((g) => ({
           Cognome: g.cognome,
           Nome: g.nome,
-          Categoria: g.categoria ?? 'giocatore',
+          Categoria: LABEL_CATEGORIA[g.categoria ?? 'giocatore'],
           'Ruolo dirigenza': g.ruoloDirigenza ?? '',
           Ruolo: g.ruoloPreferito ?? '',
           'Ruoli adattati': (g.ruoliAdattati ?? []).join(', '),
@@ -379,6 +397,21 @@ export function Rosa() {
               onChange={(e) => setQ(e.target.value)}
             />
             <FiltriDrawer count={nFiltri} onReset={azzeraFiltri}>
+              <FiltroCampo label="Reparto">
+                <Select
+                  allowClear
+                  placeholder="Tutti i reparti"
+                  value={repartoF}
+                  onChange={setRepartoF}
+                  options={[
+                    { value: 'Portiere', label: 'Portieri' },
+                    { value: 'Difesa', label: 'Difensori' },
+                    { value: 'Centrocampo', label: 'Centrocampisti' },
+                    { value: 'Attacco', label: 'Attaccanti' },
+                  ]}
+                  style={{ width: '100%' }}
+                />
+              </FiltroCampo>
               <FiltroCampo label="Ruolo">
                 <Select
                   allowClear
@@ -400,6 +433,7 @@ export function Rosa() {
                   options={[
                     { value: 'giocatore', label: 'Giocatori' },
                     { value: 'dirigente', label: 'Dirigenti' },
+                    { value: 'extra', label: 'Giocatori Extra' },
                   ]}
                   style={{ width: '100%' }}
                 />
@@ -462,6 +496,11 @@ export function Rosa() {
                           {isDirigente(g) && (
                             <Tag color="purple" style={{ marginLeft: 6 }}>
                               {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
+                            </Tag>
+                          )}
+                          {isExtra(g) && (
+                            <Tag color="cyan" style={{ marginLeft: 6 }}>
+                              Extra
                             </Tag>
                           )}
                           {isGiocatore(g) && g.infortunato && (

@@ -13,6 +13,7 @@ import {
   FontSizeOutlined,
   PictureOutlined,
   RedoOutlined,
+  ReloadOutlined,
   UndoOutlined,
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
@@ -227,16 +228,39 @@ export function Editor({
     [],
   )
 
-  // attende i font, poi disegna (così i testi hanno le misure giuste)
+  // attende i font, poi disegna (così i testi hanno le misure giuste).
+  // document.fonts.ready da solo non basta: ogni variante (es. Barlow 700)
+  // si scarica al primo uso, e il primo uso può essere proprio la tela — che
+  // allora misura col font di ripiego e centra storto (visibile sul telefono,
+  // dove i font arrivano dopo). La load() esplicita le chiede subito.
   useEffect(() => {
     let vivo = true
-    const f = document.fonts?.ready ?? Promise.resolve()
-    f.then(() => {
-      if (vivo) setPronto(true)
-    })
+    const fonts = document.fonts
+    const attesa = fonts
+      ? Promise.all([
+          ...['500', '600', '700'].map((w) => fonts.load(`${w} 16px 'Barlow Condensed'`)),
+          ...['400', '500', '600', '700'].map((w) => fonts.load(`${w} 16px 'Inter'`)),
+        ]).then(() => fonts.ready)
+      : Promise.resolve()
+    Promise.resolve(attesa)
+      .catch(() => undefined) // offline: si disegna col ripiego, ma coerente
+      .then(() => {
+        if (vivo) setPronto(true)
+      })
     return () => {
       vivo = false
     }
+  }, [])
+
+  // rete di sicurezza: se una variante arriva DOPO il primo disegno, i testi
+  // vengono rimontati (entra nella key) così Konva li rimisura col font vero
+  const [fontEpoca, setFontEpoca] = useState(0)
+  useEffect(() => {
+    const fonts = document.fonts
+    if (!fonts?.addEventListener) return
+    const su = () => setFontEpoca((n) => n + 1)
+    fonts.addEventListener('loadingdone', su)
+    return () => fonts.removeEventListener('loadingdone', su)
   }, [])
 
   // al cambio di grafica: se cambia il TIPO, riparte dallo stile predefinito di
@@ -269,14 +293,15 @@ export function Editor({
   }, [])
   const scala = larg ? larg / W : 0
 
-  // aggancia il transformer all'elemento selezionato
+  // aggancia il transformer all'elemento selezionato (fontEpoca: dopo un
+  // rimontaggio dei testi il nodo selezionato è un'istanza nuova)
   useEffect(() => {
     const tr = trRef.current
     if (!tr) return
     const node = selId ? nodiRef.current.get(selId) : null
     tr.nodes(node ? [node] : [])
     tr.getLayer()?.batchDraw()
-  }, [selId, scena.elementi])
+  }, [selId, scena.elementi, fontEpoca])
 
   const selElemento = scena.elementi.find((e) => e.id === selId)
 
@@ -600,7 +625,18 @@ export function Editor({
   }
   function azzeraDefault() {
     azzeraPrefs(input.kind)
-    message.success(`Predefinito di «${nomeKind}» azzerato`)
+    // le prefs sono appena state pulite: scenaDaPrefs ridà lo stile originale
+    applica(() => scenaDaPrefs(input))
+    setSelId(null)
+    message.success(`Predefinito di «${nomeKind}» azzerato: grafica riportata allo stile originale`)
+  }
+
+  /** Riporta la grafica com'era all'apertura (si può annullare con Ctrl+Z). */
+  function azzeraGrafica() {
+    applica(() => scenaDaPrefs(input))
+    setSelId(null)
+    setDrawer(null)
+    message.success('Grafica riportata allo stato iniziale')
   }
 
   const setNodoRef = (id: string) => (node: Konva.Node | null) => {
@@ -684,6 +720,12 @@ export function Editor({
             Design
           </Button>
         )}
+        <span className="ed-sep" />
+        <Tooltip title="Riporta la grafica allo stato iniziale (Ctrl+Z per annullare)">
+          <Button size="small" icon={<ReloadOutlined />} onClick={azzeraGrafica}>
+            Azzera
+          </Button>
+        </Tooltip>
       </div>
 
       <div className="ed-corpo">
@@ -811,7 +853,7 @@ export function Editor({
                     if (el.tipo === 'testo') {
                       return (
                         <KText
-                          key={el.id}
+                          key={`${el.id}-f${fontEpoca}`}
                           ref={setNodoRef(el.id)}
                           x={el.x}
                           y={el.y}

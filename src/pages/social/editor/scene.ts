@@ -266,6 +266,10 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
   const el: Elemento[] = []
   const push = (e: Elemento) => el.push(e)
 
+  // il file del logo (public/logo.png) è 537×465, più largo che alto:
+  // l'altezza segue questa proporzione, altrimenti lo stemma forzato nel
+  // quadrato risulta schiacciato in larghezza
+  const PROPORZIONE_STEMMA = 465 / 537
   const crest = (x: number, y: number, size: number): ElImmagine => ({
     id: nid(),
     tipo: 'immagine',
@@ -274,24 +278,31 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     rotation: 0,
     src: input.crestSrc,
     larghezza: size,
-    altezza: size,
+    altezza: Math.round(size * PROPORZIONE_STEMMA),
   })
 
   if (input.kind === 'annuncio' || input.kind === 'risultato') {
     const g = input.giorno!
     const annuncio = input.kind === 'annuncio'
-    push(crest(cx - 75, 70, 150))
-    push(testo(0, 250, annuncio ? 'MATCHDAY' : 'FINALE', 30, 'accento', { letterSpacing: 8, width: W }))
-    push(testo(0, 430, 'U.S. RIOLUNATO', 84, 'titolo', { letterSpacing: 1, width: W }))
+    // il layout è disegnato sulla tela del post (1080×1350): sugli altri
+    // formati (es. storia 1080×1920) le altezze si riproporzionano sulla
+    // H vera, così gli elementi si ridistribuiscono invece di ammassarsi
+    // in alto lasciando il vuoto sotto
+    const sy = (y: number) => Math.round((y / 1350) * input.formato.h)
+    push(crest(cx - 75, sy(70), 150))
+    push(testo(0, sy(250), annuncio ? 'MATCHDAY' : 'FINALE', 30, 'accento', { letterSpacing: 8, width: W }))
+    push(testo(0, sy(430), 'U.S. RIOLUNATO', 84, 'titolo', { letterSpacing: 1, width: W }))
 
     if (annuncio) {
-      push({ id: nid(), tipo: 'cerchio', x: cx, y: 640, rotation: 0, raggio: 62, strokeRuolo: 'accento', strokeWidth: 3 })
-      push(testo(cx - 60, 610, 'VS', 58, 'accento', { width: 120 }))
+      // il cerchio sta 30px sotto l'attacco del testo: l'offset resta fisso
+      // (scalarli separatamente scentrerebbe il "VS" sui formati alti)
+      push({ id: nid(), tipo: 'cerchio', x: cx, y: sy(610) + 30, rotation: 0, raggio: 62, strokeRuolo: 'accento', strokeWidth: 3 })
+      push(testo(cx - 60, sy(610), 'VS', 58, 'accento', { width: 120 }))
     } else {
-      push(testo(0, 560, `${g.golFatti ?? 0}  –  ${g.golSubiti ?? 0}`, 150, 'titolo', { width: W }))
+      push(testo(0, sy(560), `${g.golFatti ?? 0}  –  ${g.golSubiti ?? 0}`, 150, 'titolo', { width: W }))
     }
 
-    push(testo(0, annuncio ? 780 : 800, g.avversario.toUpperCase(), 66, 'titolo', { bold: false, width: W }))
+    push(testo(0, sy(annuncio ? 780 : 800), g.avversario.toUpperCase(), 66, 'titolo', { bold: false, width: W }))
 
     if (!annuncio) {
       const esito =
@@ -300,17 +311,17 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
           : (g.golFatti ?? 0) < (g.golSubiti ?? 0)
             ? 'SCONFITTA'
             : 'PAREGGIO'
-      push(testo(0, 920, esito, 40, 'accento', { letterSpacing: 4, width: W }))
-      if (g.marcatori) push(testo(0, 1000, `MARCATORI  ${g.marcatori}`, 28, 'sub', { bold: false, fontFamily: BASE, width: W }))
+      push(testo(0, sy(920), esito, 40, 'accento', { letterSpacing: 4, width: W }))
+      if (g.marcatori) push(testo(0, sy(1000), `MARCATORI  ${g.marcatori}`, 28, 'sub', { bold: false, fontFamily: BASE, width: W }))
     }
 
-    push(testo(0, 1120, g.dataTxt, 46, 'titolo', { width: W }))
+    push(testo(0, sy(1120), g.dataTxt, 46, 'titolo', { width: W }))
     if (annuncio) {
       const meta = [g.ora ? `ORE ${g.ora}` : '', g.dove].filter(Boolean).join('   ·   ')
-      push(testo(0, 1195, meta, 26, 'sub', { bold: false, fontFamily: BASE, letterSpacing: 2, width: W }))
+      push(testo(0, sy(1195), meta, 26, 'sub', { bold: false, fontFamily: BASE, letterSpacing: 2, width: W }))
     }
-    push(testo(84, 1258, 'STAGIONE 2026/27', 22, 'testo', { bold: false, fontFamily: BASE, align: 'left', width: 420 }))
-    push(testo(W - 504, 1258, input.piede, 22, 'accento', { bold: false, fontFamily: BASE, align: 'right', width: 420, chiave: 'piede' }))
+    push(testo(84, sy(1258), 'STAGIONE 2026/27', 22, 'testo', { bold: false, fontFamily: BASE, align: 'left', width: 420 }))
+    push(testo(W - 504, sy(1258), input.piede, 22, 'accento', { bold: false, fontFamily: BASE, align: 'right', width: 420, chiave: 'piede' }))
   } else if (input.kind === 'formazione') {
     const H = input.formato.h
     const f = input.formazione

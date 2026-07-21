@@ -12,6 +12,7 @@ export function StatCard({
   titolo,
   valore,
   colore,
+  sotto,
   onApri,
   apriLabel,
 }: {
@@ -20,6 +21,8 @@ export function StatCard({
   valore: string | number
   /** colore del numero (es. rosso se il saldo è negativo) */
   colore?: string
+  /** riga secondaria sotto il numero (es. "3 su 10 sedute") */
+  sotto?: ReactNode
   /** se presente, la card è cliccabile e apre il dettaglio */
   onApri?: () => void
   /** cosa succede aprendo, per screen reader: es. "vedi gli ultimi movimenti" */
@@ -43,19 +46,22 @@ export function StatCard({
       <span className="stat-icon" aria-hidden>
         {icona}
       </span>
-      <Statistic
-        title={
-          onApri ? (
-            <>
-              {titolo} <RightOutlined className="stat-freccia" aria-hidden />
-            </>
-          ) : (
-            titolo
-          )
-        }
-        value={valore}
-        valueStyle={colore ? { color: colore } : undefined}
-      />
+      <div className="stat-corpo">
+        <Statistic
+          title={
+            onApri ? (
+              <>
+                {titolo} <RightOutlined className="stat-freccia" aria-hidden />
+              </>
+            ) : (
+              titolo
+            )
+          }
+          value={valore}
+          valueStyle={colore ? { color: colore } : undefined}
+        />
+        {sotto && <div className="stat-sotto">{sotto}</div>}
+      </div>
     </Card>
   )
 }

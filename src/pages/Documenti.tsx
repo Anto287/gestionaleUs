@@ -4,6 +4,7 @@ import {
   Button,
   Dropdown,
   Empty,
+  Grid,
   Input,
   List,
   Modal,
@@ -27,9 +28,10 @@ import {
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useData } from '../data/DataProvider'
-import { driveAttivo } from '../services/driveStore'
+import { driveAttivo, exportPdf } from '../services/driveStore'
 import { PageHeader } from '../components/PageHeader'
 import { PalloneSpinner } from '../components/PalloneSpinner'
+import { AnteprimaPdf } from '../components/AnteprimaPdf'
 import { formatData, formatKB } from '../lib/format'
 import type { Documento } from '../types'
 
@@ -52,23 +54,33 @@ function iconaDoc(d: Documento) {
 }
 
 /**
- * Che anteprima possiamo mostrare senza scaricare: per i file sul Drive
- * l'indirizzo /preview incorporabile (vale per Documenti/Fogli Google e per
- * i file caricati, PDF e immagini compresi); senza Drive, il contenuto
- * locale per immagini e PDF.
+ * Che anteprima possiamo mostrare:
+ * - 'stampa': documento sul Drive → chiediamo allo script il PDF di stampa
+ *   e lo disegniamo noi (identico al foglio stampato anche sul telefono);
+ *   se lo script non conosce ancora l'azione si ripiega sull'iframe;
+ * - 'iframe': visualizzatore di Google incorporato (immagini sul Drive e
+ *   ripiego dei casi sopra);
+ * - 'pdf': PDF salvato nel browser, disegnato direttamente;
+ * - 'immagine': immagine salvata nel browser.
  */
-type Anteprima = { modo: 'immagine' | 'iframe'; src: string }
+type Anteprima =
+  | { modo: 'immagine'; src: string }
+  | { modo: 'pdf'; base64: string }
+  | { modo: 'iframe'; src: string }
+  | { modo: 'stampa'; fileId: string; ripiego: string }
 
 function anteprimaDi(d: Documento): Anteprima | null {
   if (d.url) {
     const m = d.url.match(/\/(file|document|spreadsheets|presentation)\/d\/([\w-]+)/)
     if (!m) return null
     const host = m[1] === 'file' ? 'https://drive.google.com' : 'https://docs.google.com'
-    return { modo: 'iframe', src: `${host}/${m[1]}/d/${m[2]}/preview` }
+    const iframe = `${host}/${m[1]}/d/${m[2]}/preview`
+    if (d.tipo.startsWith('image/')) return { modo: 'iframe', src: iframe }
+    return { modo: 'stampa', fileId: m[2], ripiego: iframe }
   }
   if (d.dataUrl) {
     if (d.tipo.startsWith('image/')) return { modo: 'immagine', src: d.dataUrl }
-    if (d.tipo === 'application/pdf') return { modo: 'iframe', src: d.dataUrl }
+    if (d.tipo === 'application/pdf') return { modo: 'pdf', base64: d.dataUrl.split(',')[1] ?? '' }
   }
   return null
 }
@@ -80,8 +92,7 @@ function anteprimaDi(d: Documento): Anteprima | null {
  */
 const LARGHEZZA_STAMPA = 880
 
-function AnteprimaDocumento({ doc }: { doc: Documento }) {
-  const vista = anteprimaDi(doc)
+function AnteprimaIframe({ src, nome }: { src: string; nome: string }) {
   const [pronto, setPronto] = useState(false)
   const [larghezza, setLarghezza] = useState(0)
   const riquadro = useRef<HTMLDivElement>(null)
@@ -95,40 +106,13 @@ function AnteprimaDocumento({ doc }: { doc: Documento }) {
     return () => osserva.disconnect()
   }, [])
 
-  if (!vista) return null
-
-  const caricamento = !pronto && (
-    <div className="anteprima-caricamento">
-      <PalloneSpinner />
-      <Typography.Text type="secondary">Apro l'anteprima…</Typography.Text>
-    </div>
-  )
-
-  if (vista.modo === 'immagine')
-    return (
-      <div className="anteprima-doc">
-        <img
-          src={vista.src}
-          alt={doc.nome}
-          onLoad={() => setPronto(true)}
-          style={{
-            display: pronto ? 'block' : 'none',
-            maxWidth: '100%',
-            maxHeight: '70vh',
-            margin: '0 auto',
-          }}
-        />
-        {caricamento}
-      </div>
-    )
-
   const scala = larghezza > 0 ? larghezza / LARGHEZZA_STAMPA : 1
   return (
     <div ref={riquadro} className="anteprima-doc anteprima-doc-iframe">
       {larghezza > 0 && (
         <iframe
-          src={vista.src}
-          title={doc.nome}
+          src={src}
+          title={nome}
           allow="autoplay"
           onLoad={() => setPronto(true)}
           style={{
@@ -141,15 +125,93 @@ function AnteprimaDocumento({ doc }: { doc: Documento }) {
           }}
         />
       )}
-      {caricamento}
+      {!pronto && (
+        <div className="anteprima-caricamento">
+          <PalloneSpinner />
+          <Typography.Text type="secondary">Apro l'anteprima…</Typography.Text>
+        </div>
+      )}
     </div>
   )
+}
+
+function AnteprimaDocumento({ doc }: { doc: Documento }) {
+  const [vista] = useState(() => anteprimaDi(doc))
+  const [prontaImg, setProntaImg] = useState(false)
+  // PDF di stampa chiesto allo script; se manca o fallisce si ripiega sull'iframe
+  const [pdf, setPdf] = useState<string | null>(null)
+  const [ripiego, setRipiego] = useState(false)
+
+  useEffect(() => {
+    if (vista?.modo !== 'stampa') return
+    let vivo = true
+    exportPdf(vista.fileId)
+      .then((b64) => vivo && (b64 ? setPdf(b64) : setRipiego(true)))
+      .catch(() => vivo && setRipiego(true))
+    return () => {
+      vivo = false
+    }
+  }, [vista])
+
+  if (!vista) return null
+
+  if (vista.modo === 'immagine')
+    return (
+      <div className="anteprima-doc">
+        <img
+          src={vista.src}
+          alt={doc.nome}
+          onLoad={() => setProntaImg(true)}
+          style={{
+            display: prontaImg ? 'block' : 'none',
+            maxWidth: '100%',
+            maxHeight: '70vh',
+            margin: '0 auto',
+          }}
+        />
+        {!prontaImg && (
+          <div className="anteprima-caricamento">
+            <PalloneSpinner />
+            <Typography.Text type="secondary">Apro l'anteprima…</Typography.Text>
+          </div>
+        )}
+      </div>
+    )
+
+  if (vista.modo === 'pdf')
+    return ripiego ? (
+      <AnteprimaIframe src={doc.dataUrl!} nome={doc.nome} />
+    ) : (
+      <AnteprimaPdf base64={vista.base64} onErrore={() => setRipiego(true)} />
+    )
+
+  if (vista.modo === 'stampa') {
+    if (ripiego) return <AnteprimaIframe src={vista.ripiego} nome={doc.nome} />
+    if (pdf) return <AnteprimaPdf base64={pdf} onErrore={() => setRipiego(true)} />
+    return (
+      <div className="anteprima-caricamento">
+        <PalloneSpinner />
+        <Typography.Text type="secondary">Preparo l'anteprima di stampa…</Typography.Text>
+      </div>
+    )
+  }
+
+  return <AnteprimaIframe src={vista.src} nome={doc.nome} />
+}
+
+/** Riga "peso · data" mostrata sotto il nome, uguale in lista e card. */
+function descrizioneDoc(d: Documento): string {
+  return isGoogleFile(d)
+    ? `${d.tipo.endsWith('spreadsheet') ? 'Foglio Google' : 'Documento Google'} · creato il ${formatData(d.caricatoIl, true)}`
+    : `${formatKB(d.dimensione)} · caricato il ${formatData(d.caricatoIl, true)}`
 }
 
 export function Documenti() {
   const { items, remove } = useCollection<Documento>('documenti')
   const { uploadDoc, createDoc, renameDoc } = useData()
   const { message } = AntApp.useApp()
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.sm
   const [caricando, setCaricando] = useState(false)
   const [q, setQ] = useState('')
   // creazione: tipo scelto dal menu, nome chiesto nel modale
@@ -278,6 +340,66 @@ export function Documenti() {
               />
             </Space>
           </div>
+          {documenti.length === 0 ? (
+            <Empty description="Nessun documento con questa ricerca" />
+          ) : isMobile ? (
+            <div className="lista-mobile">
+              {documenti.map((d) => {
+                const conAnteprima = !!anteprimaDi(d)
+                const apribile = !!(d.url || d.dataUrl)
+                return (
+                  <div
+                    key={d.id}
+                    className="lista-card doc-card"
+                    onClick={() => {
+                      if (conAnteprima) setAnteprima(d)
+                      else if (apribile) apri(d)
+                    }}
+                  >
+                    <div className="doc-card-testa">
+                      {iconaDoc(d)}
+                      <div className="doc-card-testo">
+                        <div className="lista-card-title doc-card-nome">{d.nome}</div>
+                        <div className="lista-card-meta">{descrizioneDoc(d)}</div>
+                      </div>
+                    </div>
+                    <div className="doc-card-azioni" onClick={(e) => e.stopPropagation()}>
+                      {apribile && (
+                        <Button
+                          type="text"
+                          icon={d.url ? <ExportOutlined /> : <DownloadOutlined />}
+                          onClick={() => apri(d)}
+                        >
+                          {d.url ? 'Apri' : 'Scarica'}
+                        </Button>
+                      )}
+                      <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={() => {
+                          setNomeRinomina(d.nome)
+                          setDaRinominare(d)
+                        }}
+                      >
+                        Rinomina
+                      </Button>
+                      <Popconfirm
+                        title={`Eliminare ${d.nome}?`}
+                        okText="Elimina"
+                        cancelText="Annulla"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={() => remove(d.id)}
+                      >
+                        <Button type="text" danger icon={<DeleteOutlined />}>
+                          Elimina
+                        </Button>
+                      </Popconfirm>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
           <List
             bordered
             className="documenti-list"
@@ -334,16 +456,13 @@ export function Documenti() {
                     )
                   }
                   description={
-                    <Typography.Text type="secondary">
-                      {isGoogleFile(d)
-                        ? `${d.tipo.endsWith('spreadsheet') ? 'Foglio Google' : 'Documento Google'} · creato il ${formatData(d.caricatoIl, true)}`
-                        : `${formatKB(d.dimensione)} · caricato il ${formatData(d.caricatoIl, true)}`}
-                    </Typography.Text>
+                    <Typography.Text type="secondary">{descrizioneDoc(d)}</Typography.Text>
                   }
                 />
               </List.Item>
             )}
           />
+          )}
         </>
       )}
 

@@ -177,7 +177,7 @@ export function Calendario() {
             {urlFeed && (
               <Popover
                 trigger="click"
-                title="Abbonati dal telefono"
+                title="Connetti dal telefono"
                 content={
                   <div style={{ maxWidth: 340 }}>
                     <Text style={{ fontSize: 13 }}>
@@ -194,7 +194,7 @@ export function Calendario() {
                   </div>
                 }
               >
-                <Button icon={<LinkOutlined />}>Abbonati</Button>
+                <Button icon={<LinkOutlined />}>Connetti</Button>
               </Popover>
             )}
             <Button icon={<DownloadOutlined />} onClick={esportaIcs}>

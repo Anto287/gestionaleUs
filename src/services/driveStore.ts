@@ -224,6 +224,23 @@ export function renameDoc(fileId: string, nome: string): Promise<void> {
 }
 
 /**
+ * Chiede allo script il PDF "di stampa" di un file (azione 'exportPdf'):
+ * Documenti/Fogli Google e file Office vengono convertiti come fa Stampa,
+ * i PDF caricati tornano come sono. Restituisce i byte in base64, oppure
+ * null se lo script non conosce ancora l'azione (versione vecchia): in quel
+ * caso il chiamante ripiega sul visualizzatore di Google.
+ */
+export async function exportPdf(fileId: string): Promise<string | null> {
+  if (!DRIVE_URL) return null
+  const data = await callDrive({ action: 'exportPdf', id: fileId, secret: getSecret() })
+  if (!data.ok) {
+    if (String(data.error || '').toLowerCase().includes('sconosciuta')) return null
+    throw new Error(data.error || 'Errore Drive')
+  }
+  return (data.dataBase64 as string) || null
+}
+
+/**
  * Salva una grafica (PNG) nella cartella "Grafica" della cartella madre del
  * Drive (accanto alle stagioni). Serve lo script aggiornato con l'azione
  * 'uploadGrafica'. Restituisce i metadati del file (con l'url).

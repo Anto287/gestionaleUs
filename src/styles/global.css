@@ -816,11 +816,32 @@ body {
 
 /* ---------- Tessere statistica ---------- */
 
+/* le card di una stessa fila restano alte uguali */
+.stat-card {
+  height: 100%;
+}
+
 /* icona in filigrana oro nell'angolo; il titolo le lascia spazio */
 .stat-card .ant-card-body {
   position: relative;
   display: flex;
   height: 100%;
+}
+
+/* corpo: numero (e riga secondaria) incolonnati, così il numero resta
+   ancorato in basso anche quando il titolo va su due righe */
+.stat-card .stat-corpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* riga secondaria sotto il numero (es. "3 su 10 sedute") */
+.stat-card .stat-sotto {
+  margin-top: 4px;
+  color: var(--testo-2);
+  font-size: 12.5px;
+  line-height: 1.35;
 }
 
 .stat-card .ant-statistic-title {
@@ -1176,14 +1197,6 @@ body {
     width: 100%;
   }
 
-  /* Documenti: nomi file lunghi + azioni non si stringono, le azioni vanno a capo */
-  .documenti-list .ant-list-item {
-    flex-wrap: wrap;
-    row-gap: 6px;
-  }
-  .documenti-list .ant-list-item .ant-list-item-action {
-    margin-inline-start: 0;
-  }
 }
 
 /* ---------- Documenti ---------- */
@@ -1196,6 +1209,40 @@ body {
 .documenti-list .ant-list-item-meta-title {
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+/* card Documenti sul telefono: icona + nome per esteso, azioni in fila sotto */
+.doc-card {
+  gap: 10px;
+}
+.doc-card-testa {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.doc-card-testa > .anticon {
+  margin-top: 3px;
+}
+.doc-card-testo {
+  min-width: 0;
+}
+.doc-card-nome {
+  overflow-wrap: anywhere;
+}
+.doc-card-testo .lista-card-meta {
+  margin-top: 3px;
+}
+.doc-card-azioni {
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid var(--linea);
+  padding-top: 6px;
+  margin: 0 -6px -5px;
+}
+.doc-card-azioni .ant-btn {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 4px;
 }
 
 /* Anteprima nel modale: il documento è reso a larghezza da stampa e
@@ -1220,6 +1267,27 @@ body {
   position: absolute;
   inset: 0;
   min-height: 0;
+}
+
+/* anteprima "di stampa" (pdf.js): le pagine del PDF impilate come fogli,
+   con scorrimento interno al riquadro */
+.anteprima-pdf {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 70vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.anteprima-pdf-pagina {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* il foglio resta bianco anche col tema scuro: è la carta stampata */
+  background: #fff;
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  box-shadow: var(--ombra-card);
 }
 
 /* su telefono il modale d'anteprima usa quasi tutto lo schermo: meno
