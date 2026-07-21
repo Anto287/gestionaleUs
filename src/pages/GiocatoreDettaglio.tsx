@@ -249,16 +249,7 @@ export function GiocatoreDettaglio() {
           </Col>
         )}
         <Col xs={24} md={soloDirigente ? 24 : 16}>
-          <Card
-            title={soloDirigente ? 'Anagrafica e tesseramento' : 'Statistiche'}
-            extra={
-              !soloDirigente && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  calcolate dalle partite
-                </Text>
-              )
-            }
-          >
+          <Card title={soloDirigente ? 'Anagrafica e tesseramento' : 'Statistiche'}>
             {!soloDirigente && (
               <Row gutter={[16, 16]}>
                 <Col xs={12} sm={8}>

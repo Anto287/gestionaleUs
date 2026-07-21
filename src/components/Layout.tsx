@@ -82,7 +82,8 @@ export function Layout() {
           open={drawer}
           onClose={() => setDrawer(false)}
           width={252}
-          styles={{ body: { padding: 0 } }}
+          // stesso colore della sidebar (in scuro l'elevated di antd stona)
+          styles={{ body: { padding: 0 }, content: { background: 'var(--cartoncino)' } }}
           className="app-drawer"
         >
           {sidebarContent}

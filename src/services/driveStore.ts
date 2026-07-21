@@ -208,6 +208,22 @@ export function createDoc(
 }
 
 /**
+ * Rinomina il file vero sul Drive (azione 'renameDoc' dello script). Il
+ * record nel registro lo aggiorna già il chiamante con la normale put; se
+ * lo script non conosce ancora l'azione, il nome cambia solo nell'app e il
+ * file sul Drive resta com'era, senza segnalare errore.
+ */
+export function renameDoc(fileId: string, nome: string): Promise<void> {
+  if (!DRIVE_URL) return Promise.resolve()
+  return inCoda(async () => {
+    const data = await callDrive({ action: 'renameDoc', id: fileId, nome, secret: getSecret() })
+    if (!data.ok && !String(data.error || '').toLowerCase().includes('sconosciuta')) {
+      throw new Error(data.error || 'Errore Drive')
+    }
+  })
+}
+
+/**
  * Salva una grafica (PNG) nella cartella "Grafica" della cartella madre del
  * Drive (accanto alle stagioni). Serve lo script aggiornato con l'azione
  * 'uploadGrafica'. Restituisce i metadati del file (con l'url).

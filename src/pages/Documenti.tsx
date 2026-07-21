@@ -22,6 +22,8 @@ import {
   DeleteOutlined,
   SearchOutlined,
   PlusOutlined,
+  EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useData } from '../data/DataProvider'
@@ -48,9 +50,31 @@ function iconaDoc(d: Documento) {
   return <FileOutlined style={style} />
 }
 
+/**
+ * Che anteprima possiamo mostrare senza scaricare: per i file sul Drive
+ * l'indirizzo /preview incorporabile (vale per Documenti/Fogli Google e per
+ * i file caricati, PDF e immagini compresi); senza Drive, il contenuto
+ * locale per immagini e PDF.
+ */
+type Anteprima = { modo: 'immagine' | 'iframe'; src: string }
+
+function anteprimaDi(d: Documento): Anteprima | null {
+  if (d.url) {
+    const m = d.url.match(/\/(file|document|spreadsheets|presentation)\/d\/([\w-]+)/)
+    if (!m) return null
+    const host = m[1] === 'file' ? 'https://drive.google.com' : 'https://docs.google.com'
+    return { modo: 'iframe', src: `${host}/${m[1]}/d/${m[2]}/preview` }
+  }
+  if (d.dataUrl) {
+    if (d.tipo.startsWith('image/')) return { modo: 'immagine', src: d.dataUrl }
+    if (d.tipo === 'application/pdf') return { modo: 'iframe', src: d.dataUrl }
+  }
+  return null
+}
+
 export function Documenti() {
   const { items, remove } = useCollection<Documento>('documenti')
-  const { uploadDoc, createDoc } = useData()
+  const { uploadDoc, createDoc, renameDoc } = useData()
   const { message } = AntApp.useApp()
   const [caricando, setCaricando] = useState(false)
   const [q, setQ] = useState('')
@@ -58,6 +82,9 @@ export function Documenti() {
   const [tipoNuovo, setTipoNuovo] = useState<TipoNuovo | null>(null)
   const [nomeNuovo, setNomeNuovo] = useState('')
   const [creando, setCreando] = useState(false)
+  const [anteprima, setAnteprima] = useState<Documento | null>(null)
+  const [daRinominare, setDaRinominare] = useState<Documento | null>(null)
+  const [nomeRinomina, setNomeRinomina] = useState('')
 
   const documenti = useMemo(
     () =>
@@ -97,6 +124,16 @@ export function Documenti() {
       a.download = d.nome
       a.click()
     }
+  }
+
+  function rinomina() {
+    const nome = nomeRinomina.trim()
+    if (!daRinominare || !nome) return
+    if (nome !== daRinominare.nome) {
+      renameDoc(daRinominare, nome)
+      message.success('Nome aggiornato.')
+    }
+    setDaRinominare(null)
   }
 
   const uploadButton = (
@@ -174,6 +211,14 @@ export function Documenti() {
             renderItem={(d) => (
               <List.Item
                 actions={[
+                  anteprimaDi(d) && (
+                    <Button
+                      key="preview"
+                      type="text"
+                      icon={<EyeOutlined />}
+                      onClick={() => setAnteprima(d)}
+                    />
+                  ),
                   (d.url || d.dataUrl) && (
                     <Button
                       key="open"
@@ -182,6 +227,15 @@ export function Documenti() {
                       onClick={() => apri(d)}
                     />
                   ),
+                  <Button
+                    key="ren"
+                    type="text"
+                    icon={<EditOutlined />}
+                    onClick={() => {
+                      setNomeRinomina(d.nome)
+                      setDaRinominare(d)
+                    }}
+                  />,
                   <Popconfirm
                     key="del"
                     title={`Eliminare ${d.nome}?`}
@@ -196,7 +250,15 @@ export function Documenti() {
               >
                 <List.Item.Meta
                   avatar={iconaDoc(d)}
-                  title={d.nome}
+                  title={
+                    anteprimaDi(d) ? (
+                      <Typography.Link onClick={() => setAnteprima(d)}>{d.nome}</Typography.Link>
+                    ) : d.url || d.dataUrl ? (
+                      <Typography.Link onClick={() => apri(d)}>{d.nome}</Typography.Link>
+                    ) : (
+                      d.nome
+                    )
+                  }
                   description={
                     <Typography.Text type="secondary">
                       {isGoogleFile(d)
@@ -229,6 +291,74 @@ export function Documenti() {
           onChange={(e) => setNomeNuovo(e.target.value)}
           onPressEnter={crea}
         />
+      </Modal>
+
+      <Modal
+        title="Rinomina documento"
+        open={daRinominare !== null}
+        onCancel={() => setDaRinominare(null)}
+        onOk={rinomina}
+        okText="Salva"
+        cancelText="Annulla"
+        okButtonProps={{ disabled: !nomeRinomina.trim() }}
+        maskClosable={false}
+        destroyOnHidden
+      >
+        <Input
+          autoFocus
+          value={nomeRinomina}
+          onChange={(e) => setNomeRinomina(e.target.value)}
+          onPressEnter={rinomina}
+        />
+      </Modal>
+
+      <Modal
+        title={
+          anteprima && (
+            <span style={{ overflowWrap: 'anywhere', paddingRight: 24, display: 'block' }}>
+              {anteprima.nome}
+            </span>
+          )
+        }
+        open={anteprima !== null}
+        onCancel={() => setAnteprima(null)}
+        footer={
+          anteprima && (
+            <Button
+              type="primary"
+              icon={anteprima.url ? <ExportOutlined /> : <DownloadOutlined />}
+              onClick={() => apri(anteprima)}
+            >
+              {isGoogleFile(anteprima)
+                ? 'Apri per modificare'
+                : anteprima.url
+                  ? 'Apri sul Drive'
+                  : 'Scarica'}
+            </Button>
+          )
+        }
+        width="min(920px, calc(100vw - 32px))"
+        destroyOnHidden
+      >
+        {anteprima &&
+          (() => {
+            const vista = anteprimaDi(anteprima)
+            if (!vista) return null
+            return vista.modo === 'immagine' ? (
+              <img
+                src={vista.src}
+                alt={anteprima.nome}
+                style={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', margin: '0 auto' }}
+              />
+            ) : (
+              <iframe
+                src={vista.src}
+                title={anteprima.nome}
+                style={{ width: '100%', height: '70vh', border: 0 }}
+                allow="autoplay"
+              />
+            )
+          })()}
       </Modal>
     </>
   )

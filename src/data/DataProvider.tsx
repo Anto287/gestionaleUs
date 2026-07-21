@@ -27,6 +27,8 @@ interface DataValue {
   uploadDoc: (file: File) => Promise<void>
   /** Crea un Documento o Foglio Google nella cartella Documenti. */
   createDoc: (nome: string, tipo: 'documento' | 'foglio') => Promise<store.DocMeta>
+  /** Rinomina un documento: il registro subito, e anche il file vero sul Drive. */
+  renameDoc: (doc: store.DocMeta, nome: string) => void
 }
 
 const DataContext = createContext<DataValue | null>(null)
@@ -166,12 +168,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [attiva],
   )
 
+  const renameDoc = useCallback(
+    (doc: store.DocMeta, nome: string) => {
+      update('documenti', doc.id, { nome })
+      // il file vero: nel link del Drive c'è l'id del file, più affidabile dell'id del record
+      const fileId = doc.url?.match(/\/d\/([\w-]+)/)?.[1] ?? doc.id
+      store.renameDoc(fileId, nome).catch(fallita)
+    },
+    [update, fallita],
+  )
+
   if (stato === 'loading') return <DriveSplash />
   if (stato === 'error')
     return <DriveSplash errore={erroreCaricamento} onRiprova={() => setTentativo((t) => t + 1)} />
 
   return (
-    <DataContext.Provider value={{ getItems, add, update, remove, restore, replaceAll, uploadDoc, createDoc }}>
+    <DataContext.Provider
+      value={{ getItems, add, update, remove, restore, replaceAll, uploadDoc, createDoc, renameDoc }}
+    >
       {erroreSync && (
         <Alert
           type="warning"

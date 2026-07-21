@@ -185,7 +185,7 @@ export function Dashboard() {
     ? `Prossimo impegno: ${prossima.avversario ?? 'prossima gara'}${prossima.data ? ' · ' + formatData(prossima.data, true) : ''}`
     : ultimoAllenamento
       ? `Ultimo allenamento: ${formatData(ultimoAllenamento, true)}`
-      : 'Inizia aggiungendo i giocatori alla rosa.'
+      : ''
 
   return (
     <>
@@ -196,9 +196,11 @@ export function Dashboard() {
             {config.clubName}
           </Title>
           <span className="page-band" aria-hidden />
-          <Text type="secondary" className="page-sub">
-            {sottotitolo}
-          </Text>
+          {sottotitolo && (
+            <Text type="secondary" className="page-sub">
+              {sottotitolo}
+            </Text>
+          )}
         </div>
       </div>
 
@@ -256,11 +258,10 @@ export function Dashboard() {
 
       <Card
         title="Da fare"
-        style={{ marginBottom: 20, marginTop: 8 }}
+        style={{ marginBottom: 20, marginTop: 16 }}
         styles={{ body: { padding: daFare.length || promemoriaOrdinati.length ? '4px 0' : 20 } }}
         extra={
           <Button
-            size="small"
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {

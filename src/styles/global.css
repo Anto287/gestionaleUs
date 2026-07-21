@@ -1186,6 +1186,18 @@ body {
   }
 }
 
+/* ---------- Documenti ---------- */
+
+/* i nomi lunghi vanno a capo invece di uscire dalla riga */
+.documenti-list .ant-list-item-meta,
+.documenti-list .ant-list-item-meta-content {
+  min-width: 0;
+}
+.documenti-list .ant-list-item-meta-title {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 /* ---------- Caricamento ---------- */
 
 .drive-splash {
