@@ -40,7 +40,7 @@ import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { isGiocatore } from '../lib/categoria'
-import { COLORI } from '../lib/chart'
+import { coloreAffluenza } from '../lib/chart'
 import { AffluenzaChart, type TipoAffluenza } from './allenamenti/AffluenzaChart'
 import { ClassificaPresenze, esportaClassificaPdf, type RigaClassifica } from './allenamenti/classifica'
 import type { Allenamento, Giocatore } from '../types'
@@ -53,12 +53,6 @@ function oggiIso() {
 function labelBreve(iso: string) {
   const [, m, d] = iso.split('-')
   return d && m ? `${d}/${m}` : iso
-}
-/** verde se affluenza alta, oro se media, rosso se bassa */
-function coloreAffluenza(perc: number) {
-  if (perc >= 70) return COLORI.verde
-  if (perc >= 40) return COLORI.oro
-  return COLORI.rosso
 }
 
 /** I giorni della settimana per le sedute ricorrenti (day() di dayjs: 0 = domenica). */
@@ -99,6 +93,9 @@ export function Allenamenti() {
   )
 
   const sedute = useMemo(() => [...items].sort((a, b) => b.data.localeCompare(a.data)), [items])
+
+  // al massimo una seduta al giorno: le date già occupate non si possono riusare
+  const dateOccupate = useMemo(() => new Set(items.map((s) => s.data)), [items])
 
   const presenti = (s: Allenamento) => rosa.filter((g) => s.presenze[g.id]).length
   const percSeduta = (s: Allenamento) => (rosa.length ? Math.round((presenti(s) / rosa.length) * 100) : 0)
@@ -154,9 +151,19 @@ export function Allenamenti() {
     setApertaId(id)
   }
 
+  /** Crea la seduta e apre subito le presenze, così i giocatori si segnano al volo. */
   function creaSeduta(valori: { data: string; note?: string }) {
-    add({ data: valori.data, note: valori.note?.trim() || undefined, presenze: {} })
+    const esistente = items.find((s) => s.data === valori.data)
+    if (esistente) {
+      // una sola seduta al giorno: se esiste già, si apre quella
+      message.info(`Per il ${formatData(valori.data, true)} c'è già una seduta: la apro.`)
+      setModaleNuova(false)
+      apriSeduta(esistente.id)
+      return
+    }
+    const id = add({ data: valori.data, note: valori.note?.trim() || undefined, presenze: {} })
     setModaleNuova(false)
+    apriSeduta(id)
   }
 
   /** Crea in un colpo solo le sedute ricorrenti (es. ogni martedì e giovedì). */
@@ -268,47 +275,53 @@ export function Allenamenti() {
         </Col>
       </Row>
 
+      {/* Grafico e classifica affiancati sui grandi schermi; la classifica scorre
+          dentro la sua card così la pagina non si allunga con tanti giocatori */}
       {sedute.length > 0 && (
-        <Card
-          title="Affluenza per seduta"
-          style={{ marginBottom: 16 }}
-          extra={
-            <Space wrap>
-              <Select
-                size="small"
-                value={periodoChart}
-                onChange={(v) => setPeriodoChart(v as PeriodoChart)}
-                options={OPZIONI_PERIODO}
-                style={{ width: 150 }}
-              />
-              <Segmented
-                size="small"
-                value={tipoChart}
-                onChange={(v) => setTipoChart(v as TipoAffluenza)}
-                options={[
-                  { label: 'Barre', value: 'barre' },
-                  { label: 'Andamento', value: 'linea' },
-                ]}
-              />
-            </Space>
-          }
-        >
-          <AffluenzaChart dati={datiChart} media={mediaChart} scala={rosa.length} tipo={tipoChart} />
-        </Card>
-      )}
-
-      {sedute.length > 0 && (
-        <Card
-          title="Classifica presenze"
-          style={{ marginBottom: 16 }}
-          extra={
-            <Button icon={<FilePdfOutlined />} onClick={esporta} loading={esportando}>
-              Esporta PDF
-            </Button>
-          }
-        >
-          <ClassificaPresenze righe={classifica} totale={sedute.length} />
-        </Card>
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+          <Col xs={24} lg={14}>
+            <Card
+              title="Affluenza per seduta"
+              style={{ height: '100%' }}
+              extra={
+                <Space wrap>
+                  <Select
+                    size="small"
+                    value={periodoChart}
+                    onChange={(v) => setPeriodoChart(v as PeriodoChart)}
+                    options={OPZIONI_PERIODO}
+                    style={{ width: 150 }}
+                  />
+                  <Segmented
+                    size="small"
+                    value={tipoChart}
+                    onChange={(v) => setTipoChart(v as TipoAffluenza)}
+                    options={[
+                      { label: 'Barre', value: 'barre' },
+                      { label: 'Andamento', value: 'linea' },
+                    ]}
+                  />
+                </Space>
+              }
+            >
+              <AffluenzaChart dati={datiChart} media={mediaChart} scala={rosa.length} tipo={tipoChart} />
+            </Card>
+          </Col>
+          <Col xs={24} lg={10}>
+            <Card
+              title="Classifica presenze"
+              style={{ height: '100%' }}
+              styles={{ body: { maxHeight: 308, overflowY: 'auto' } }}
+              extra={
+                <Button size="small" icon={<FilePdfOutlined />} onClick={esporta} loading={esportando}>
+                  PDF
+                </Button>
+              }
+            >
+              <ClassificaPresenze righe={classifica} totale={sedute.length} />
+            </Card>
+          </Col>
+        </Row>
       )}
 
       <Card title="Sedute" styles={{ body: { padding: 0 } }}>
@@ -351,7 +364,7 @@ export function Allenamenti() {
         open={modaleNuova}
         onCancel={() => setModaleNuova(false)}
         onOk={() => form.submit()}
-        okText="Crea seduta"
+        okText="Crea e segna presenze"
         cancelText="Annulla"
         maskClosable={false}
         forceRender
@@ -363,12 +376,16 @@ export function Allenamenti() {
             rules={[{ required: true, message: 'Scegli la data' }]}
             {...propsCampoData}
           >
-            <DataPicker />
+            <DataPicker disabledDate={(d) => dateOccupate.has(d.format('YYYY-MM-DD'))} />
           </Form.Item>
           <Form.Item label="Note (facoltative)" name="note">
             <Input placeholder="es. amichevole, seduta atletica…" autoComplete="off" />
           </Form.Item>
         </Form>
+        <Text type="secondary" style={{ fontSize: 12.5 }}>
+          Appena creata si apre l'elenco dei giocatori per segnare chi c'è. Si può fare una sola
+          seduta al giorno: le date già occupate sono disabilitate.
+        </Text>
       </Modal>
 
       {/* Sedute ricorrenti */}
@@ -437,9 +454,19 @@ export function Allenamenti() {
               <DataPicker
                 allowClear={false}
                 value={sessioneAperta.data ? dayjs(sessioneAperta.data) : null}
-                onChange={(d) =>
-                  update(sessioneAperta.id, { data: d ? d.format('YYYY-MM-DD') : sessioneAperta.data })
-                }
+                disabledDate={(d) => {
+                  const iso = d.format('YYYY-MM-DD')
+                  return iso !== sessioneAperta.data && dateOccupate.has(iso)
+                }}
+                onChange={(d) => {
+                  if (!d) return
+                  const iso = d.format('YYYY-MM-DD')
+                  if (iso !== sessioneAperta.data && dateOccupate.has(iso)) {
+                    message.error(`Per il ${formatData(iso, true)} c'è già una seduta.`)
+                    return
+                  }
+                  update(sessioneAperta.id, { data: iso })
+                }}
                 style={{ width: 170 }}
               />
               <Input

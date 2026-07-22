@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
+  Col,
   Empty,
   Form,
   Grid,
@@ -10,10 +11,12 @@ import {
   InputNumber,
   Modal,
   Popconfirm,
+  Row,
   Select,
   Switch,
   Table,
   Tag,
+  Typography,
 } from 'antd'
 import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
@@ -23,7 +26,10 @@ import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
+import { REGEX_ORA } from '../lib/partita'
 import type { Partita, Torneo } from '../types'
+
+const { Text } = Typography
 
 function oggiIso() {
   return new Date().toISOString().slice(0, 10)
@@ -124,7 +130,7 @@ export function Partite() {
     note?: string
   }) {
     const giocata = v.giocata !== false
-    add({
+    const id = add({
       data: v.data,
       ora: v.ora?.trim() || undefined,
       avversario: v.avversario.trim(),
@@ -140,6 +146,9 @@ export function Partite() {
       espulsi: [],
     })
     setModale(false)
+    // per una partita giocata si passa subito al dettaglio, così formazione,
+    // marcatori e cartellini si segnano al volo
+    if (giocata) navigate(`/partite/${id}`)
   }
 
   const columns = [
@@ -388,23 +397,33 @@ export function Partite() {
         open={modale}
         onCancel={() => setModale(false)}
         onOk={() => form.submit()}
-        okText="Crea"
+        okText={giocataForm !== false ? 'Crea e compila' : 'Crea'}
         cancelText="Annulla"
         maskClosable={false}
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={salva} requiredMark={false}>
-          <Form.Item
-            label="Data"
-            name="data"
-            rules={[{ required: true, message: 'Scegli la data' }]}
-            {...propsCampoData}
-          >
-            <DataPicker />
-          </Form.Item>
-          <Form.Item label="Ora (facoltativa)" name="ora">
-            <Input placeholder="es. 15:30" autoComplete="off" />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={14}>
+              <Form.Item
+                label="Data"
+                name="data"
+                rules={[{ required: true, message: 'Scegli la data' }]}
+                {...propsCampoData}
+              >
+                <DataPicker />
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Form.Item
+                label="Ora (facoltativa)"
+                name="ora"
+                rules={[{ pattern: REGEX_ORA, message: 'Usa il formato 15:30' }]}
+              >
+                <Input placeholder="es. 15:30" autoComplete="off" />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item
             label="Avversario"
             name="avversario"
@@ -438,19 +457,28 @@ export function Partite() {
             <Switch />
           </Form.Item>
           {giocataForm !== false && (
-            <>
-              <Form.Item label="Gol fatti" name="golFatti">
-                <InputNumber min={0} style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item label="Gol subiti" name="golSubiti">
-                <InputNumber min={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </>
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item label="Gol fatti" name="golFatti">
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Gol subiti" name="golSubiti">
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
           )}
           <Form.Item label="Note (facoltative)" name="note">
             <Input autoComplete="off" />
           </Form.Item>
         </Form>
+        {giocataForm !== false && (
+          <Text type="secondary" style={{ fontSize: 12.5 }}>
+            Appena creata si apre il dettaglio, dove segni formazione, marcatori e cartellini.
+          </Text>
+        )}
       </Modal>
     </>
   )

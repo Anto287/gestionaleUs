@@ -73,6 +73,9 @@ export function PdfExporter({
     tableHtml.style.top = '0'
     tableHtml.style.width = '210mm'
     tableHtml.style.fontFamily = 'Arial, sans-serif'
+    // colore esplicito: senza, il foglio eredita l'inchiostro del tema attivo
+    // (in tema scuro è panna e sulla carta bianca il testo sparisce)
+    tableHtml.style.color = '#000'
 
     tableHtml.innerHTML = `
       <div style="position: relative; text-align: center; margin-bottom: 25px;">

@@ -8,6 +8,7 @@ import 'dayjs/locale/it'
 import 'antd/dist/reset.css'
 
 dayjs.locale('it')
+import './pwa'
 import { AuthProvider } from './auth/AuthContext'
 import { TemaProvider } from './theme/TemaProvider'
 import './styles/global.css'

@@ -6,7 +6,7 @@ import type { Divisa } from '../../types'
 
 const { Text } = Typography
 
-type Bozza = Pick<Divisa, 'nome' | 'coloreMaglia' | 'colorePantaloncini' | 'coloreCalzettoni'>
+type Bozza = Pick<Divisa, 'nome' | 'coloreMaglia' | 'colorePantaloncini' | 'coloreCalzettoni' | 'note'>
 
 /** Un pallino colorato + testo, o un trattino se il colore non è indicato. */
 function Colore({ valore }: { valore?: string }) {
@@ -46,12 +46,19 @@ export function DivisaManager() {
 
   const nomeCol = {
     title: 'Divisa',
-    dataIndex: 'nome',
+    key: 'nome',
     sorter: (a: Divisa, b: Divisa) => (a.nome ?? '').localeCompare(b.nome ?? ''),
-    render: (nome: string) => (
-      <span className="tronca" style={{ maxWidth: 220, fontWeight: 600 }} title={nome}>
-        {nome}
-      </span>
+    render: (_: unknown, d: Divisa) => (
+      <div style={{ maxWidth: 220 }}>
+        <div className="tronca" style={{ maxWidth: 220, fontWeight: 600 }} title={d.nome}>
+          {d.nome}
+        </div>
+        {d.note && (
+          <div className="tronca" style={{ maxWidth: 220, fontSize: 12, color: 'var(--testo-2)' }} title={d.note}>
+            {d.note}
+          </div>
+        )}
+      </div>
     ),
   }
   const azioniCol = {
@@ -154,6 +161,9 @@ export function DivisaManager() {
           </Form.Item>
           <Form.Item label="Colore calzettoni" name="coloreCalzettoni">
             <Input placeholder="es. Gialli" />
+          </Form.Item>
+          <Form.Item label="Note (facoltative)" name="note">
+            <Input.TextArea rows={2} placeholder="es. taglie disponibili, dove sono riposte…" />
           </Form.Item>
         </Form>
       </Modal>

@@ -20,3 +20,10 @@ export const COLORI = {
     return scuro() ? '#a89c8c' : '#9a948a'
   },
 }
+
+/** verde se affluenza alta, oro se media, rosso se bassa */
+export function coloreAffluenza(perc: number) {
+  if (perc >= 70) return COLORI.verde
+  if (perc >= 40) return COLORI.oro
+  return COLORI.rosso
+}

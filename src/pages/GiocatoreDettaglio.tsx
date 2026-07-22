@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   App,
@@ -22,6 +22,7 @@ import {
   Space,
   Switch,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd'
 import {
@@ -31,8 +32,10 @@ import {
   EditOutlined,
   DeleteOutlined,
   EuroOutlined,
+  LeftOutlined,
   MedicineBoxOutlined,
   PlusOutlined,
+  RightOutlined,
   StopOutlined,
   ThunderboltOutlined,
   TrophyOutlined,
@@ -42,7 +45,7 @@ import { StatCard } from '../components/StatCard'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { coloreRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
+import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
 import { statisticheGiocatore } from '../lib/statistiche'
@@ -77,6 +80,35 @@ export function GiocatoreDettaglio() {
   const infortunatoForm = Form.useWatch('infortunato', form)
 
   const g = items.find((x) => x.id === id)
+
+  // frecce avanti/indietro: si scorre nello stesso ordine della Rosa
+  // (reparto del ruolo, poi cognome)
+  const ordinati = useMemo(
+    () =>
+      [...items].sort(
+        (a, b) =>
+          ordineRuolo(a.ruoloPreferito) - ordineRuolo(b.ruoloPreferito) ||
+          a.cognome.localeCompare(b.cognome),
+      ),
+    [items],
+  )
+  const posizione = ordinati.findIndex((x) => x.id === id)
+  const precedente = posizione > 0 ? ordinati[posizione - 1] : undefined
+  const successivo =
+    posizione >= 0 && posizione < ordinati.length - 1 ? ordinati[posizione + 1] : undefined
+
+  // frecce della tastiera (fuori da campi di testo e con i modali chiusi)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (modale || modaleVersamento) return
+      const t = e.target as HTMLElement | null
+      if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) return
+      if (e.key === 'ArrowLeft' && precedente) navigate(`/rosa/${precedente.id}`)
+      if (e.key === 'ArrowRight' && successivo) navigate(`/rosa/${successivo.id}`)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [modale, modaleVersamento, precedente, successivo, navigate])
 
   const presenze = useMemo(() => {
     if (!g) return { fatte: 0, totali: 0 }
@@ -180,14 +212,45 @@ export function GiocatoreDettaglio() {
 
   return (
     <>
-      <Button
-        type="text"
-        icon={<ArrowLeftOutlined />}
-        onClick={() => navigate('/rosa')}
-        style={{ marginBottom: 12, paddingLeft: 0 }}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 12,
+        }}
       >
-        Rosa
-      </Button>
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate('/rosa')}
+          style={{ paddingLeft: 0 }}
+        >
+          Rosa
+        </Button>
+        <Space size={6}>
+          <Text type="secondary" style={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
+            {posizione + 1} di {ordinati.length}
+          </Text>
+          <Tooltip title={precedente ? `${precedente.cognome} ${precedente.nome}` : ''}>
+            <Button
+              icon={<LeftOutlined />}
+              disabled={!precedente}
+              aria-label="Giocatore precedente"
+              onClick={() => precedente && navigate(`/rosa/${precedente.id}`)}
+            />
+          </Tooltip>
+          <Tooltip title={successivo ? `${successivo.cognome} ${successivo.nome}` : ''}>
+            <Button
+              icon={<RightOutlined />}
+              disabled={!successivo}
+              aria-label="Giocatore successivo"
+              onClick={() => successivo && navigate(`/rosa/${successivo.id}`)}
+            />
+          </Tooltip>
+        </Space>
+      </div>
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>

@@ -36,6 +36,7 @@ import { statoScadenza, giorniAllaScadenza, GIORNI_ALLARME } from '../../lib/sca
 import { sottoScorta } from '../../lib/scorta'
 import { esportaExcel } from '../../lib/excel'
 import { compilaVoce } from '../../lib/compilaVoce'
+import { CopiaLista } from './CopiaLista'
 import type { VoceMagazzino } from '../../types'
 
 const { Text } = Typography
@@ -335,6 +336,12 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
         </Space>
         {items.length > 0 && (
           <Space wrap>
+            <CopiaLista
+              items={ordinati}
+              categorie={categorie}
+              conQuantita={conQuantita}
+              conScadenza={conScadenza}
+            />
             <Button icon={<FileExcelOutlined />} onClick={esporta}>
               Esporta Excel
             </Button>
@@ -524,12 +531,23 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                   danger={dettatura.ascolto}
                   type={dettatura.ascolto ? 'primary' : 'default'}
                   className={dettatura.ascolto ? 'mic-attivo' : undefined}
-                  onClick={() => (dettatura.ascolto ? dettatura.ferma() : dettatura.avvia())}
+                  onClick={() => (dettatura.ascolto ? dettatura.ferma() : dettatura.avvia(rapida))}
                   aria-label={dettatura.ascolto ? 'Ferma la dettatura' : 'Detta a voce'}
-                  title={dettatura.ascolto ? 'Sto ascoltando: tocca per fermare' : 'Detta a voce'}
+                  title={
+                    dettatura.ascolto
+                      ? 'Sto ascoltando: tocca per fermare'
+                      : rapida.trim()
+                        ? 'Detta a voce: si aggiunge a quello che c’è già'
+                        : 'Detta a voce'
+                  }
                 />
               )}
             </Space.Compact>
+            {dettatura.errore && (
+              <Text type="danger" style={{ display: 'block', marginTop: 6, fontSize: 12.5 }}>
+                {dettatura.errore}
+              </Text>
+            )}
             {anteprimaRapida && (
               <Space wrap size={4} style={{ marginTop: 8 }}>
                 {anteprimaRapida.nome ||
@@ -561,7 +579,8 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
               </Space>
             )}
             <Text type="secondary" style={{ display: 'block', marginTop: 6, fontSize: 12 }}>
-              Capisco {cosaCapisco}; puoi sempre correggere i campi a mano.
+              Capisco {cosaCapisco}; puoi sempre correggere i campi a mano. Se ridetti col
+              microfono, quello che dici si aggiunge in coda.
             </Text>
           </div>
         )}

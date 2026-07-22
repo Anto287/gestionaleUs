@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Col, Empty, Row, Select, Space, Statistic, Tag, Typography } from 'antd'
+import { Button, Card, Col, Empty, Row, Select, Space, Statistic, Tabs, Tag, Typography } from 'antd'
 import {
   Bar,
   BarChart,
@@ -19,6 +19,7 @@ import { esitoPartita } from '../lib/social'
 import { partiteConPresenze, statisticheGiocatore } from '../lib/statistiche'
 import { isGiocatore } from '../lib/categoria'
 import { ClassificaPresenze, type RigaClassifica } from './allenamenti/classifica'
+import { AlboDoro } from './statistiche/AlboDoro'
 import { esportaReportStagione } from './statistiche/report'
 import type { Allenamento, Giocatore, Movimento, Partita, Torneo } from '../types'
 
@@ -41,6 +42,7 @@ export function Statistiche() {
   const [esportando, setEsportando] = useState(false)
   // 'tutte' oppure l'id di un torneo: tutte le statistiche si restringono
   const [competizione, setCompetizione] = useState<string>('tutte')
+  const [tab, setTab] = useState<'stagione' | 'albo'>('stagione')
 
   const giocate = useMemo(
     () =>
@@ -193,55 +195,18 @@ export function Statistiche() {
     }
   }
 
-  if (giocate.length === 0 && competizione === 'tutte') {
-    return (
-      <>
-        <PageHeader titolo="Statistiche" />
-        <Empty description="Le statistiche arrivano dalle partite: registra i primi risultati nella pagina Partite." />
-      </>
-    )
-  }
-
   const diff = record.gf - record.gs
 
-  const header = (
-    <PageHeader
-      titolo="Statistiche"
-      sottotitolo={`${giocate.length} partite giocate nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`}
-      azioni={
-        <Space wrap>
-          {torneiUsati.length > 0 && (
-            <Select
-              value={competizione}
-              onChange={setCompetizione}
-              style={{ minWidth: 170 }}
-              options={[
-                { value: 'tutte', label: 'Tutte le competizioni' },
-                ...torneiUsati.map((t) => ({ value: t.id, label: t.nome })),
-              ]}
-            />
-          )}
-          <Button icon={<FilePdfOutlined />} onClick={esporta} loading={esportando}>
-            Report stagione (PDF)
-          </Button>
-        </Space>
+  const contenutoStagione = giocate.length === 0 ? (
+    <Empty
+      description={
+        competizione === 'tutte'
+          ? 'Le statistiche arrivano dalle partite: registra i primi risultati nella pagina Partite.'
+          : 'Nessuna partita giocata in questa competizione.'
       }
     />
-  )
-
-  if (giocate.length === 0) {
-    return (
-      <>
-        {header}
-        <Empty description="Nessuna partita giocata in questa competizione." />
-      </>
-    )
-  }
-
-  return (
+  ) : (
     <>
-      {header}
-
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
           <Card className="stat-card">
@@ -392,6 +357,51 @@ export function Statistiche() {
           </Space>
         </Card>
       )}
+    </>
+  )
+
+  return (
+    <>
+      <PageHeader
+        titolo="Statistiche"
+        sottotitolo={
+          tab === 'albo'
+            ? "Record e campioni di tutte le stagioni"
+            : giocate.length
+              ? `${giocate.length} partite giocate nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`
+              : undefined
+        }
+        azioni={
+          tab === 'stagione' && (
+            <Space wrap>
+              {torneiUsati.length > 0 && (
+                <Select
+                  value={competizione}
+                  onChange={setCompetizione}
+                  style={{ minWidth: 170 }}
+                  options={[
+                    { value: 'tutte', label: 'Tutte le competizioni' },
+                    ...torneiUsati.map((t) => ({ value: t.id, label: t.nome })),
+                  ]}
+                />
+              )}
+              {giocate.length > 0 && (
+                <Button icon={<FilePdfOutlined />} onClick={esporta} loading={esportando}>
+                  Report stagione (PDF)
+                </Button>
+              )}
+            </Space>
+          )
+        }
+      />
+      <Tabs
+        activeKey={tab}
+        onChange={(k) => setTab(k as 'stagione' | 'albo')}
+        items={[
+          { key: 'stagione', label: `Stagione ${attiva}`, children: contenutoStagione },
+          { key: 'albo', label: "🏆 Albo d'oro", children: <AlboDoro /> },
+        ]}
+      />
     </>
   )
 }

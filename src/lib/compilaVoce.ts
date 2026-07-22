@@ -102,6 +102,41 @@ const NUMERI_PAROLA: Record<string, number> = {
   ottanta: 80,
   novanta: 90,
   cento: 100,
+  // modi di dire comuni quando si detta la spesa
+  'un paio': 2,
+  'mezza dozzina': 6,
+  'una dozzina': 12,
+}
+// numeri composti 21–99 ("ventiquattro", "trentotto", "quarantuno"…):
+// davanti a "uno" e "otto" la decina perde la vocale finale
+{
+  const DECINE: [string, number][] = [
+    ['venti', 20],
+    ['trenta', 30],
+    ['quaranta', 40],
+    ['cinquanta', 50],
+    ['sessanta', 60],
+    ['settanta', 70],
+    ['ottanta', 80],
+    ['novanta', 90],
+  ]
+  const UNITA_NUM: [string, number][] = [
+    ['uno', 1],
+    ['due', 2],
+    ['tre', 3],
+    ['tré', 3],
+    ['quattro', 4],
+    ['cinque', 5],
+    ['sei', 6],
+    ['sette', 7],
+    ['otto', 8],
+    ['nove', 9],
+  ]
+  for (const [decina, d] of DECINE)
+    for (const [unita, u] of UNITA_NUM) {
+      const parola = unita === 'uno' || unita === 'otto' ? decina.slice(0, -1) + unita : decina + unita
+      NUMERI_PAROLA[parola] = d + u
+    }
 }
 // nel regex le parole più lunghe vanno prima ("settanta" prima di "sette")
 const PAROLA_NUM_RE = Object.keys(NUMERI_PAROLA)
@@ -126,12 +161,18 @@ const FORMATI_DATA: { re: RegExp; iso: (m: RegExpMatchArray) => string | undefin
     iso: (m) => isoData(Number(m[3]), Number(m[2]), Number(m[1])),
   },
   {
-    // 28 agosto 2026, 28 ago, 28 agosto (anche "1 settembre" da "primo settembre")
-    re: new RegExp(`${PRIMA_DELLA_DATA}(\\d{1,2})\\s+(${MESE_RE})\\b\\.?\\s*(\\d{4}|\\d{2}\\b)?`, 'i'),
-    iso: (m) =>
-      m[3]
-        ? isoData(Number(m[3]), numeroMese(m[2]), Number(m[1]))
-        : annoAutomatico(numeroMese(m[2]), Number(m[1])),
+    // 28 agosto 2026, 28 ago, 28 agosto — anche col giorno in lettere,
+    // come arriva a volte dalla dettatura ("ventotto agosto")
+    re: new RegExp(
+      `${PRIMA_DELLA_DATA}(\\d{1,2}|${PAROLA_NUM_RE})\\s+(${MESE_RE})\\b\\.?\\s*(\\d{4}|\\d{2}\\b)?`,
+      'i',
+    ),
+    iso: (m) => {
+      const giorno = daParolaONumero(m[1])
+      return m[3]
+        ? isoData(Number(m[3]), numeroMese(m[2]), giorno)
+        : annoAutomatico(numeroMese(m[2]), giorno)
+    },
   },
   {
     // fine agosto, a fine agosto 2027 → ultimo giorno del mese
@@ -168,9 +209,20 @@ const FORMATI_DATA: { re: RegExp; iso: (m: RegExpMatchArray) => string | undefin
     },
   },
   {
-    // domani / dopodomani
-    re: new RegExp(`${PRIMA_DELLA_DATA}\\b(domani|dopodomani)\\b`, 'i'),
-    iso: (m) => dayjs().add(m[1].toLowerCase() === 'domani' ? 1 : 2, 'day').format('YYYY-MM-DD'),
+    // domani / dopodomani (anche "dopo domani" staccato, tipico della dettatura)
+    re: new RegExp(`${PRIMA_DELLA_DATA}\\b(dopodomani|dopo\\s+domani|domani)\\b`, 'i'),
+    iso: (m) => dayjs().add(/dopo/i.test(m[1]) ? 2 : 1, 'day').format('YYYY-MM-DD'),
+  },
+  {
+    // la settimana prossima / il mese prossimo / l'anno prossimo
+    // (la dettatura scrive spesso "l anno" senza apostrofo)
+    re: new RegExp(`${PRIMA_DELLA_DATA}(?:il\\s+|la\\s+|l['’]?\\s*)?(settimana|mese|anno)\\s+prossim[oa]`, 'i'),
+    iso: (m) => {
+      const unita = m[1].toLowerCase()
+      return dayjs()
+        .add(1, unita === 'settimana' ? 'week' : unita === 'mese' ? 'month' : 'year')
+        .format('YYYY-MM-DD')
+    },
   },
   {
     // "scade nel 2027" (solo anno: serve la parola scadenza) → fine anno
@@ -292,6 +344,7 @@ export function compilaVoce(
   const nome = resto
     .replace(/\s{2,}/g, ' ')
     .replace(/^[\s,.;:\-–]+|[\s,.;:\-–]+$/g, '')
+    .replace(/\s+(?:che\s+)?scad\w*\s*$/i, '')
     .replace(/\s+(che|con|in|da|entro|per)$/i, '')
     .replace(/^(di|del|della|dei|delle|d'|il|lo|la|le|gli|i)\s+/i, '')
     .trim()

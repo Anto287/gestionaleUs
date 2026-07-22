@@ -173,6 +173,7 @@ export interface Divisa {
   coloreMaglia?: string
   colorePantaloncini?: string
   coloreCalzettoni?: string
+  note?: string
 }
 
 /**

@@ -20,6 +20,7 @@ const BAR: ConfigInventario = {
   categorie: ['Bevande', 'Cibo', 'Caffetteria', 'Materiale', 'Altro'],
   conQuantita: true,
   conScadenza: true,
+  conNote: true,
   vuotoText: 'Magazzino vuoto: aggiungi il primo articolo del bar.',
   conCompilazione: true,
   esempioCompilazione: 'es. "4 patatine chips che scadono il 28/08/2026"',
