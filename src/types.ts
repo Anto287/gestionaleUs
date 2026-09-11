@@ -261,3 +261,36 @@ export interface Documento {
   /** contenuto del file per download locale (modalità senza Drive) */
   dataUrl?: string
 }
+
+/**
+ * Una spesa divisa con un'altra società (campo, manutenzione, pulmino…).
+ *
+ * Si segna quanto è costata in tutto, chi l'ha anticipata e la percentuale a
+ * carico nostro: da lì l'app calcola chi deve dare quanto a chi. Finché non è
+ * saldata resta un credito (o un debito) verso quella società; al saldo può
+ * nascere il movimento gemello nei Conti, come per le quote dei giocatori.
+ */
+export interface SpesaCondivisa {
+  id: string
+  /** data della spesa ('YYYY-MM-DD') */
+  data: string
+  descrizione: string
+  /** l'altra società con cui è divisa */
+  societa: string
+  /** quanto è costata in tutto */
+  importo: number
+  /** chi ha tirato fuori i soldi: noi o l'altra società */
+  anticipataDa: 'noi' | 'loro'
+  /** percentuale a carico nostro (0–100); il resto è a carico loro */
+  percentuale: number
+  categoria?: string
+  note?: string
+  /** conto chiuso: nessuno deve più niente all'altro */
+  saldata?: boolean
+  /** quando è stato chiuso il conto ('YYYY-MM-DD') */
+  dataSaldo?: string
+  /** id del movimento creato nei Conti al saldo, per toglierlo insieme */
+  movimentoId?: string
+  /** scontrino o fattura, caricato nella cartella Documenti della stagione */
+  scontrino?: Documento
+}

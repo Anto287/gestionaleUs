@@ -12,6 +12,7 @@ import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
 import * as store from '../services/driveStore'
+import { preparaCaricamento } from '../lib/immagine'
 
 type Store = Record<string, Array<{ id: string }>>
 
@@ -24,7 +25,8 @@ interface DataValue {
   restore: (collection: string, item: { id: string }) => void
   /** Sostituisce l'intera raccolta (usato dall'import dei conti). */
   replaceAll: <T extends { id: string }>(collection: string, items: T[]) => void
-  uploadDoc: (file: File) => Promise<void>
+  /** Carica un file nella cartella Documenti della stagione (vedi sotto). */
+  uploadDoc: (file: File, nomeBase?: string) => Promise<store.DocMeta | undefined>
   /** Crea un Documento o Foglio Google nella cartella Documenti. */
   createDoc: (nome: string, tipo: 'documento' | 'foglio') => Promise<store.DocMeta>
   /** Rinomina un documento: il registro subito, e anche il file vero sul Drive. */
@@ -33,8 +35,9 @@ interface DataValue {
 
 const DataContext = createContext<DataValue | null>(null)
 
-// raccolte NON divise per stagione (la cassa è continua nel tempo)
-const COLLEZIONI_GLOBALI = new Set(['conti'])
+// raccolte NON divise per stagione: la cassa è continua nel tempo, e così
+// anche i conti in sospeso con le altre società
+const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise'])
 const SEASON_GLOBALE = 'globale'
 function seasonDi(collection: string, attiva: string): string {
   return COLLEZIONI_GLOBALI.has(collection) ? SEASON_GLOBALE : attiva
@@ -146,14 +149,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [attiva, fallita],
   )
 
+  /**
+   * Carica un file nella cartella Documenti della stagione.
+   *
+   * Con `nomeBase` il file prende quel nome (l'estensione la mette l'app) e,
+   * se è un'immagine, viene rimpicciolita prima di partire: è il caso degli
+   * allegati fotografati col telefono, come gli scontrini delle spese
+   * condivise. Senza, il file sale com'è e col suo nome.
+   */
   const uploadDoc = useCallback(
-    async (file: File) => {
+    async (file: File, nomeBase?: string): Promise<store.DocMeta | undefined> => {
       try {
-        const base64 = await leggiBase64(file)
-        const meta = await store.uploadDoc(attiva, file.name, file.type || 'application/octet-stream', base64)
+        const pronto = nomeBase
+          ? await preparaCaricamento(file)
+          : {
+              dataBase64: await leggiBase64(file),
+              tipo: file.type || 'application/octet-stream',
+              estensione: '',
+            }
+        const nome = nomeBase ? nomeBase + pronto.estensione : file.name
+        const meta = await store.uploadDoc(attiva, nome, pronto.tipo, pronto.dataBase64)
         setData((s) => ({ ...s, documenti: [...(s.documenti ?? []), meta] }))
+        return meta
       } catch (e) {
         fallita(e)
+        return undefined
       }
     },
     [attiva, fallita],

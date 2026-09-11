@@ -34,6 +34,7 @@ viaggia sempre nel corpo delle richieste POST, mai nell'URL.
 - **Distinte** — formazioni per la partita, stampabili
 - **Magazzino** — scorte del bar con soglia di riordino
 - **Conti** — entrate/uscite, saldo, insoluti (da incassare / da pagare)
+- **Spese condivise** — conti in comune con altre società (chi ha anticipato, percentuali, saldo)
 - **Documenti** — archivio file della società
 - **Archivio** — documenti (fronte/retro) e foto dei tesserati
 - **Impostazioni** — gestione delle stagioni
@@ -51,6 +52,24 @@ Ogni stagione tiene i suoi dati separati: la chiave di ogni raccolta è
 `<stagione>/<raccolta>` (es. `2026/27/allenamenti`). Sul Drive ogni stagione
 diventerà una cartella dedicata con un file per sezione. La logica sta in
 `src/season/SeasonContext.tsx`.
+
+## Spese condivise
+
+Le spese divise con un'altra società (campo, manutenzione, pulmino…) stanno in
+una sezione loro. Di ogni spesa si segna **quanto è costata in tutto**, **chi
+l'ha anticipata** e la **percentuale a carico nostro**: da lì l'app calcola chi
+deve dare quanto a chi e lo tiene aperto finché non si salda.
+
+- «Segna come saldata» chiede la data e, se vuoi, crea il **movimento gemello
+  nei Conti** (entrata se ci rimborsano, uscita se paghiamo noi). Riaprendo il
+  conto il movimento viene tolto, come per i versamenti delle quote.
+- Lo **scontrino** si può fotografare o caricare: finisce nella cartella
+  Documenti della stagione (rimpicciolito, se è una foto) con un nome
+  parlante, e si rivede dalla spesa con l'anteprima di stampa.
+- Come i Conti, le spese condivise **non sono divise per stagione**: un conto in
+  sospeso non deve sparire al cambio di annata. Sul Drive finiscono in una
+  cartella `globale` creata da sola. Per avere anche le colonne leggibili nel
+  foglio c'è il pezzo facoltativo `docs/apps-script-spese.gs`.
 
 ## Archivio tesserati
 

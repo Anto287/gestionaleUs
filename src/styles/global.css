@@ -1902,3 +1902,25 @@ body {
   align-items: flex-start;
   min-width: 0;
 }
+
+/* ---------- Spese condivise: riepilogo per società ---------- */
+
+.spese-societa {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spese-societa-riga {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.spese-societa-riga:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}

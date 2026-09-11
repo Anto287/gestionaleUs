@@ -16,6 +16,7 @@ import { Calendario } from './pages/Calendario'
 import { Statistiche } from './pages/Statistiche'
 import { Magazzino } from './pages/Magazzino'
 import { Conti } from './pages/Conti'
+import { Spese } from './pages/Spese'
 import { Documenti } from './pages/Documenti'
 import { Archivio } from './pages/Archivio'
 import { Impostazioni } from './pages/Impostazioni'
@@ -68,6 +69,7 @@ function App() {
           />
           <Route path="/magazzino" element={<Magazzino />} />
           <Route path="/conti" element={<Conti />} />
+          <Route path="/spese" element={<Spese />} />
           <Route path="/documenti" element={<Documenti />} />
           <Route path="/archivio" element={<Archivio />} />
           <Route path="/impostazioni" element={<Impostazioni />} />
