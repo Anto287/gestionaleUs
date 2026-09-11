@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const esci = useCallback(() => {
     if (driveMode) store.clearSecret()
     else localStorage.removeItem(GATE_KEY)
+    // le copie locali dell'archivio sono documenti d'identità: via anche quelle
+    store.pulisciCacheArchivio()
     setSbloccato(false)
   }, [])
 

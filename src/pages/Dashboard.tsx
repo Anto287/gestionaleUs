@@ -14,6 +14,7 @@ import {
   RightOutlined,
   RiseOutlined,
   SafetyCertificateOutlined,
+  SwapOutlined,
   TeamOutlined,
   WalletOutlined,
 } from '@ant-design/icons'
@@ -22,7 +23,7 @@ import { navItems } from '../nav'
 import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
-import { formatData, formatEuro } from '../lib/format'
+import { formatData, formatEuro, oggiIso } from '../lib/format'
 import { statoScadenza } from '../lib/scadenza'
 import { sottoScorta } from '../lib/scorta'
 import { statoCertificato } from '../lib/certificato'
@@ -31,7 +32,18 @@ import { isGiocatore } from '../lib/categoria'
 import { StatCard } from '../components/StatCard'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { DettaglioMovimenti, type VistaDettaglio } from '../components/DettaglioMovimenti'
-import type { Allenamento, Articolo, Distinta, Giocatore, Movimento, Promemoria, VoceMagazzino } from '../types'
+import type {
+  Allenamento,
+  Appuntamento,
+  Articolo,
+  Distinta,
+  Giocatore,
+  Movimento,
+  Partita,
+  Promemoria,
+  SpesaCondivisa,
+  VoceMagazzino,
+} from '../types'
 
 const { Title, Text } = Typography
 
@@ -46,13 +58,15 @@ export function Dashboard() {
   const manutenzione = useCollection<VoceMagazzino>('manutenzione')
   const borsaMedica = useCollection<VoceMagazzino>('borsaMedica')
   const conti = useCollection<Movimento>('conti')
+  const spese = useCollection<SpesaCondivisa>('speseCondivise')
+  const partite = useCollection<Partita>('partite')
+  const appuntamenti = useCollection<Appuntamento>('appuntamenti')
   const promemoria = useCollection<Promemoria>('promemoria')
   const eliminaConUndo = useEliminaUndo()
   const [dettaglio, setDettaglio] = useState<VistaDettaglio | null>(null)
   const [modalePromemoria, setModalePromemoria] = useState(false)
   const [formP] = Form.useForm()
 
-  const oggiIso = new Date().toISOString().slice(0, 10)
 
   // promemoria a mano: prima gli urgenti e chi scade prima, i fatti in coda
   const promemoriaOrdinati = useMemo(
@@ -73,7 +87,7 @@ export function Dashboard() {
       entro: v.entro || undefined,
       urgente: !!v.urgente || undefined,
       assegnatoA: v.assegnatoA?.trim() || undefined,
-      creato: oggiIso,
+      creato: oggiIso(),
     })
     setModalePromemoria(false)
   }
@@ -88,6 +102,7 @@ export function Dashboard() {
     const quoteAperte = soloGiocatori.filter((g) => !statoQuota(g).completa)
     const senzaTessera = giocatori.items.filter((g) => !g.tessera)
     const infortunati = soloGiocatori.filter((g) => g.infortunato)
+    const speseAperte = spese.items.filter((s) => !s.saldata)
     const borsaScaduta = borsaMedica.items.filter((v) => statoScadenza(v.scadenza).critico)
     const daRiordinare = [
       ...magazzino.items,
@@ -152,6 +167,15 @@ export function Dashboard() {
         to: '/magazzino',
       },
       {
+        key: 'spese',
+        icona: <SwapOutlined />,
+        colore: '#9a6b1e',
+        testo: 'Spese condivise ancora da saldare',
+        dettaglio: [...new Set(speseAperte.map((s) => s.societa))].join(', '),
+        n: speseAperte.length,
+        to: '/spese',
+      },
+      {
         key: 'infortuni',
         icona: <MedicineBoxOutlined />,
         colore: '#9a6b1e',
@@ -162,7 +186,14 @@ export function Dashboard() {
       },
     ]
     return voci.filter((v) => v.n > 0)
-  }, [giocatori.items, borsaMedica.items, magazzino.items, materiale.items, manutenzione.items])
+  }, [
+    giocatori.items,
+    borsaMedica.items,
+    magazzino.items,
+    materiale.items,
+    manutenzione.items,
+    spese.items,
+  ])
 
   const saldo = conti.items
     .filter((m) => m.saldato)
@@ -175,14 +206,32 @@ export function Dashboard() {
     .reduce((s, m) => s + m.importo, 0)
   const inScadenza = magazzino.items.filter((a) => statoScadenza(a.scadenza).critico).length
 
-  const oggi = new Date().toISOString().slice(0, 10)
-  const prossima = distinte.items
-    .filter((d) => d.data && d.data >= oggi)
-    .sort((a, b) => (a.data ?? '').localeCompare(b.data ?? ''))[0]
+  const oggi = oggiIso()
+
+  /**
+   * Il prossimo impegno guarda tutto quello che è in programma: le partite
+   * senza risultato, gli appuntamenti del calendario e le distinte già
+   * preparate (prima leggeva solo queste ultime, così finché non si preparava
+   * la distinta la dashboard non sapeva della partita di domenica).
+   */
+  const prossimo = useMemo(() => {
+    const impegni: { data: string; ora?: string; chi: string }[] = []
+    for (const p of partite.items)
+      if (p.giocata === false && p.data >= oggi)
+        impegni.push({ data: p.data, ora: p.ora, chi: p.avversario })
+    for (const a of appuntamenti.items)
+      if (a.data >= oggi) impegni.push({ data: a.data, ora: a.ora, chi: a.avversario })
+    for (const d of distinte.items)
+      if (d.data && d.data >= oggi) impegni.push({ data: d.data, chi: d.avversario ?? 'prossima gara' })
+    return impegni.sort((a, b) =>
+      (a.data + (a.ora ?? '')).localeCompare(b.data + (b.ora ?? '')),
+    )[0]
+  }, [partite.items, appuntamenti.items, distinte.items, oggi])
+
   const ultimoAllenamento = allenamenti.items.map((a) => a.data).sort((a, b) => b.localeCompare(a))[0]
 
-  const sottotitolo = prossima
-    ? `Prossimo impegno: ${prossima.avversario ?? 'prossima gara'}${prossima.data ? ' · ' + formatData(prossima.data, true) : ''}`
+  const sottotitolo = prossimo
+    ? `Prossimo impegno: ${prossimo.chi} · ${formatData(prossimo.data, true)}${prossimo.ora ? ` alle ${prossimo.ora}` : ''}`
     : ultimoAllenamento
       ? `Ultimo allenamento: ${formatData(ultimoAllenamento, true)}`
       : ''
@@ -281,7 +330,7 @@ export function Dashboard() {
         ) : (
           <>
             {promemoriaOrdinati.map((p) => {
-              const scaduto = !p.fatto && p.entro && p.entro < oggiIso
+              const scaduto = !p.fatto && p.entro && p.entro < oggi
               return (
                 <div key={p.id} className="dafare-riga">
                   <Checkbox

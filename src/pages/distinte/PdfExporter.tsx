@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas'
 import type { Convocato } from './SelectorList'
 import type { TestataDistinta } from '../../types'
 import { formatData } from '../../lib/format'
+import { aggiungiAlPdf, canvasFoglio, htmlFoglioPiazzati } from '../piazzati/foglio'
 
 /** Scherma i caratteri speciali: il testo dell'utente va dentro innerHTML. */
 function esc(s?: string): string {
@@ -26,11 +27,16 @@ export function PdfExporter({
   list = [],
   testata = {},
   onStampato,
+  allegaPiazzati = false,
+  stagione = '',
 }: {
   list?: Convocato[]
   testata?: TestataDistinta
   /** chiamato dopo che il PDF è stato generato con successo (per salvare la distinta) */
   onStampato?: () => void
+  /** aggiunge in coda il foglio dei calci piazzati, vuoto, da compilare a penna */
+  allegaPiazzati?: boolean
+  stagione?: string
 }) {
   const { message } = App.useApp()
 
@@ -150,21 +156,23 @@ export function PdfExporter({
         logging: false,
         backgroundColor: '#ffffff',
       })
-      const imgData = canvas.toDataURL('image/png')
+      // stessa impaginazione del foglio calci piazzati (in JPEG: la distinta
+      // in PNG pesava 9 MB, scomoda da mandare in chat, e su carta è uguale)
       const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgProps = pdf.getImageProperties(imgData)
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+      aggiungiAlPdf(pdf, canvas)
 
-      let heightLeft = pdfHeight
-      let position = 0
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight)
-      heightLeft -= pdf.internal.pageSize.getHeight()
-      while (heightLeft > 0) {
-        position = heightLeft - pdfHeight
+      // pagina in più: lo schema dei calci piazzati da riempire a mano
+      if (allegaPiazzati) {
+        const foglio = await canvasFoglio(
+          htmlFoglioPiazzati({
+            stagione,
+            vuoto: true,
+            avversario: testata.avversario,
+            dataGara: testata.dataGara,
+          }),
+        )
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight)
-        heightLeft -= pdf.internal.pageSize.getHeight()
+        aggiungiAlPdf(pdf, foglio)
       }
 
       const now = new Date()

@@ -25,15 +25,12 @@ import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData } from '../lib/format'
+import { formatData, oggiIso } from '../lib/format'
 import { REGEX_ORA } from '../lib/partita'
 import type { Partita, Torneo } from '../types'
 
 const { Text } = Typography
 
-function oggiIso() {
-  return new Date().toISOString().slice(0, 10)
-}
 function labelMese(chiave: string) {
   const [y, m] = chiave.split('-')
   return `${m}/${y}`

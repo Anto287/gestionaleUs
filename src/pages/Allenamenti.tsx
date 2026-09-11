@@ -37,7 +37,7 @@ import dayjs from 'dayjs'
 import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData } from '../lib/format'
+import { formatData, oggiIso, plurale } from '../lib/format'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { isGiocatore } from '../lib/categoria'
 import { coloreAffluenza } from '../lib/chart'
@@ -47,9 +47,6 @@ import type { Allenamento, Giocatore } from '../types'
 
 const { Text } = Typography
 
-function oggiIso() {
-  return new Date().toISOString().slice(0, 10)
-}
 function labelBreve(iso: string) {
   const [, m, d] = iso.split('-')
   return d && m ? `${d}/${m}` : iso
@@ -190,7 +187,7 @@ export function Allenamenti() {
     if (create === 0) message.warning('Nessuna seduta creata: le date erano già tutte presenti.')
     else
       message.success(
-        `Create ${create} sedute${saltate ? ` (${saltate} saltate perché già presenti)` : ''}.`,
+        `${create === 1 ? 'Creata' : 'Create'} ${plurale(create, 'seduta', 'sedute')}${saltate ? ` (${plurale(saltate, 'saltata', 'saltate')} perché già presenti)` : ''}.`,
       )
   }
 
@@ -225,7 +222,9 @@ export function Allenamenti() {
     <>
       <PageHeader
         titolo="Allenamenti"
-        sottotitolo={sedute.length ? `${sedute.length} sedute registrate` : 'Nessuna seduta ancora'}
+        sottotitolo={
+          sedute.length ? `${plurale(sedute.length, 'seduta registrata', 'sedute registrate')}` : 'Nessuna seduta ancora'
+        }
         azioni={
           <Space wrap>
             <Button

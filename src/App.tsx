@@ -12,6 +12,7 @@ import { Allenamenti } from './pages/Allenamenti'
 import { Partite } from './pages/Partite'
 import { PartitaDettaglio } from './pages/PartitaDettaglio'
 import { Formazione } from './pages/Formazione'
+import { Piazzati } from './pages/Piazzati'
 import { Calendario } from './pages/Calendario'
 import { Statistiche } from './pages/Statistiche'
 import { Magazzino } from './pages/Magazzino'
@@ -49,6 +50,7 @@ function App() {
           <Route path="/partite" element={<Partite />} />
           <Route path="/partite/:id" element={<PartitaDettaglio />} />
           <Route path="/formazione" element={<Formazione />} />
+          <Route path="/piazzati" element={<Piazzati />} />
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/statistiche" element={<Statistiche />} />
           <Route

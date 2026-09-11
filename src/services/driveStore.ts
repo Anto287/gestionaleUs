@@ -6,8 +6,10 @@
  * browser (localStorage), così l'app resta usabile anche senza Drive.
  */
 import { config } from '../config'
-import { loadCollection, loadValue, saveCollection, saveValue } from './storage'
+import { loadCollection, loadValue, removeValue, saveCollection, saveValue } from './storage'
+import { chiaveFile } from '../lib/archivio'
 import type { Cartella, FileArchivio } from '../lib/archivio'
+import { oggiIso } from '../lib/format'
 
 const DRIVE_URL: string = config.drive.url
 const SECRET_KEY = '__secret'
@@ -270,7 +272,7 @@ export function uploadDoc(
       nome,
       tipo,
       dimensione: Math.round(dataBase64.length * 0.75),
-      caricatoIl: new Date().toISOString().slice(0, 10),
+      caricatoIl: oggiIso(),
       dataUrl: `data:${tipo};base64,${dataBase64}`,
     }
     arr.push(rec)
@@ -290,6 +292,24 @@ export function uploadDoc(
 // funzioni. Restano private (niente condivisione via link): i contenuti
 // passano da qui, chiesti allo script solo quando servono.
 
+/**
+ * Copie locali dell'archivio, tenute dal browser per aprirlo subito:
+ * l'elenco dei file e le miniature. Le chiavi stanno qui perché servono
+ * anche all'uscita, quando vanno cancellate.
+ */
+export const CACHE_ARCHIVIO_ELENCO = '__archivio_elenco'
+export const CACHE_ARCHIVIO_MINIATURE = '__archivio_miniature'
+
+/**
+ * Svuota le copie locali dell'archivio. Si chiama uscendo dall'app: sono
+ * nomi e miniature di documenti d'identità, non devono restare sul
+ * dispositivo di chi ha fatto logout.
+ */
+export function pulisciCacheArchivio(): void {
+  removeValue(CACHE_ARCHIVIO_ELENCO)
+  removeValue(CACHE_ARCHIVIO_MINIATURE)
+}
+
 /** Miniatura di un file dell'archivio (quella già pronta sul Drive). */
 export interface MiniaturaArchivio {
   id: string
@@ -304,11 +324,6 @@ export interface ContenutoArchivio {
 
 function archivioKey(cartella: Cartella): string {
   return `__archivio/${cartella}`
-}
-
-/** Nome confrontabile: senza estensione, maiuscole e separatori. */
-function chiaveFile(nome: string): string {
-  return nome.replace(/\.[a-z0-9]{1,5}$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 /**
@@ -382,7 +397,7 @@ export function archivioUpload(
       nome,
       tipo,
       dimensione: Math.round(dataBase64.length * 0.75),
-      caricatoIl: new Date().toISOString().slice(0, 10),
+      caricatoIl: oggiIso(),
       dataUrl: `data:${tipo};base64,${dataBase64}`,
     }
     arr.push(rec)

@@ -6,7 +6,7 @@ import { useArchivio } from '../../data/ArchivioProvider'
 import dayjs from 'dayjs'
 import { DataPicker } from '../DataPicker'
 import { estensionePrevista } from '../../lib/immagine'
-import { nomeArchivio, type Cartella, type Faccia } from '../../lib/archivio'
+import { chiaveFile, nomeArchivio, type Cartella, type Faccia } from '../../lib/archivio'
 import type { Giocatore } from '../../types'
 
 const { Text } = Typography
@@ -39,7 +39,7 @@ export function CaricaFile({
   onChiudi: () => void
 }) {
   const { items: rosa } = useCollection<Giocatore>('giocatori')
-  const { carica, scheda, omonimo } = useArchivio()
+  const { carica, scheda, omonimo, documenti, foto } = useArchivio()
   const { message } = App.useApp()
   const screens = Grid.useBreakpoint()
 
@@ -102,7 +102,21 @@ export function CaricaFile({
   }, [nomeUsato, cognomeUsato, nascitaUsata, cartella, faccia, serveNascita])
 
   const nomeFinale = base && file ? base + estensionePrevista(file) : base
-  const gia = tesserato ? scheda(tesserato.id)[genere] : undefined
+
+  /**
+   * Il file che verrà sostituito, se esiste: si cerca per NOME, non solo fra
+   * quelli del tesserato. Così, scrivendo a mano il nome di un omonimo, si
+   * vede prima di caricare che si sta per coprire il file di qualcun altro.
+   */
+  const gia = useMemo(() => {
+    if (!base) return undefined
+    const elenco = cartella === 'foto' ? foto : documenti
+    const cercata = chiaveFile(base)
+    return (
+      (tesserato ? scheda(tesserato.id)[genere] : undefined) ??
+      elenco.find((f) => chiaveFile(f.nome) === cercata)
+    )
+  }, [base, cartella, foto, documenti, tesserato, scheda, genere])
 
   async function conferma() {
     if (!base || !file) return

@@ -19,6 +19,7 @@ import * as store from '../services/driveStore'
 import { PageHeader } from '../components/PageHeader'
 import { TorneiManager } from './impostazioni/TorneiManager'
 import type { Giocatore, Divisa, Torneo } from '../types'
+import { plurale } from '../lib/format'
 
 const { Text } = Typography
 
@@ -52,11 +53,19 @@ export function Impostazioni() {
     try {
       if (copiaRosa && rosa.items.length > 0) {
         // le statistiche derivano dalle partite: la nuova stagione riparte da 0 da sola.
-        // La tessera va rinnovata ogni anno: non si importa (né numero né data rilascio),
-        // e la quota associativa riparte da "non pagata".
+        // Non si portano avanti: la tessera (si rinnova ogni anno), la quota e i
+        // suoi VERSAMENTI (sono soldi della stagione vecchia, già nei Conti di
+        // allora) e gli infortuni, che a stagione nuova sono acqua passata.
         await Promise.all(
           rosa.items.map((g) => {
-            const { tessera: _t, dataRilascio: _d, ...resto } = g
+            const {
+              tessera: _t,
+              dataRilascio: _d,
+              versamentiQuota: _v,
+              infortunato: _i,
+              rientroInfortunio: _r,
+              ...resto
+            } = g
             return store.put('giocatori', nome, { ...resto, quotaPagata: false })
           }),
         )
@@ -126,8 +135,9 @@ export function Impostazioni() {
       <Card title="Nuova stagione" style={{ marginBottom: 16 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Text type="secondary">
-            La nuova stagione parte con le sue cartelle vuote: allenamenti, distinte, magazzino,
-            conti e documenti ricominciano da zero.
+            La nuova stagione parte con le sue cartelle vuote: allenamenti, partite, distinte,
+            magazzino e documenti ricominciano da zero. Conti e spese condivise restano come sono:
+            non sono divisi per stagione. Tornei e tute da gara vengono portati avanti.
           </Text>
           <Input
             style={{ maxWidth: 260 }}
@@ -137,8 +147,8 @@ export function Impostazioni() {
             onPressEnter={creaStagione}
           />
           <Checkbox checked={copiaRosa} onChange={(e) => setCopiaRosa(e.target.checked)}>
-            Copia la rosa dalla stagione attiva ({rosa.items.length} giocatori) — le statistiche
-            ripartono da zero
+            Copia la rosa dalla stagione attiva ({plurale(rosa.items.length, 'tesserato', 'tesserati')}) — statistiche,
+            tessera, quota (e versamenti) e infortuni ripartono da zero
           </Checkbox>
           <Button type="primary" icon={<PlusOutlined />} loading={creando} onClick={creaStagione}>
             Crea stagione

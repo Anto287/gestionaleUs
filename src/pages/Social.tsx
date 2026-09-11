@@ -19,7 +19,7 @@ import { InstagramOutlined, PlusOutlined, DeleteOutlined, CalendarOutlined } fro
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData } from '../lib/format'
+import { formatData, oggiIso } from '../lib/format'
 import {
   etichettaGiorno,
   etichettaMese,
@@ -52,10 +52,6 @@ function leggiFormazioneGrafica(): FormazioneGrafica | undefined {
 }
 
 const LOGO = `${import.meta.env.BASE_URL}logo.png`
-
-function oggiIso() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function slug(s: string) {
   return (

@@ -31,6 +31,7 @@ viaggia sempre nel corpo delle richieste POST, mai nell'URL.
 - **Panoramica** — colpo d'occhio: saldo cassa, articoli sotto scorta, prossima partita
 - **Rosa** — giocatori e statistiche (presenze calcolate dagli allenamenti)
 - **Allenamenti** — sedute e presenze dei giocatori
+- **Calci piazzati** — chi batte e chi va dove sulle palle ferme, con foglio da stampare
 - **Distinte** — formazioni per la partita, stampabili
 - **Magazzino** — scorte del bar con soglia di riordino
 - **Conti** — entrate/uscite, saldo, insoluti (da incassare / da pagare)
@@ -52,6 +53,21 @@ Ogni stagione tiene i suoi dati separati: la chiave di ogni raccolta è
 `<stagione>/<raccolta>` (es. `2026/27/allenamenti`). Sul Drive ogni stagione
 diventerà una cartella dedicata con un file per sezione. La logica sta in
 `src/season/SeasonContext.tsx`.
+
+## Calci piazzati
+
+Chi batte angoli, punizioni e rimesse, chi attacca i pali quando battiamo noi e
+chi sta in barriera (dal primo al quinto), sui pali e sul corto quando battono
+loro. Il catalogo degli incarichi è in `src/lib/piazzati.ts`: aggiungerne o
+toglierne uno è una riga, la pagina e il foglio stampato si adeguano da soli.
+
+- La scheda è **una per stagione** (collezione `calciPiazzati`) e si salva a
+  ogni scelta: non c'è un bottone «salva».
+- «Stampa (PDF)» produce un foglio A4 (`src/pages/piazzati/foglio.ts`). Con la
+  casella **«Stampa il foglio vuoto»** esce lo stesso foglio senza nomi, da
+  riempire a penna.
+- In **Distinte**, la casella «Allega il foglio dei calci piazzati» (spenta di
+  serie) aggiunge quel foglio vuoto come seconda pagina del PDF della distinta.
 
 ## Spese condivise
 
@@ -100,21 +116,28 @@ finché non è incollato, la sezione resta vuota e il resto funziona normalmente
 
 ## Dati e Google Drive
 
-Oggi i dati sono salvati nel browser (`localStorage`), così l'app è già usabile.
-Il Drive farà da "database": è tutto pronto per l'aggancio.
+Il Drive **è** il database: non c'è nessun altro server. L'app parla con uno
+script Apps Script pubblicato come web app; lo script legge e scrive i fogli
+dentro la cartella della società (vedi la struttura in cima al file dello
+script). Senza `VITE_DRIVE_URL` l'app ricade sul browser (`localStorage`), che
+è il modo di provarla in locale senza toccare i dati veri.
 
 - `src/hooks/useCollection.ts` — l'unico modo in cui le pagine leggono/scrivono i dati
-- `src/services/storage.ts` — implementazione attuale (localStorage); **qui** si innesta il Drive
-- `src/services/drive.ts` — stub e piano del collegamento (OAuth + Drive API)
-- `src/types.ts` — i modelli dati (una raccolta = un file sul Drive)
+- `src/data/DataProvider.tsx` — carica tutte le raccolte della stagione e le tiene in memoria
+- `src/services/driveStore.ts` — il ponte con lo script (POST con la chiave nel corpo)
+- `src/services/storage.ts` — il ripiego su localStorage quando il Drive non è configurato
+- `src/types.ts` — i modelli dati (una raccolta = un foglio sul Drive)
 
-Cambiando solo `storage.ts` (da localStorage a lettura/scrittura su Drive) le
-pagine continuano a funzionare senza modifiche.
+Le raccolte sono elencate in `src/collections.ts`: aggiungerne una è sicuro,
+il foglio nasce al primo salvataggio. `conti` e `speseCondivise` non sono
+divise per stagione (vedi `COLLEZIONI_GLOBALI` nel DataProvider).
 
-## Prossimi passi
+## Provare in locale senza toccare il Drive
 
-1. Client ID OAuth dalla Google Cloud Console (scope `drive.file`)
-2. Accesso con Google Identity Services
-3. Una cartella "U.S. Riolunato" sul Drive, con una sottocartella per stagione
-   e un file per raccolta
-4. Riscrivere `storage.ts` per leggere/scrivere su quei file
+```bash
+VITE_DRIVE_URL= npm run dev
+```
+
+Così i dati restano nel browser: il login accetta qualsiasi password e le
+raccolte si possono precaricare da console con
+`localStorage.setItem('usriolunato:2026/27/giocatori', '[...]')`.

@@ -12,6 +12,7 @@ import * as store from '../services/driveStore'
 import { loadValue, saveValue } from '../services/storage'
 import {
   agganciaArchivio,
+  chiaveFile,
   chiaveTesserato,
   type Aggancio,
   type Cartella,
@@ -58,8 +59,8 @@ interface ArchivioValue {
 
 const ArchivioContext = createContext<ArchivioValue | null>(null)
 
-const CACHE_ELENCO = '__archivio_elenco'
-const CACHE_MINIATURE = '__archivio_miniature'
+const CACHE_ELENCO = store.CACHE_ARCHIVIO_ELENCO
+const CACHE_MINIATURE = store.CACHE_ARCHIVIO_MINIATURE
 /** una miniatura più pesante di così non va nella cache del browser */
 const MAX_MINIATURA_CACHE = 80_000
 const MAX_CACHE = 2_500_000
@@ -112,11 +113,6 @@ function salvaCache(miniature: Record<string, string>): void {
   } catch {
     /* cache piena o non disponibile: pazienza, si riscaricano */
   }
-}
-
-/** Nome confrontabile, come fa lo script quando sostituisce un file. */
-function chiaveFile(nome: string): string {
-  return nome.replace(/\.[a-z0-9]{1,5}$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
 export function ArchivioProvider({ children }: { children: ReactNode }) {

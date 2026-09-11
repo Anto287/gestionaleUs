@@ -1924,3 +1924,68 @@ body {
   padding-bottom: 0;
   border-bottom: 0;
 }
+
+/* ---------- Calci piazzati ---------- */
+
+.piazzati-stato {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.piazzati-righe {
+  display: flex;
+  flex-direction: column;
+}
+
+/* una riga per incarico: a sinistra cosa si fa, a destra chi lo fa */
+.piazzati-riga {
+  display: grid;
+  grid-template-columns: minmax(170px, 230px) 1fr;
+  gap: 10px 18px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid var(--linea);
+}
+
+.piazzati-riga:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.piazzati-nome {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-top: 5px;
+}
+
+.piazzati-nota {
+  font-size: 12.5px;
+  color: var(--testo-2);
+}
+
+.piazzati-caselle {
+  display: grid;
+  gap: 8px;
+}
+
+.piazzati-select {
+  min-width: 0;
+}
+
+@media (max-width: 575.98px) {
+  .piazzati-riga {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .piazzati-nome {
+    padding-top: 0;
+  }
+  /* su telefono una casella per riga: i nomi ci stanno per intero */
+  .piazzati-caselle {
+    grid-template-columns: 1fr !important;
+  }
+}

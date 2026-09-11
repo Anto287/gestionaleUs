@@ -1,4 +1,6 @@
 /** Stato del certificato medico di un giocatore. */
+import { oggiIso } from './format'
+import { giorniAllaScadenza } from './scadenza'
 
 export interface StatoCertificato {
   label: string
@@ -17,13 +19,13 @@ export function statoCertificato(g: {
   if (!g.certificatoMedico) return { label: 'Mancante', color: 'red', critico: true, stato: 'critico' }
   if (!g.scadenzaCertificato) return { label: 'Consegnato', color: 'green', critico: false, stato: 'valido' }
 
-  const oggi = new Date().toISOString().slice(0, 10)
-  if (g.scadenzaCertificato < oggi) return { label: 'Scaduto', color: 'red', critico: true, stato: 'critico' }
+  if (g.scadenzaCertificato < oggiIso())
+    return { label: 'Scaduto', color: 'red', critico: true, stato: 'critico' }
 
-  const giorni = Math.round(
-    (new Date(g.scadenzaCertificato + 'T00:00:00').getTime() - Date.now()) / 86_400_000,
-  )
-  if (giorni <= 30)
-    return { label: `In scadenza (${giorni} gg)`, color: 'orange', critico: false, stato: 'scadenza' }
+  const giorni = giorniAllaScadenza(g.scadenzaCertificato) ?? 0
+  if (giorni <= 30) {
+    const quando = giorni === 0 ? 'Scade oggi' : giorni === 1 ? 'Scade domani' : `In scadenza (${giorni} gg)`
+    return { label: quando, color: 'orange', critico: false, stato: 'scadenza' }
+  }
   return { label: 'Valido', color: 'green', critico: false, stato: 'valido' }
 }

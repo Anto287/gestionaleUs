@@ -89,6 +89,15 @@ export function parole(testo: string): string[] {
 }
 
 /** Chiave di confronto: le parole ordinate, così l'ordine nome/cognome non conta. */
+/**
+ * Nome confrontabile di un file: senza estensione, maiuscole e separatori.
+ * È la stessa regola con cui lo script sul Drive decide se un file nuovo
+ * SOSTITUISCE uno già presente, quindi va tenuta identica.
+ */
+export function chiaveFile(nome: string): string {
+  return nome.replace(ESTENSIONE, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 export function chiaveDi(elenco: string[]): string {
   return [...new Set(elenco)].sort().join(' ')
 }

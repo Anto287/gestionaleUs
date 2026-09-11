@@ -90,10 +90,13 @@ export function SelectorList({
     })
   }, [selectedRaw, list])
 
+  // cambiando il filtro, la selezione si sposta sul primo della lista: dipende
+  // apposta solo da filteredOptions, altrimenti si rincorrerebbe a ogni scelta
   useEffect(() => {
     if (filteredOptions.length === 0) setSelectedKey(undefined)
     else if (!filteredOptions.find((o) => o.key === selectedKey))
       setSelectedKey(filteredOptions[0]?.key)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredOptions])
 
   function hasSpecialCheckbox(item: Convocato) {

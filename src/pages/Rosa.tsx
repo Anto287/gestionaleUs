@@ -40,6 +40,7 @@ import { statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, LABEL_CATEGORIA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
+import { iniziali, plurale } from '../lib/format'
 
 type Bozza = Pick<
   Giocatore,
@@ -62,10 +63,6 @@ type Bozza = Pick<
   | 'rientroInfortunio'
   | 'note'
 >
-
-function iniziali(g: Giocatore) {
-  return `${g.nome[0] ?? ''}${g.cognome[0] ?? ''}`.toUpperCase()
-}
 
 export function Rosa() {
   const giocatori = useCollection<Giocatore>('giocatori')
@@ -379,7 +376,7 @@ export function Rosa() {
     <>
       <PageHeader
         titolo="Rosa"
-        sottotitolo={`${items.length} tesserati · tocca un nome per la scheda`}
+        sottotitolo={`${plurale(items.length, 'tesserato', 'tesserati')} · tocca un nome per la scheda`}
         azioni={
           items.length > 0 && (
             <Space wrap>

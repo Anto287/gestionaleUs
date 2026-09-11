@@ -25,7 +25,7 @@ import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { useAppuntamenti } from '../lib/appuntamenti'
 import { scaricaIcs, type EventoCal } from '../lib/ics'
-import { formatData } from '../lib/format'
+import { formatData, oggiIso } from '../lib/format'
 import { config } from '../config'
 import { driveAttivo, getSecret } from '../services/driveStore'
 import type { Allenamento, Partita } from '../types'
@@ -41,10 +41,6 @@ const NOME_TIPO: Record<EventoCal['tipo'], string> = {
   partita: 'Partita',
   allenamento: 'Allenamento',
   appuntamento: 'In programma',
-}
-
-function oggiIso() {
-  return new Date().toISOString().slice(0, 10)
 }
 
 export function Calendario() {

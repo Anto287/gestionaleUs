@@ -48,7 +48,7 @@ import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { AnteprimaDocumento, anteprimaDi } from '../components/AnteprimaDocumento'
 import { contoSpesa, fraseConto, totaliSpese } from '../lib/spesa'
-import { formatData, formatEuro } from '../lib/format'
+import { formatData, formatEuro, oggiIso } from '../lib/format'
 import { esportaExcel } from '../lib/excel'
 import type { Documento, Movimento, SpesaCondivisa } from '../types'
 
@@ -70,14 +70,15 @@ type Bozza = Pick<
   'data' | 'descrizione' | 'societa' | 'importo' | 'anticipataDa' | 'percentuale' | 'categoria' | 'note'
 >
 
-function oggiIso() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 /** Nome del file dello scontrino sul Drive: si riconosce a colpo d'occhio. */
 function nomeScontrino(s: Bozza): string {
   const testo = `Scontrino ${s.data} ${s.societa} ${s.descrizione}`
   return testo.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 90)
+}
+
+/** Come si chiama nei Conti il movimento gemello di una spesa. */
+function descrizioneMovimento(s: Pick<SpesaCondivisa, 'descrizione'>): string {
+  return `Spesa condivisa: ${s.descrizione}`
 }
 
 /** Colore del conguaglio: verde se entra, rosso se esce. */
@@ -195,13 +196,44 @@ export function Spese() {
         }
         allegato = meta
       }
-      if (inModifica) update(inModifica.id, { ...dati, scontrino: allegato })
-      else add({ ...dati, scontrino: allegato })
+      if (inModifica) {
+        update(inModifica.id, { ...dati, scontrino: allegato })
+        allineaMovimento({ ...inModifica, ...dati })
+      } else {
+        add({ ...dati, scontrino: allegato })
+      }
       setModale(false)
       setScontrino(null)
     } finally {
       setSalvando(false)
     }
+  }
+
+  /**
+   * Se la spesa è già saldata e ha il movimento gemello nei Conti, cambiando
+   * importo, percentuale o chi ha anticipato cambia anche il conguaglio: il
+   * movimento va riallineato, altrimenti in cassa resta la cifra vecchia.
+   */
+  function allineaMovimento(s: SpesaCondivisa) {
+    if (!s.saldata || !s.movimentoId) return
+    const m = conti.items.find((x) => x.id === s.movimentoId)
+    if (!m) return
+    const { dovuto } = contoSpesa(s)
+    const patch = {
+      importo: Math.abs(dovuto),
+      tipo: (dovuto > 0 ? 'entrata' : 'uscita') as Movimento['tipo'],
+      descrizione: descrizioneMovimento(s),
+      controparte: s.societa,
+    }
+    if (
+      m.importo === patch.importo &&
+      m.tipo === patch.tipo &&
+      m.descrizione === patch.descrizione &&
+      m.controparte === patch.controparte
+    )
+      return
+    conti.update(m.id, patch)
+    message.info('Ho aggiornato anche il movimento nei Conti.')
   }
 
   // --- saldo ---
@@ -213,7 +245,7 @@ export function Spese() {
     if (registra && Math.abs(dovuto) >= 0.005) {
       movimentoId = conti.add({
         data,
-        descrizione: `Spesa condivisa: ${s.descrizione}`,
+        descrizione: descrizioneMovimento(s),
         tipo: dovuto > 0 ? 'entrata' : 'uscita',
         importo: Math.abs(dovuto),
         saldato: true,
@@ -733,11 +765,11 @@ function ModaleSpesa({
           />
         </Form.Item>
         <Form.Item
-          label="Percentuale a carico nostro"
+          label="Percentuale a carico nostro (%)"
           name="percentuale"
           rules={[{ required: true, message: 'Inserisci la percentuale' }]}
         >
-          <InputNumber min={0} max={100} step={1} addonAfter="%" style={{ width: '100%' }} />
+          <InputNumber min={0} max={100} step={1} style={{ width: '100%' }} />
         </Form.Item>
         <Space size={6} wrap style={{ marginTop: -12, marginBottom: 16 }}>
           <Text type="secondary">Al volo:</Text>

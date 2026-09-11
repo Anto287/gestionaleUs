@@ -14,10 +14,17 @@ export interface StatoScadenza {
 /** Soglia (giorni) entro cui un articolo va segnalato: circa un mese. */
 export const GIORNI_ALLARME = 30
 
-/** Giorni mancanti alla scadenza: negativo se già scaduto, null se senza data. */
+/**
+ * Giorni mancanti alla scadenza: negativo se già scaduto, null se senza data.
+ * Si contano i GIORNI di calendario (da mezzanotte a mezzanotte): partendo
+ * dall'ora attuale, una scadenza "oggi" risultava già passata dal pomeriggio
+ * e "domani" veniva contata come 0 giorni.
+ */
 export function giorniAllaScadenza(scadenza?: string): number | null {
   if (!scadenza) return null
-  return Math.round((new Date(scadenza + 'T00:00:00').getTime() - Date.now()) / 86_400_000)
+  const mezzanotte = new Date()
+  mezzanotte.setHours(0, 0, 0, 0)
+  return Math.round((new Date(scadenza + 'T00:00:00').getTime() - mezzanotte.getTime()) / 86_400_000)
 }
 
 export function statoScadenza(scadenza?: string): StatoScadenza {

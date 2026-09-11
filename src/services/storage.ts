@@ -1,15 +1,14 @@
 /**
- * Livello dati del gestionale.
+ * Salvataggio nel browser (localStorage).
  *
- * Oggi salva tutto nel browser (localStorage), così l'app è già usabile.
- * I dati sono divisi per stagione: la chiave di ogni raccolta è
- * "<stagione>/<raccolta>" (es. "2026/27/allenamenti"). Cambiare stagione
- * significa leggere/scrivere un altro gruppo di file.
+ * È il RIPIEGO di `driveStore`: quando `config.drive.url` è vuoto (sviluppo in
+ * locale, o Drive non ancora configurato) le raccolte vivono qui, con la
+ * stessa firma, così le pagine non se ne accorgono. I dati veri stanno sul
+ * Drive: vedi `src/services/driveStore.ts`.
  *
- * Domani questo è l'unico file da cambiare per usare Google Drive come
- * "database": ogni stagione sarà una cartella e ogni raccolta un file al
- * suo interno. Le pagine non dovranno cambiare, perché usano solo l'hook
- * `useCollection`.
+ * Le chiavi sono "usriolunato:<stagione>/<raccolta>" (es.
+ * "usriolunato:2026/27/allenamenti"); le raccolte non divise per stagione
+ * usano "globale" al posto della stagione.
  */
 
 const PREFIX = 'usriolunato:'
@@ -53,6 +52,14 @@ export function loadValue(nome: string): string | null {
     return localStorage.getItem(PREFIX + nome)
   } catch {
     return null
+  }
+}
+
+export function removeValue(nome: string): void {
+  try {
+    localStorage.removeItem(PREFIX + nome)
+  } catch (err) {
+    console.warn(`Rimozione di "${nome}" non riuscita`, err)
   }
 }
 

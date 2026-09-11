@@ -294,3 +294,19 @@ export interface SpesaCondivisa {
   /** scontrino o fattura, caricato nella cartella Documenti della stagione */
   scontrino?: Documento
 }
+
+/**
+ * Calci piazzati: chi batte e chi va dove sulle palle ferme. È una scheda
+ * sola per stagione (non un elenco): gli incarichi sono quelli di
+ * `src/lib/piazzati.ts`, e per ognuno si tengono gli id dei giocatori in
+ * ordine (di scelta, o di posizione nella barriera).
+ */
+export interface CalciPiazzati {
+  id: string
+  /** chiave dell'incarico → id dei giocatori, in ordine */
+  incarichi: Record<string, string[]>
+  /** appunti liberi, stampati in fondo al foglio */
+  note?: string
+  /** ultima modifica ('YYYY-MM-DD') */
+  aggiornato?: string
+}

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Col, Row, Empty, Flex, Popconfirm, Select, Typography } from 'antd'
+import { Button, Card, Checkbox, Col, Row, Empty, Flex, Popconfirm, Select, Typography } from 'antd'
 import { FileAddOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { formatData } from '../lib/format'
 import type { Distinta, Divisa, Giocatore, TestataDistinta, Torneo } from '../types'
@@ -20,6 +21,7 @@ function etichetta(d: Distinta): string {
 }
 
 export function Distinte() {
+  const { attiva } = useSeason()
   const { items } = useCollection<Giocatore>('giocatori')
   const tornei = useCollection<Torneo>('tornei')
   const divise = useCollection<Divisa>('divise')
@@ -33,6 +35,8 @@ export function Distinte() {
   const [initConvocati, setInitConvocati] = useState<Convocato[] | undefined>()
   // bump a ogni carica/nuova per rimontare i form con i nuovi valori di partenza
   const [resetKey, setResetKey] = useState(0)
+  // in coda alla distinta, il foglio dei calci piazzati da riempire a penna
+  const [allegaPiazzati, setAllegaPiazzati] = useState(false)
 
   const rows = useMemo(() => {
     // gli omonimi (stesso nome E cognome) si distinguono con la data di nascita
@@ -182,7 +186,24 @@ export function Distinte() {
             </Col>
             <Col xs={24} md={8}>
               <Card title="Stampa / Esporta">
-                <PdfExporter list={selezionati} testata={testata} onStampato={salvaStampata} />
+                <PdfExporter
+                  list={selezionati}
+                  testata={testata}
+                  onStampato={salvaStampata}
+                  allegaPiazzati={allegaPiazzati}
+                  stagione={attiva}
+                />
+                <div style={{ marginTop: 12 }}>
+                  <Checkbox
+                    checked={allegaPiazzati}
+                    onChange={(e) => setAllegaPiazzati(e.target.checked)}
+                  >
+                    Allega il foglio dei calci piazzati
+                  </Checkbox>
+                  <Text type="secondary" style={{ display: 'block', fontSize: 12.5, marginTop: 2 }}>
+                    Una pagina in più, vuota, da compilare a penna prima della gara.
+                  </Text>
+                </div>
                 <div style={{ marginTop: 12 }}>
                   <Text type="secondary">
                     Il PDF con la distinta ufficiale verrà scaricato e la distinta salvata: potrai

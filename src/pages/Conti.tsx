@@ -42,7 +42,7 @@ import { StatCard } from '../components/StatCard'
 import { DettaglioMovimenti, type VistaDettaglio } from '../components/DettaglioMovimenti'
 import dayjs from 'dayjs'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData, formatEuro } from '../lib/format'
+import { formatData, formatEuro, oggiIso, plurale } from '../lib/format'
 import { esportaExcel } from '../lib/excel'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { BilancioMensile, type MeseBilancio, type TipoBilancio } from './conti/BilancioMensile'
@@ -66,9 +66,6 @@ const CATEGORIE_SUGGERITE = [
 
 const SENZA_CATEGORIA = 'Senza categoria'
 
-function oggiIso() {
-  return new Date().toISOString().slice(0, 10)
-}
 function labelMese(chiave: string) {
   const [y, m] = chiave.split('-')
   return `${m}/${y.slice(2)}`
@@ -299,17 +296,17 @@ export function Conti() {
       modal.confirm({
         title: 'Importare il bilancio?',
         content:
-          `In "${file.name}" ho trovato ${movimenti.length} movimenti ` +
+          `In "${file.name}" ho trovato ${plurale(movimenti.length, 'movimento', 'movimenti')} ` +
           `(${entrate} entrate, ${movimenti.length - entrate} uscite). ` +
           (items.length > 0
-            ? `L'import sostituisce i ${items.length} movimenti già presenti.`
+            ? `L'import sostituisce ${plurale(items.length, 'il movimento', 'i movimenti')} già ${items.length === 1 ? 'presente' : 'presenti'}.`
             : 'Verranno aggiunti ai conti.'),
         okText: items.length > 0 ? 'Sostituisci tutto' : 'Importa',
         okButtonProps: { danger: items.length > 0 },
         cancelText: 'Annulla',
         onOk: () => {
           replace(movimenti.map((m) => ({ ...m, id: crypto.randomUUID() })))
-          message.success(`Importati ${movimenti.length} movimenti.`)
+          message.success(`${movimenti.length === 1 ? 'Importato' : 'Importati'} ${plurale(movimenti.length, 'movimento', 'movimenti')}.`)
         },
       })
     } catch (e) {

@@ -16,6 +16,7 @@ export const COLLECTIONS = [
   'appuntamenti',
   'promemoria',
   'distinte',
+  'calciPiazzati',
   'magazzino',
   'materiale',
   'manutenzione',

@@ -22,6 +22,7 @@ import { ClassificaPresenze, type RigaClassifica } from './allenamenti/classific
 import { AlboDoro } from './statistiche/AlboDoro'
 import { esportaReportStagione } from './statistiche/report'
 import type { Allenamento, Giocatore, Movimento, Partita, Torneo } from '../types'
+import { plurale } from '../lib/format'
 
 const { Text } = Typography
 
@@ -368,7 +369,7 @@ export function Statistiche() {
           tab === 'albo'
             ? "Record e campioni di tutte le stagioni"
             : giocate.length
-              ? `${giocate.length} partite giocate nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`
+              ? `${plurale(giocate.length, 'partita giocata', 'partite giocate')} nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`
               : undefined
         }
         azioni={

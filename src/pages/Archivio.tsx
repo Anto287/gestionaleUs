@@ -17,16 +17,13 @@ import { useArchivio } from '../data/ArchivioProvider'
 import { useCollection } from '../hooks/useCollection'
 import { parole, type FileArchivio } from '../lib/archivio'
 import type { Giocatore } from '../types'
+import { iniziali } from '../lib/format'
 
 const { Text, Paragraph } = Typography
 
 type Genere = 'foto' | 'fronte' | 'retro'
 
 const ETICHETTA: Record<Genere, string> = { foto: 'Foto', fronte: 'Fronte', retro: 'Retro' }
-
-function iniziali(g: Giocatore) {
-  return `${g.nome[0] ?? ''}${g.cognome[0] ?? ''}`.toUpperCase()
-}
 
 /**
  * Archivio tesserati: le due cartelle del Drive con i documenti

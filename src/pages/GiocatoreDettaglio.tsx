@@ -52,14 +52,10 @@ import { statisticheGiocatore } from '../lib/statistiche'
 import { useArchivio } from '../data/ArchivioProvider'
 import { ArchivioTesserato } from '../components/archivio/ArchivioTesserato'
 import { statoQuota } from '../lib/quota'
-import { formatData, formatEuro } from '../lib/format'
+import { formatData, formatEuro, iniziali, oggiIso } from '../lib/format'
 import type { Allenamento, Giocatore, Movimento, Partita, VersamentoQuota } from '../types'
 
 const { Title, Text } = Typography
-
-function iniziali(g: Giocatore) {
-  return `${g.nome[0] ?? ''}${g.cognome[0] ?? ''}`.toUpperCase()
-}
 
 export function GiocatoreDettaglio() {
   const { id } = useParams()
@@ -180,7 +176,7 @@ export function GiocatoreDettaglio() {
 
   function apriVersamento() {
     formVersamento.resetFields()
-    formVersamento.setFieldsValue({ data: new Date().toISOString().slice(0, 10) })
+    formVersamento.setFieldsValue({ data: oggiIso() })
     setModaleVersamento(true)
   }
 
@@ -378,16 +374,23 @@ export function GiocatoreDettaglio() {
               {!soloDirigente && (
                 <Descriptions.Item label="N. maglia">{g.numeroMaglia ?? '—'}</Descriptions.Item>
               )}
-              <Descriptions.Item label="Data di nascita">{g.nascita || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Data di nascita">
+                {g.nascita ? formatData(g.nascita, true) : '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="N. tessera">
                 {g.tessera || <Tag color="orange">Mancante</Tag>}
               </Descriptions.Item>
-              <Descriptions.Item label="Rilascio tessera">{g.dataRilascio || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Rilascio tessera">
+                {g.dataRilascio ? formatData(g.dataRilascio, true) : '—'}
+              </Descriptions.Item>
               {!soloDirigente && (
                 <Descriptions.Item label="Certificato medico">
                   <Tag color={cert.color}>{cert.label}</Tag>
                   {g.scadenzaCertificato && (
-                    <Text type="secondary"> scad. {formatData(g.scadenzaCertificato, true)}</Text>
+                    <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+                      {' '}
+                      scad. {formatData(g.scadenzaCertificato, true)}
+                    </Text>
                   )}
                 </Descriptions.Item>
               )}
@@ -401,7 +404,7 @@ export function GiocatoreDettaglio() {
                   })()}
                 </Descriptions.Item>
               )}
-              <Descriptions.Item label="Note" span={{ xs: 1, sm: 2, lg: 3 }}>
+              <Descriptions.Item label="Note" span="filled">
                 {g.note?.trim() ? <span style={{ whiteSpace: 'pre-wrap' }}>{g.note}</span> : '—'}
               </Descriptions.Item>
             </Descriptions>
