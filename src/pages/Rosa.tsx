@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AutoComplete,
+  Avatar,
   Button,
   Empty,
   Form,
@@ -29,6 +30,7 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
+import { useArchivio } from '../data/ArchivioProvider'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
@@ -61,6 +63,10 @@ type Bozza = Pick<
   | 'note'
 >
 
+function iniziali(g: Giocatore) {
+  return `${g.nome[0] ?? ''}${g.cognome[0] ?? ''}`.toUpperCase()
+}
+
 export function Rosa() {
   const giocatori = useCollection<Giocatore>('giocatori')
   const { items, add, update } = giocatori
@@ -68,6 +74,9 @@ export function Rosa() {
   const allenamenti = useCollection<Allenamento>('allenamenti')
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
+  // la foto dell'archivio sul Drive, quando c'è, fa da avatar
+  const archivio = useArchivio()
+  const fotoDi = (g: Giocatore) => archivio.miniatura(archivio.scheda(g.id).foto?.id)
   const isMobile = !screens.sm
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const [modale, setModale] = useState(false)
@@ -203,9 +212,16 @@ export function Rosa() {
       defaultSortOrder: 'ascend' as const,
       render: (_: unknown, g: Giocatore) => (
         <span>
+          <Avatar
+            src={fotoDi(g)}
+            size={26}
+            style={{ background: '#c22026', fontSize: 11, marginRight: 8, flex: 'none' }}
+          >
+            {iniziali(g)}
+          </Avatar>
           <span
             className="tronca"
-            style={{ maxWidth: 160, fontWeight: 600 }}
+            style={{ maxWidth: 140, fontWeight: 600 }}
             title={`${g.cognome} ${g.nome}`}
           >
             {g.cognome} {g.nome}
@@ -487,41 +503,50 @@ export function Rosa() {
                 return (
                   <div key={g.id} className="lista-card" onClick={() => navigate(`/rosa/${g.id}`)}>
                     <div className="lista-card-top">
-                      <div>
-                        <div className="lista-card-title">
-                          {g.numeroMaglia != null && (
-                            <span style={{ color: 'var(--testo-2)', marginRight: 6 }}>{g.numeroMaglia}</span>
-                          )}
-                          {g.cognome} {g.nome}
-                          {isDirigente(g) && (
-                            <Tag color="purple" style={{ marginLeft: 6 }}>
-                              {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
-                            </Tag>
-                          )}
-                          {isExtra(g) && (
-                            <Tag color="cyan" style={{ marginLeft: 6 }}>
-                              Extra
-                            </Tag>
-                          )}
-                          {isGiocatore(g) && g.infortunato && (
-                            <Tag color="red" style={{ marginLeft: 6 }}>
-                              Infortunato
-                            </Tag>
-                          )}
-                        </div>
-                        <div className="lista-card-meta" style={{ marginTop: 5 }}>
-                          {g.ruoloPreferito ? (
-                            <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag>
-                          ) : !isGiocatore(g) ? (
-                            g.ruoloDirigenza && <Tag color="purple">{g.ruoloDirigenza}</Tag>
-                          ) : (
-                            <span>Ruolo n.d.</span>
-                          )}
-                          {g.ruoliAdattati?.map((r) => (
-                            <Tag key={r} color={coloreRuolo(r)} style={{ opacity: 0.7 }}>
-                              {r}
-                            </Tag>
-                          ))}
+                      <div className="lista-card-persona">
+                        <Avatar
+                          src={fotoDi(g)}
+                          size={40}
+                          style={{ background: '#c22026', fontSize: 15, flex: 'none' }}
+                        >
+                          {iniziali(g)}
+                        </Avatar>
+                        <div>
+                          <div className="lista-card-title">
+                            {g.numeroMaglia != null && (
+                              <span style={{ color: 'var(--testo-2)', marginRight: 6 }}>{g.numeroMaglia}</span>
+                            )}
+                            {g.cognome} {g.nome}
+                            {isDirigente(g) && (
+                              <Tag color="purple" style={{ marginLeft: 6 }}>
+                                {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
+                              </Tag>
+                            )}
+                            {isExtra(g) && (
+                              <Tag color="cyan" style={{ marginLeft: 6 }}>
+                                Extra
+                              </Tag>
+                            )}
+                            {isGiocatore(g) && g.infortunato && (
+                              <Tag color="red" style={{ marginLeft: 6 }}>
+                                Infortunato
+                              </Tag>
+                            )}
+                          </div>
+                          <div className="lista-card-meta" style={{ marginTop: 5 }}>
+                            {g.ruoloPreferito ? (
+                              <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag>
+                            ) : !isGiocatore(g) ? (
+                              g.ruoloDirigenza && <Tag color="purple">{g.ruoloDirigenza}</Tag>
+                            ) : (
+                              <span>Ruolo n.d.</span>
+                            )}
+                            {g.ruoliAdattati?.map((r) => (
+                              <Tag key={r} color={coloreRuolo(r)} style={{ opacity: 0.7 }}>
+                                {r}
+                              </Tag>
+                            ))}
+                          </div>
                         </div>
                       </div>
                       <span onClick={(e) => e.stopPropagation()}>

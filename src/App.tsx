@@ -17,6 +17,7 @@ import { Statistiche } from './pages/Statistiche'
 import { Magazzino } from './pages/Magazzino'
 import { Conti } from './pages/Conti'
 import { Documenti } from './pages/Documenti'
+import { Archivio } from './pages/Archivio'
 import { Impostazioni } from './pages/Impostazioni'
 
 // caricate su richiesta: portano con sé jspdf/html2canvas (pesanti)
@@ -68,6 +69,7 @@ function App() {
           <Route path="/magazzino" element={<Magazzino />} />
           <Route path="/conti" element={<Conti />} />
           <Route path="/documenti" element={<Documenti />} />
+          <Route path="/archivio" element={<Archivio />} />
           <Route path="/impostazioni" element={<Impostazioni />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

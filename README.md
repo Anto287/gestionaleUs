@@ -35,6 +35,7 @@ viaggia sempre nel corpo delle richieste POST, mai nell'URL.
 - **Magazzino** — scorte del bar con soglia di riordino
 - **Conti** — entrate/uscite, saldo, insoluti (da incassare / da pagare)
 - **Documenti** — archivio file della società
+- **Archivio** — documenti (fronte/retro) e foto dei tesserati
 - **Impostazioni** — gestione delle stagioni
 
 ## Stagioni
@@ -50,6 +51,33 @@ Ogni stagione tiene i suoi dati separati: la chiave di ogni raccolta è
 `<stagione>/<raccolta>` (es. `2026/27/allenamenti`). Sul Drive ogni stagione
 diventerà una cartella dedicata con un file per sezione. La logica sta in
 `src/season/SeasonContext.tsx`.
+
+## Archivio tesserati
+
+Documenti e foto dei tesserati stanno in **due cartelle loro sul Drive**, fuori
+dalla cartella del gestionale: sono di prima dell'app e non vanno toccate. I
+loro id si impostano nello script (`ARCHIVIO_DOCUMENTI_ID`, `ARCHIVIO_FOTO_ID`).
+
+I file si agganciano ai tesserati leggendone il nome, con la regola già in uso:
+
+- documenti → `Nome_Cognome_fronte.jpg` (oppure `_retro`)
+- foto → `NOME COGNOME.jpg`
+
+Il confronto ignora accenti, maiuscole, apostrofi e l'ordine di nome e cognome
+(`PERRA ANDREA` trova Andrea Perrà). Chi non corrisponde a nessuno in rosa
+finisce in «Senza corrispondenza» e resta dov'è. Per gli **omonimi** serve la
+data di nascita nel nome (`Nome_Cognome_12-05-1999_fronte.jpg`): l'app la mette
+da sola quando in rosa ci sono due tesserati con lo stesso nome.
+
+Caricando un file si scrivono solo nome, cognome e se è fronte o retro: il nome
+lo compone l'app. Le immagini vengono rimpicciolite nel browser (lato max 2000
+px, JPEG) prima di partire. Un file con lo stesso nome viene sostituito — nel
+cestino del Drive resta comunque recuperabile.
+
+I file **non** vengono condivisi via link: sono documenti d'identità e restano
+privati, l'app li legge passando dallo script. Serve il pezzo di codice in
+`docs/apps-script-archivio.gs`, con le istruzioni scritte in cima al file;
+finché non è incollato, la sezione resta vuota e il resto funziona normalmente.
 
 ## Dati e Google Drive
 

@@ -49,6 +49,8 @@ import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli
 import { statoCertificato } from '../lib/certificato'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
 import { statisticheGiocatore } from '../lib/statistiche'
+import { useArchivio } from '../data/ArchivioProvider'
+import { ArchivioTesserato } from '../components/archivio/ArchivioTesserato'
 import { statoQuota } from '../lib/quota'
 import { formatData, formatEuro } from '../lib/format'
 import type { Allenamento, Giocatore, Movimento, Partita, VersamentoQuota } from '../types'
@@ -117,6 +119,10 @@ export function GiocatoreDettaglio() {
       fatte: allenamenti.items.filter((a) => a.presenze[g.id]).length,
     }
   }, [allenamenti.items, g])
+
+  // la foto dell'archivio fa da avatar, quando c'è
+  const archivio = useArchivio()
+  const foto = archivio.miniatura(archivio.scheda(g?.id ?? '').foto?.id)
 
   const stat = useMemo(
     () =>
@@ -254,7 +260,7 @@ export function GiocatoreDettaglio() {
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Avatar size={64} style={{ background: '#c22026', fontSize: 24, flex: 'none' }}>
+          <Avatar src={foto} size={64} style={{ background: '#c22026', fontSize: 24, flex: 'none' }}>
             {iniziali(g)}
           </Avatar>
           <div style={{ flex: 1, minWidth: 200 }}>
@@ -467,6 +473,8 @@ export function GiocatoreDettaglio() {
           })()}
         </Card>
       )}
+
+      <ArchivioTesserato giocatore={g} />
 
       <Modal
         title="Nuovo versamento quota"

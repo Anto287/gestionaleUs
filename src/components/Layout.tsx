@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useSeason } from '../season/SeasonContext'
 import { useTema } from '../theme/TemaProvider'
 import { DataProvider } from '../data/DataProvider'
+import { ArchivioProvider } from '../data/ArchivioProvider'
 
 const { Sider, Header, Content } = AntLayout
 const { Text } = Typography
@@ -109,9 +110,11 @@ export function Layout() {
         )}
         <Content className="app-content">
           <DataProvider key={attiva}>
-            <div className="app-container">
-              <Outlet />
-            </div>
+            <ArchivioProvider>
+              <div className="app-container">
+                <Outlet />
+              </div>
+            </ArchivioProvider>
           </DataProvider>
         </Content>
       </AntLayout>
