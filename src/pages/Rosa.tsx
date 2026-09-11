@@ -36,11 +36,12 @@ import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE, type Area } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
+import { statoScadenza } from '../lib/scadenza'
 import { statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, LABEL_CATEGORIA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
-import { iniziali, plurale } from '../lib/format'
+import { formatData, iniziali, plurale } from '../lib/format'
 
 type Bozza = Pick<
   Giocatore,
@@ -55,6 +56,7 @@ type Bozza = Pick<
   | 'nascita'
   | 'tessera'
   | 'dataRilascio'
+  | 'scadenzaDocumento'
   | 'certificatoMedico'
   | 'scadenzaCertificato'
   | 'quotaPagata'
@@ -305,6 +307,25 @@ export function Rosa() {
         ),
     },
     {
+      title: 'Scad. documento',
+      key: 'documento',
+      width: 170,
+      sorter: (a: Giocatore, b: Giocatore) =>
+        (a.scadenzaDocumento ?? '').localeCompare(b.scadenzaDocumento ?? ''),
+      render: (_: unknown, g: Giocatore) => {
+        if (!g.scadenzaDocumento) return '—'
+        const s = statoScadenza(g.scadenzaDocumento)
+        return (
+          <Space size={4}>
+            <span style={{ color: s.critico ? '#b1352f' : undefined, fontWeight: s.critico ? 600 : undefined }}>
+              {formatData(g.scadenzaDocumento, true)}
+            </span>
+            {s.label && <Tag color={s.color}>{s.label}</Tag>}
+          </Space>
+        )
+      },
+    },
+    {
       title: 'Quota',
       key: 'quota',
       width: 100,
@@ -361,6 +382,7 @@ export function Rosa() {
           Nascita: g.nascita ?? '',
           Tessera: g.tessera ?? '',
           'Rilascio tessera': g.dataRilascio ?? '',
+          'Scadenza documento': g.scadenzaDocumento ?? '',
           Certificato: isGiocatore(g) ? statoCertificato(g).label : '',
           'Scadenza certificato': g.scadenzaCertificato ?? '',
           Quota: isGiocatore(g) ? statoQuota(g).label : '',
@@ -497,6 +519,7 @@ export function Rosa() {
             <div className="lista-mobile">
               {filtrati.map((g) => {
                 const cert = statoCertificato(g)
+                const doc = statoScadenza(g.scadenzaDocumento)
                 return (
                   <div key={g.id} className="lista-card" onClick={() => navigate(`/rosa/${g.id}`)}>
                     <div className="lista-card-top">
@@ -567,6 +590,7 @@ export function Rosa() {
                           Tessera mancante
                         </Tag>
                       )}
+                      {doc.label && <Tag color={doc.color}>Documento {doc.label.toLowerCase()}</Tag>}
                       {isGiocatore(g) && <span>· {presenze[g.id] ?? 0} pres.</span>}
                       {isGiocatore(g) &&
                         (statoQuota(g).totale ? (
@@ -682,6 +706,14 @@ export function Rosa() {
           </Form.Item>
           <Form.Item label="Data rilascio tessera" name="dataRilascio">
             <Input placeholder="es. 01/09/2026" autoComplete="off" />
+          </Form.Item>
+          <Form.Item
+            label="Scadenza documento d'identità"
+            name="scadenzaDocumento"
+            tooltip="Fine validità della carta d'identità (o del documento usato in distinta)"
+            {...propsCampoData}
+          >
+            <DataPicker />
           </Form.Item>
           {campiGiocatore && (
             <>

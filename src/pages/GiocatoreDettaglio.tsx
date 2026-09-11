@@ -47,6 +47,7 @@ import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
+import { statoScadenza } from '../lib/scadenza'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
 import { statisticheGiocatore } from '../lib/statistiche'
 import { useArchivio } from '../data/ArchivioProvider'
@@ -143,6 +144,7 @@ export function GiocatoreDettaglio() {
   }
 
   const cert = statoCertificato(g)
+  const doc = statoScadenza(g.scadenzaDocumento)
   const soloDirigente = !isGiocatore(g)
   const percPresenze = presenze.totali ? Math.round((presenze.fatte / presenze.totali) * 100) : 0
 
@@ -383,6 +385,18 @@ export function GiocatoreDettaglio() {
               <Descriptions.Item label="Rilascio tessera">
                 {g.dataRilascio ? formatData(g.dataRilascio, true) : '—'}
               </Descriptions.Item>
+              <Descriptions.Item label="Scadenza documento">
+                {g.scadenzaDocumento ? (
+                  <Space size={4}>
+                    <span style={{ color: doc.critico ? '#b1352f' : undefined, fontWeight: doc.critico ? 600 : undefined }}>
+                      {formatData(g.scadenzaDocumento, true)}
+                    </span>
+                    {doc.label && <Tag color={doc.color}>{doc.label}</Tag>}
+                  </Space>
+                ) : (
+                  '—'
+                )}
+              </Descriptions.Item>
               {!soloDirigente && (
                 <Descriptions.Item label="Certificato medico">
                   <Tag color={cert.color}>{cert.label}</Tag>
@@ -569,6 +583,14 @@ export function GiocatoreDettaglio() {
           </Form.Item>
           <Form.Item label="Data rilascio tessera" name="dataRilascio">
             <Input placeholder="es. 01/09/2026" />
+          </Form.Item>
+          <Form.Item
+            label="Scadenza documento d'identità"
+            name="scadenzaDocumento"
+            tooltip="Fine validità della carta d'identità (o del documento usato in distinta)"
+            {...propsCampoData}
+          >
+            <DataPicker />
           </Form.Item>
           {campiGiocatore && (
             <>

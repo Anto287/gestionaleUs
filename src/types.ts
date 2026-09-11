@@ -31,6 +31,8 @@ export interface Giocatore {
   nascita?: string
   tessera?: string
   dataRilascio?: string
+  /** fine validità del documento d'identità ('YYYY-MM-DD'): il documento vero sta nell'archivio */
+  scadenzaDocumento?: string
   /** certificato medico (non riguarda chi è solo dirigente) */
   certificatoMedico?: boolean
   scadenzaCertificato?: string
