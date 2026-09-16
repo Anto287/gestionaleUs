@@ -6,7 +6,14 @@
  * browser (localStorage), così l'app resta usabile anche senza Drive.
  */
 import { config } from '../config'
-import { loadCollection, loadValue, removeValue, saveCollection, saveValue } from './storage'
+import {
+  keysWithPrefix,
+  loadCollection,
+  loadValue,
+  removeValue,
+  saveCollection,
+  saveValue,
+} from './storage'
 import { chiaveFile } from '../lib/archivio'
 import type { Cartella, FileArchivio } from '../lib/archivio'
 import { oggiIso } from '../lib/format'
@@ -66,13 +73,90 @@ export interface DocMeta {
   dataUrl?: string
 }
 
+// --- copia locale delle raccolte ---
+//
+// Ogni lettura riuscita lascia una copia nel browser: alla riapertura l'app
+// parte da lì (subito, anche con la rete del campo) e intanto rilegge dal
+// Drive in sottofondo. È solo una copia: la verità resta sul Drive.
+
+const CACHE_DATI = '__dati/'
+
+function cacheKey(collection: string, season: string): string {
+  return `${CACHE_DATI}${season}/${collection}`
+}
+
+/** L'ultima copia letta di una raccolta, o null se non c'è. */
+export function listCache<T>(collection: string, season: string): T[] | null {
+  if (!DRIVE_URL) return null
+  try {
+    const raw = loadValue(cacheKey(collection, season))
+    if (!raw) return null
+    const items = JSON.parse(raw)
+    return Array.isArray(items) ? (items as T[]) : null
+  } catch {
+    return null
+  }
+}
+
+/** Aggiorna la copia locale di una raccolta (dopo una lettura o una modifica). */
+export function salvaCacheLista(collection: string, season: string, items: unknown[]): void {
+  if (!DRIVE_URL) return
+  try {
+    saveValue(cacheKey(collection, season), JSON.stringify(items))
+  } catch {
+    /* spazio finito: pazienza, la prossima volta si legge dal Drive */
+  }
+}
+
+/**
+ * Svuota tutte le copie locali delle raccolte. Si chiama uscendo dall'app:
+ * sono dati dei tesserati, non devono restare sul dispositivo di chi ha
+ * fatto logout (come per l'archivio).
+ */
+export function pulisciCacheDati(): void {
+  for (const k of keysWithPrefix(CACHE_DATI)) removeValue(k)
+}
+
 // --- lettura ---
 
 export async function list<T>(collection: string, season: string): Promise<T[]> {
   if (!DRIVE_URL) return loadCollection<T>(lsKey(collection, season))
   // lettura via POST: la chiave resta nel corpo, fuori dall'URL
   const data = await post({ action: 'list', collection, season: seasonKey(season) })
-  return data.items as T[]
+  return (data.items ?? []) as T[]
+}
+
+export interface Richiesta {
+  collection: string
+  season: string
+}
+
+/**
+ * Tutte le raccolte in UNA sola richiesta (azione 'listAll').
+ *
+ * Ogni chiamata allo script è un'esecuzione a sé sul Drive: avviarne sedici
+ * costa molto più dei dati che riportano indietro (Google le mette anche in
+ * fila fra loro). Con una sola richiesta lo script apre i fogli di seguito e
+ * risponde una volta.
+ *
+ * Restituisce `null` se lo script è ancora la versione vecchia, che non
+ * conosce l'azione: in quel caso il chiamante torna alle letture una per una.
+ */
+export async function listAll(
+  richieste: Richiesta[],
+): Promise<Record<string, unknown[]> | null> {
+  if (!DRIVE_URL) return null
+  const data = await callDrive({
+    action: 'listAll',
+    richieste: richieste.map((r) => ({ collection: r.collection, season: seasonKey(r.season) })),
+    secret: getSecret(),
+  })
+  if (!data.ok) {
+    if (String(data.error || '').toLowerCase().includes('sconosciuta')) return null
+    throw new Error(data.error || 'Errore Drive')
+  }
+  const liste = (data.liste ?? []) as Array<{ collection: string; items?: unknown[] }>
+  return Object.fromEntries(liste.map((l) => [l.collection, l.items ?? []]))
 }
 
 // --- scrittura (serializzata per evitare corse) ---
@@ -179,7 +263,24 @@ export async function seasonsConfig(): Promise<SeasonsConfig | null> {
     if (String(data.error || '').toLowerCase().includes('sconosciuta')) return null
     throw new Error(data.error || 'Errore Drive')
   }
-  return { stagioni: data.stagioni || [], attiva: data.attiva || '' }
+  const cfg: SeasonsConfig = { stagioni: data.stagioni || [], attiva: data.attiva || '' }
+  saveValue(SEASONS_CFG_KEY, JSON.stringify(cfg))
+  return cfg
+}
+
+/**
+ * L'elenco stagioni dell'ultima volta, letto dal browser: serve ad aprire
+ * l'app senza aspettare il Drive (poi `seasonsConfig` lo rinfresca).
+ */
+export function seasonsConfigCache(): SeasonsConfig | null {
+  try {
+    const raw = loadValue(SEASONS_CFG_KEY)
+    if (!raw) return null
+    const cfg = JSON.parse(raw) as SeasonsConfig
+    return cfg?.stagioni?.length ? cfg : null
+  } catch {
+    return null
+  }
 }
 
 export function setSeasonsConfig(stagioni: string[], attiva: string): Promise<void> {

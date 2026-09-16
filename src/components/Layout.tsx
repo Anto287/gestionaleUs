@@ -1,4 +1,4 @@
-import { createElement, useState } from 'react'
+import { createElement, Suspense, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Layout as AntLayout, Menu, Button, Drawer, Grid, Typography } from 'antd'
 import { LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
@@ -9,9 +9,19 @@ import { useSeason } from '../season/SeasonContext'
 import { useTema } from '../theme/TemaProvider'
 import { DataProvider } from '../data/DataProvider'
 import { ArchivioProvider } from '../data/ArchivioProvider'
+import { PalloneSpinner } from './PalloneSpinner'
 
 const { Sider, Header, Content } = AntLayout
 const { Text } = Typography
+
+/** Segnaposto mentre si scarica il pezzo della pagina (vedi le lazy in App.tsx). */
+function PaginaInArrivo() {
+  return (
+    <div className="pagina-in-arrivo">
+      <PalloneSpinner />
+    </div>
+  )
+}
 
 function Brand() {
   const { attiva } = useSeason()
@@ -112,7 +122,9 @@ export function Layout() {
           <DataProvider key={attiva}>
             <ArchivioProvider>
               <div className="app-container">
-                <Outlet />
+                <Suspense fallback={<PaginaInArrivo />}>
+                  <Outlet />
+                </Suspense>
               </div>
             </ArchivioProvider>
           </DataProvider>

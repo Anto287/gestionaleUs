@@ -129,7 +129,12 @@ export function Formazione() {
             : null,
         )
         .filter(Boolean),
-      panchina: panchina.map((id) => byId.get(id)?.cognome || byId.get(id)?.nome || '—'),
+      // col numero davanti, come si legge una panchina: "7 Rossi  9 Bianchi"
+      panchina: panchina.map((id) => {
+        const g = byId.get(id)
+        const nome = g?.cognome || g?.nome || '—'
+        return g?.numeroMaglia != null ? `${g.numeroMaglia} ${nome}` : nome
+      }),
     }
     sessionStorage.setItem('usriolunato:grafFormazione', JSON.stringify(payload))
     navigate('/social?kind=formazione')

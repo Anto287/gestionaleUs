@@ -29,6 +29,7 @@ import {
   coloreRuolo,
   fillRett,
   strokeCerchio,
+  strokeRett,
   type ColoriTema,
   type ElTesto,
   type Elemento,
@@ -158,15 +159,15 @@ export function PannelloElemento({
             <ColorPicker
               size="small"
               allowClear
-              value={el.stroke ?? '#241d16'}
+              value={strokeRett(el, col, accento) ?? '#241d16'}
               onChange={(c) => patch({ stroke: c.toHexString(), strokeWidth: el.strokeWidth || 3 }, 'stroke')}
-              onClear={() => patch({ stroke: undefined })}
+              onClear={() => patch({ stroke: undefined, strokeRuolo: undefined })}
             />
             <InputNumber
               size="small"
               min={1}
               max={30}
-              disabled={!el.stroke}
+              disabled={!strokeRett(el, col, accento)}
               value={el.strokeWidth ?? 3}
               onChange={(v) => patch({ strokeWidth: Number(v) || 1 })}
             />

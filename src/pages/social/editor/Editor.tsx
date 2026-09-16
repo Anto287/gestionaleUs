@@ -24,6 +24,7 @@ import {
   coloriTema,
   fillRett,
   strokeCerchio,
+  strokeRett,
   DISPLAY,
   ORO,
   ROSSO,
@@ -112,6 +113,31 @@ function NodoImmagine({
       {...comuni}
     />
   )
+}
+
+/**
+ * Il serif del manifesto (Playfair Display) serve solo alle grafiche: il
+ * foglio di stile si chiede la prima volta che si apre l'editor, non
+ * nell'index.html, così le altre pagine non se lo portano dietro. Se non
+ * arriva (offline) si disegna col Georgia di sistema, che gli somiglia.
+ */
+const URL_MANIFESTO =
+  'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&display=swap'
+
+function caricaManifesto(): Promise<void> {
+  if (typeof document === 'undefined') return Promise.resolve()
+  if (document.getElementById('font-manifesto')) return Promise.resolve()
+  return new Promise((risolvi) => {
+    const link = document.createElement('link')
+    link.id = 'font-manifesto'
+    link.rel = 'stylesheet'
+    link.href = URL_MANIFESTO
+    link.onload = () => risolvi()
+    link.onerror = () => risolvi()
+    document.head.appendChild(link)
+    // non si resta appesi al foglio di stile: dopo un attimo si va avanti
+    setTimeout(risolvi, 2500)
+  })
 }
 
 const NOMI_KIND: Record<BuildInput['kind'], string> = {
@@ -236,12 +262,18 @@ export function Editor({
   useEffect(() => {
     let vivo = true
     const fonts = document.fonts
-    const attesa = fonts
-      ? Promise.all([
-          ...['500', '600', '700'].map((w) => fonts.load(`${w} 16px 'Barlow Condensed'`)),
-          ...['400', '500', '600', '700'].map((w) => fonts.load(`${w} 16px 'Inter'`)),
-        ]).then(() => fonts.ready)
-      : Promise.resolve()
+    const attesa = caricaManifesto().then(() =>
+      fonts
+        ? Promise.all([
+            ...['500', '600', '700'].map((w) => fonts.load(`${w} 16px 'Barlow Condensed'`)),
+            ...['400', '500', '600', '700'].map((w) => fonts.load(`${w} 16px 'Inter'`)),
+            fonts.load("700 16px 'Playfair Display'"),
+            fonts.load("italic 700 16px 'Playfair Display'"),
+          ])
+            .then(() => fonts.ready)
+            .then(() => undefined)
+        : Promise.resolve(),
+    )
     Promise.resolve(attesa)
       .catch(() => undefined) // offline: si disegna col ripiego, ma coerente
       .then(() => {
@@ -891,8 +923,8 @@ export function Editor({
                           height={el.altezza}
                           cornerRadius={el.cornerRadius}
                           fill={fillRett(el, col, scena.accento)}
-                          stroke={el.stroke}
-                          strokeWidth={el.stroke ? (el.strokeWidth ?? 3) : 0}
+                          stroke={strokeRett(el, col, scena.accento)}
+                          strokeWidth={strokeRett(el, col, scena.accento) ? (el.strokeWidth ?? 3) : 0}
                           rotation={el.rotation}
                           opacity={el.opacita ?? 1}
                           shadowEnabled={!!el.ombra}

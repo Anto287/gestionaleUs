@@ -1349,6 +1349,14 @@ body {
   color: var(--testo-2);
 }
 
+/* mentre arriva il pezzo di una pagina (route lazy): la sidebar resta lì */
+.pagina-in-arrivo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
 /* Il pallone che rotola (PalloneSpinner) */
 
 .pallone-spinner {
@@ -1513,6 +1521,28 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+/* Le due colonne: etichetta in cima, campo appoggiato in fondo. Così
+   un'etichetta che va a capo («Marcatori avversari») non fa scendere il suo
+   campo rispetto a quello di fianco. */
+.social-due > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.social-due > div > .social-label + *,
+.social-due > div > .social-sotto-label + * {
+  margin-top: auto;
+}
+
+/* etichetta di secondo livello dentro una coppia di campi (es. Marcatori) */
+.social-sotto-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12.5px;
+  color: var(--testo-2);
 }
 
 .social-suggerimento {
@@ -1988,4 +2018,87 @@ body {
   .piazzati-caselle {
     grid-template-columns: 1fr !important;
   }
+}
+
+/* ---------- Rosa: riepilogo delle quote ----------
+   Le quote non passano dai Conti: qui si legge la cifra che a fine anno
+   chi le raccoglie registra come unica entrata. */
+
+.quote-riepilogo {
+  margin-bottom: 14px;
+  background: var(--panna);
+}
+
+.quote-riepilogo-cifre {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+}
+
+.quote-riepilogo-voce {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quote-riepilogo-etichetta {
+  font-size: 12px;
+  color: var(--testo-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.quote-riepilogo-num {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.quote-riepilogo-num.aperto {
+  color: var(--rosso);
+}
+
+.quote-riepilogo-nota {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--testo-2);
+}
+
+/* ---------- Puntino "sto rileggendo dal Drive" ----------
+   L'app si apre con la copia locale: questo compare solo se la rilettura
+   dal Drive si fa aspettare, e sparisce da solo quando arriva. */
+
+.sync-chip {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  font-size: 13px;
+  color: var(--testo-2);
+  background: var(--cartoncino);
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  box-shadow: var(--ombra-card);
+}
+
+@media (max-width: 575.98px) {
+  .sync-chip {
+    right: 12px;
+    bottom: 12px;
+  }
+}
+
+/* anteprima dello stemma avversario caricato (pagina Grafiche IG) */
+.social-logo-avv {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--panna);
+  padding: 2px;
 }

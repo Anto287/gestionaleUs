@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  App,
   AutoComplete,
   Avatar,
   Button,
+  Card,
   Empty,
   Form,
   Grid,
@@ -21,6 +23,7 @@ import {
 } from 'antd'
 import {
   PlusOutlined,
+  CopyOutlined,
   DeleteOutlined,
   FileExcelOutlined,
   MedicineBoxOutlined,
@@ -37,11 +40,11 @@ import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE, type Area } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
 import { statoScadenza } from '../lib/scadenza'
-import { statoQuota } from '../lib/quota'
+import { riepilogoQuote, statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, LABEL_CATEGORIA } from '../lib/categoria'
 import type { Allenamento, Giocatore } from '../types'
-import { formatData, iniziali, plurale } from '../lib/format'
+import { formatData, formatEuro, iniziali, plurale } from '../lib/format'
 
 type Bozza = Pick<
   Giocatore,
@@ -77,6 +80,7 @@ export function Rosa() {
   const archivio = useArchivio()
   const fotoDi = (g: Giocatore) => archivio.miniatura(archivio.scheda(g.id).foto?.id)
   const isMobile = !screens.sm
+  const { message } = App.useApp()
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const [modale, setModale] = useState(false)
   const [form] = Form.useForm()
@@ -152,6 +156,19 @@ export function Rosa() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ordinati, q, repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF],
   )
+
+  // le quote non passano dai Conti: qui si vede la cifra che a fine anno
+  // chi le raccoglie registrerà come unica entrata
+  const quote = useMemo(() => riepilogoQuote(items), [items])
+
+  async function copiaTotaleQuote() {
+    try {
+      await navigator.clipboard.writeText(String(quote.raccolto))
+      message.success('Totale copiato: incollalo nel movimento dei Conti.')
+    } catch {
+      message.warning('Non riesco a copiare da solo: segnati la cifra a mano.')
+    }
+  }
 
   function apriNuovo() {
     form.resetFields()
@@ -421,6 +438,35 @@ export function Rosa() {
         </Empty>
       ) : (
         <>
+          {(quote.raccolto > 0 || quote.atteso > 0) && (
+            <Card size="small" className="quote-riepilogo">
+              <div className="quote-riepilogo-cifre">
+                <div className="quote-riepilogo-voce">
+                  <span className="quote-riepilogo-etichetta">Raccolto finora</span>
+                  <b className="quote-riepilogo-num">{formatEuro(quote.raccolto)}</b>
+                </div>
+                {quote.mancante > 0 && (
+                  <div className="quote-riepilogo-voce">
+                    <span className="quote-riepilogo-etichetta">Ancora da incassare</span>
+                    <b className="quote-riepilogo-num aperto">{formatEuro(quote.mancante)}</b>
+                  </div>
+                )}
+                <div className="quote-riepilogo-voce">
+                  <span className="quote-riepilogo-etichetta">Quote saldate</span>
+                  <b className="quote-riepilogo-num">
+                    {quote.saldati}/{quote.totali}
+                  </b>
+                </div>
+                <Button size="small" icon={<CopyOutlined />} onClick={copiaTotaleQuote}>
+                  Copia totale
+                </Button>
+              </div>
+              <div className="quote-riepilogo-nota">
+                Le quote non entrano nei Conti da sole: a fine anno chi le raccoglie registra il totale
+                come unica entrata.
+              </div>
+            </Card>
+          )}
           <div className="lista-toolbar" ref={toolbarRef}>
             <Input
               className="lista-cerca"

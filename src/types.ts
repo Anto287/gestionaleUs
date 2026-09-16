@@ -40,7 +40,7 @@ export interface Giocatore {
   quotaPagata?: boolean
   /** importo della quota stagionale in euro; se impostato, lo stato quota deriva dai versamenti */
   quotaImporto?: number
-  /** versamenti della quota (acconti/saldo); ognuno può avere il movimento gemello nei Conti */
+  /** versamenti della quota (acconti/saldo): restano qui, non entrano nei Conti */
   versamentiQuota?: VersamentoQuota[]
   /** attualmente infortunato: escluso dal generatore di formazione */
   infortunato?: boolean
@@ -56,7 +56,7 @@ export interface VersamentoQuota {
   data: string
   importo: number
   note?: string
-  /** id del movimento creato nei Conti, per rimuoverlo insieme */
+  /** solo nei versamenti vecchi, di quando ognuno creava il movimento gemello nei Conti */
   movimentoId?: string
 }
 
@@ -270,7 +270,7 @@ export interface Documento {
  * Si segna quanto è costata in tutto, chi l'ha anticipata e la percentuale a
  * carico nostro: da lì l'app calcola chi deve dare quanto a chi. Finché non è
  * saldata resta un credito (o un debito) verso quella società; al saldo può
- * nascere il movimento gemello nei Conti, come per le quote dei giocatori.
+ * nascere il movimento gemello nei Conti.
  */
 export interface SpesaCondivisa {
   id: string

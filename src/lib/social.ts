@@ -71,6 +71,7 @@ const fMeseLungo = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'nume
 const fGiornoLungo = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 const fGiornoBreve = new Intl.DateTimeFormat('it-IT', { weekday: 'short' })
 const fMeseBreve = new Intl.DateTimeFormat('it-IT', { month: 'short' })
+const fMeseSolo = new Intl.DateTimeFormat('it-IT', { month: 'long' })
 
 /** Da 'YYYY-MM' a "LUGLIO 2026". */
 export function etichettaMese(chiave: string): string {
@@ -98,6 +99,14 @@ export function meseBreve(iso: string): string {
   const d = new Date(iso + 'T00:00:00')
   if (Number.isNaN(d.getTime())) return ''
   return fMeseBreve.format(d).replace('.', '').toUpperCase()
+}
+
+/** Da 'YYYY-MM-DD' al mese per esteso con l'iniziale grande, es. "Settembre". */
+export function meseNome(iso: string): string {
+  const d = new Date(iso + 'T00:00:00')
+  if (Number.isNaN(d.getTime())) return ''
+  const m = fMeseSolo.format(d)
+  return m.charAt(0).toUpperCase() + m.slice(1)
 }
 
 /** Il giorno del mese senza zero iniziale, es. "6". */

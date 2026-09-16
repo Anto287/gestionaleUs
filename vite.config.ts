@@ -33,10 +33,33 @@ export default defineConfig(({ command }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
-        // l'app carica jspdf/xlsx/konva su richiesta: alza il limite dei file precache
+        // Fuori dal precarico i pezzi grossi che servono in una pagina sola
+        // (anteprima PDF, export Excel, editor delle grafiche): all'installazione
+        // erano 2,7 MB scaricati da tutti per funzioni usate da pochi. Se ne
+        // occupa runtimeCaching qui sotto: scaricati al primo uso e poi tenuti.
+        globIgnores: [
+          '**/assets/pdf.worker*.js',
+          '**/assets/pdf-*.js',
+          '**/assets/xlsx-*.js',
+          '**/assets/Social-*.js',
+        ],
+        // l'app carica jspdf/konva su richiesta: alza il limite dei file precache
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // le chiamate al Drive (Apps Script) non vanno mai in cache
         navigateFallbackDenylist: [/script\.google\.com/],
+        runtimeCaching: [
+          {
+            // i pezzi dell'app non precaricati: al primo uso finiscono in cache
+            // e da lì in poi si aprono anche senza rete (i nomi hanno l'hash,
+            // quindi una versione nuova non pesca mai il file vecchio)
+            urlPattern: /\/assets\/[^/]+\.(?:js|css)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'pezzi-app',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 90 },
+            },
+          },
+        ],
       },
     }),
   ],

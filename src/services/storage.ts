@@ -63,6 +63,20 @@ export function removeValue(nome: string): void {
   }
 }
 
+/** I nomi salvati che iniziano per <prefisso> (serve per svuotare le copie locali). */
+export function keysWithPrefix(prefisso: string): string[] {
+  const out: string[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k && k.startsWith(PREFIX + prefisso)) out.push(k.slice(PREFIX.length))
+    }
+  } catch {
+    /* localStorage non disponibile */
+  }
+  return out
+}
+
 export function saveValue(nome: string, valore: string): void {
   try {
     localStorage.setItem(PREFIX + nome, valore)

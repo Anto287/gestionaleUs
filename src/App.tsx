@@ -1,38 +1,39 @@
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { Spin } from 'antd'
 import { useAuth } from './auth/AuthContext'
 import { SeasonProvider } from './season/SeasonContext'
 import { Gate } from './components/Gate'
 import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
-import { Rosa } from './pages/Rosa'
-import { GiocatoreDettaglio } from './pages/GiocatoreDettaglio'
-import { Allenamenti } from './pages/Allenamenti'
-import { Partite } from './pages/Partite'
-import { PartitaDettaglio } from './pages/PartitaDettaglio'
-import { Formazione } from './pages/Formazione'
-import { Piazzati } from './pages/Piazzati'
-import { Calendario } from './pages/Calendario'
-import { Statistiche } from './pages/Statistiche'
-import { Magazzino } from './pages/Magazzino'
-import { Conti } from './pages/Conti'
-import { Spese } from './pages/Spese'
-import { Documenti } from './pages/Documenti'
-import { Archivio } from './pages/Archivio'
-import { Impostazioni } from './pages/Impostazioni'
 
-// caricate su richiesta: portano con sé jspdf/html2canvas (pesanti)
+/**
+ * Solo la Panoramica parte insieme all'app: ogni altra pagina si scarica
+ * quando ci si entra (poi il service worker se la tiene). Così all'apertura
+ * il telefono non tira giù anche Recharts, Konva, jsPDF e compagnia, che
+ * servono in tre pagine su sedici. Il segnaposto durante il caricamento lo
+ * mette il Layout, intorno all'Outlet.
+ */
+const Rosa = lazy(() => import('./pages/Rosa').then((m) => ({ default: m.Rosa })))
+const GiocatoreDettaglio = lazy(() =>
+  import('./pages/GiocatoreDettaglio').then((m) => ({ default: m.GiocatoreDettaglio })),
+)
+const Allenamenti = lazy(() => import('./pages/Allenamenti').then((m) => ({ default: m.Allenamenti })))
+const Partite = lazy(() => import('./pages/Partite').then((m) => ({ default: m.Partite })))
+const PartitaDettaglio = lazy(() =>
+  import('./pages/PartitaDettaglio').then((m) => ({ default: m.PartitaDettaglio })),
+)
+const Formazione = lazy(() => import('./pages/Formazione').then((m) => ({ default: m.Formazione })))
+const Piazzati = lazy(() => import('./pages/Piazzati').then((m) => ({ default: m.Piazzati })))
+const Calendario = lazy(() => import('./pages/Calendario').then((m) => ({ default: m.Calendario })))
+const Statistiche = lazy(() => import('./pages/Statistiche').then((m) => ({ default: m.Statistiche })))
 const Distinte = lazy(() => import('./pages/Distinte').then((m) => ({ default: m.Distinte })))
 const Social = lazy(() => import('./pages/Social').then((m) => ({ default: m.Social })))
-
-function Caricamento() {
-  return (
-    <div className="drive-splash">
-      <Spin size="large" />
-    </div>
-  )
-}
+const Magazzino = lazy(() => import('./pages/Magazzino').then((m) => ({ default: m.Magazzino })))
+const Conti = lazy(() => import('./pages/Conti').then((m) => ({ default: m.Conti })))
+const Spese = lazy(() => import('./pages/Spese').then((m) => ({ default: m.Spese })))
+const Documenti = lazy(() => import('./pages/Documenti').then((m) => ({ default: m.Documenti })))
+const Archivio = lazy(() => import('./pages/Archivio').then((m) => ({ default: m.Archivio })))
+const Impostazioni = lazy(() => import('./pages/Impostazioni').then((m) => ({ default: m.Impostazioni })))
 
 function App() {
   const { sbloccato } = useAuth()
@@ -53,22 +54,8 @@ function App() {
           <Route path="/piazzati" element={<Piazzati />} />
           <Route path="/calendario" element={<Calendario />} />
           <Route path="/statistiche" element={<Statistiche />} />
-          <Route
-            path="/distinte"
-            element={
-              <Suspense fallback={<Caricamento />}>
-                <Distinte />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/social"
-            element={
-              <Suspense fallback={<Caricamento />}>
-                <Social />
-              </Suspense>
-            }
-          />
+          <Route path="/distinte" element={<Distinte />} />
+          <Route path="/social" element={<Social />} />
           <Route path="/magazzino" element={<Magazzino />} />
           <Route path="/conti" element={<Conti />} />
           <Route path="/spese" element={<Spese />} />

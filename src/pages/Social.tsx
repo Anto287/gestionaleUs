@@ -14,8 +14,16 @@ import {
   Popconfirm,
   Segmented,
   Select,
+  Space,
+  Upload,
 } from 'antd'
-import { InstagramOutlined, PlusOutlined, DeleteOutlined, CalendarOutlined } from '@ant-design/icons'
+import {
+  InstagramOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  CalendarOutlined,
+  PictureOutlined,
+} from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
@@ -27,12 +35,15 @@ import {
   giornoNum,
   mappaCognomi,
   meseBreve,
+  meseNome,
   nomiMarcatori,
   FORMATI_IG,
   type FormatoIG,
 } from '../lib/social'
+import { useSeason } from '../season/SeasonContext'
 import { useAppuntamenti, type Appuntamento } from '../lib/appuntamenti'
 import { leggiPrefs } from '../lib/graficaPrefs'
+import { preparaLogo } from '../lib/immagine'
 import { driveAttivo, uploadGrafica } from '../services/driveStore'
 import type { Giocatore, Partita } from '../types'
 import { Editor } from './social/editor/Editor'
@@ -64,6 +75,14 @@ function slug(s: string) {
   )
 }
 
+/** Da un testo scritto a mano (uno per riga, o separati da virgola) a elenco. */
+function righe(testo: string): string[] {
+  return testo
+    .split(/[\n,;]+/)
+    .map((r) => r.trim())
+    .filter(Boolean)
+}
+
 function doveLabel(inCasa: boolean, luogo?: string) {
   return luogo?.trim() ? luogo.trim().toUpperCase() : inCasa ? 'IN CASA' : 'IN TRASFERTA'
 }
@@ -79,6 +98,7 @@ export function Social() {
   const { items: giocatori } = useCollection<Giocatore>('giocatori')
   const { list: appuntamenti, aggiungi, rimuovi } = useAppuntamenti()
   const { message } = App.useApp()
+  const { attiva } = useSeason()
   const screens = Grid.useBreakpoint()
   const affianca = screens.lg
   const [searchParams] = useSearchParams()
@@ -97,9 +117,21 @@ export function Social() {
   const [oraG, setOraG] = useState('')
   const [inCasaG, setInCasaG] = useState(true)
   const [luogoG, setLuogoG] = useState('')
+  const [notaG, setNotaG] = useState('')
+
+  // stemma della squadra avversaria (caricato a mano, vale per la grafica in corso)
+  const [crestAvv, setCrestAvv] = useState<{ src: string; rapporto: number }>()
+  // mister e cambi della grafica formazione: la panchina arriva dalla pagina
+  // Formazione (undefined = \"quella vera\"), ma si può riscrivere qui
+  const [allenatore, setAllenatore] = useState('')
+  const [panchinaTxt, setPanchinaTxt] = useState<string>()
 
   // risultato (da partite giocate)
   const [partitaResId, setPartitaResId] = useState<string>()
+  // marcatori scritti a mano: i nostri partono da quelli della partita (undefined
+  // = \"usa quelli veri\"), gli avversari l'app non li registra e si scrivono qui
+  const [marcatoriNoi, setMarcatoriNoi] = useState<string>()
+  const [marcatoriLoro, setMarcatoriLoro] = useState('')
 
   // mese (appuntamenti mono-uso)
   const [meseSel, setMeseSel] = useState<string>()
@@ -126,6 +158,16 @@ export function Social() {
   const partitaResIdEff = partitaResId ?? partiteGiocate[0]?.id
   const partitaRes = partiteGiocate.find((p) => p.id === partitaResIdEff)
 
+  // la panchina come arriva dalla pagina Formazione, una per riga
+  const panchinaDefault = useMemo(() => (formazioneGrafica?.panchina ?? []).join('\n'), [formazioneGrafica])
+
+  // i nostri marcatori come li sa l'app, uno per riga (il minuto lo aggiunge
+  // l'utente: nelle partite non lo registriamo)
+  const marcatoriDefault = useMemo(
+    () => (partitaRes ? nomiMarcatori(partitaRes.marcatori ?? [], cognomi).split(' \u00b7 ').filter(Boolean).join('\n') : ''),
+    [partitaRes, cognomi],
+  )
+
   const fixtures: FixtureRiga[] = useMemo(
     () =>
       apptOrdinati
@@ -146,7 +188,14 @@ export function Social() {
 
   // dati per l'editor + chiave che, cambiando, rigenera la scena
   const { input, seedKey, nomeFile } = useMemo(() => {
-    const base = { formato: { w: formato.w, h: formato.h }, crestSrc: LOGO, piede }
+    const base = {
+      formato: { w: formato.w, h: formato.h },
+      crestSrc: LOGO,
+      piede,
+      stagione: attiva,
+      crestAvversarioSrc: crestAvv?.src,
+      crestAvversarioRapporto: crestAvv?.rapporto,
+    }
     if (kind === 'annuncio') {
       const inp: BuildInput = {
         ...base,
@@ -154,13 +203,16 @@ export function Social() {
         giorno: {
           avversario: avversario.trim() || 'AVVERSARIO',
           dataTxt: etichettaGiorno(dataG),
+          gg: giornoNum(dataG),
+          mese: meseNome(dataG),
           ora: oraG.trim() || undefined,
           dove: doveLabel(inCasaG, luogoG),
+          nota: notaG.trim() || undefined,
         },
       }
       return {
         input: inp,
-        seedKey: `annuncio|${formatoChiave}|${avversario}|${dataG}|${oraG}|${inCasaG}|${luogoG}`,
+        seedKey: `annuncio|${formatoChiave}|${avversario}|${dataG}|${oraG}|${inCasaG}|${luogoG}|${notaG}`,
         nomeFile: `riolunato-${dataG}-${slug(avversario || 'annuncio')}.png`,
       }
     }
@@ -175,23 +227,33 @@ export function Social() {
               dataTxt: etichettaGiorno(p.data),
               ora: p.ora,
               dove: doveLabel(p.inCasa),
+              inCasa: p.inCasa,
               golFatti: p.golFatti,
               golSubiti: p.golSubiti,
-              marcatori: nomiMarcatori(p.marcatori ?? [], cognomi) || undefined,
+              marcatori: marcatoriNoi ?? marcatoriDefault,
+              marcatoriLoro: marcatoriLoro.trim() || undefined,
             }
           : { avversario: 'AVVERSARIO', dataTxt: '', dove: 'IN CASA', golFatti: 0, golSubiti: 0 },
       }
       return {
         input: inp,
-        seedKey: `risultato|${formatoChiave}|${p?.id ?? 'none'}`,
+        seedKey: `risultato|${formatoChiave}|${p?.id ?? 'none'}|${crestAvv?.src ? 'logo' : ''}|${marcatoriNoi ?? ''}|${marcatoriLoro}`,
         nomeFile: p ? `riolunato-${p.data}-${slug(p.avversario)}.png` : 'riolunato-risultato.png',
       }
     }
     if (kind === 'formazione') {
-      const inp: BuildInput = { ...base, kind: 'formazione', formazione: formazioneGrafica }
+      const inp: BuildInput = {
+        ...base,
+        kind: 'formazione',
+        formazione: formazioneGrafica && {
+          ...formazioneGrafica,
+          panchina: righe(panchinaTxt ?? panchinaDefault),
+        },
+        allenatore: allenatore.trim() || undefined,
+      }
       return {
         input: inp,
-        seedKey: `formazione|${formatoChiave}|${formazioneGrafica?.creata ?? 'vuota'}`,
+        seedKey: `formazione|${formatoChiave}|${formazioneGrafica?.creata ?? 'vuota'}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src ? 'logo' : ''}`,
         nomeFile: `riolunato-formazione-${slug(formazioneGrafica?.modulo ?? 'xi')}.png`,
       }
     }
@@ -211,18 +273,36 @@ export function Social() {
     formato,
     formatoChiave,
     piede,
+    attiva,
     avversario,
     dataG,
     oraG,
     inCasaG,
     luogoG,
+    notaG,
     partitaRes,
-    cognomi,
+    marcatoriDefault,
+    marcatoriNoi,
+    marcatoriLoro,
+    crestAvv,
+    allenatore,
+    panchinaDefault,
+    panchinaTxt,
     meseAttivo,
     fixtures,
     apptOrdinati,
     formazioneGrafica,
   ])
+
+  /** Lo stemma avversario: PNG rimpicciolito, con le sue proporzioni. */
+  async function caricaCrestAvversario(file: File) {
+    try {
+      setCrestAvv(await preparaLogo(file))
+    } catch {
+      message.error('Immagine non valida')
+    }
+    return false
+  }
 
   function salvaAppuntamento(v: { data: string; ora?: string; avversario: string; inCasa: boolean; luogo?: string }) {
     aggiungi({
@@ -237,6 +317,13 @@ export function Social() {
     form.setFieldsValue({ data: v.data, inCasa: v.inCasa })
     message.success('Appuntamento aggiunto')
   }
+  /** Cambiando partita si riparte dai marcatori veri di quella partita. */
+  function cambiaPartita(id: string) {
+    setPartitaResId(id)
+    setMarcatoriNoi(undefined)
+    setMarcatoriLoro('')
+  }
+
   function apriModaleAppt() {
     form.resetFields()
     form.setFieldsValue({ data: oggiIso(), inCasa: true })
@@ -333,7 +420,37 @@ export function Social() {
               <Input value={luogoG} onChange={(e) => setLuogoG(e.target.value)} placeholder="facoltativo" />
             </div>
           </div>
+          <div className="social-campo">
+            <span className="social-label">Riga in fondo</span>
+            <Input
+              value={notaG}
+              onChange={(e) => setNotaG(e.target.value)}
+              placeholder="es. Amichevole Pre-Campionato"
+            />
+          </div>
         </>
+      )}
+
+      {(kind === 'risultato' || kind === 'formazione') && (
+        <div className="social-campo">
+          <span className="social-label">Stemma avversario</span>
+          <Space wrap>
+            <Upload accept="image/*" showUploadList={false} beforeUpload={caricaCrestAvversario}>
+              <Button icon={<PictureOutlined />}>{crestAvv ? 'Cambia logo' : 'Carica logo'}</Button>
+            </Upload>
+            {crestAvv && (
+              <>
+                <img src={crestAvv.src} alt="" className="social-logo-avv" />
+                <Button type="text" onClick={() => setCrestAvv(undefined)}>
+                  Togli
+                </Button>
+              </>
+            )}
+          </Space>
+          <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
+            Va accanto al nostro stemma. Meglio un PNG ritagliato: il fondo trasparente resta tale.
+          </div>
+        </div>
       )}
 
       {kind === 'risultato' && (
@@ -343,7 +460,7 @@ export function Social() {
             <Select
               style={{ width: '100%' }}
               value={partitaResIdEff}
-              onChange={setPartitaResId}
+              onChange={cambiaPartita}
               showSearch
               optionFilterProp="label"
               options={partiteGiocate.map((p) => ({
@@ -356,6 +473,36 @@ export function Social() {
               Nessuna partita registrata. <Link to="/partite">Vai a Partite</Link>.
             </div>
           )}
+        </div>
+      )}
+
+      {kind === 'risultato' && partitaRes && (
+        <div className="social-campo">
+          <span className="social-label">Marcatori</span>
+          <div className="social-due">
+            <div>
+              <span className="social-sotto-label">Nostri</span>
+              <Input.TextArea
+                rows={3}
+                value={marcatoriNoi ?? marcatoriDefault}
+                onChange={(e) => setMarcatoriNoi(e.target.value)}
+                placeholder={'Rossi 12\'\nBianchi 71\''}
+              />
+            </div>
+            <div>
+              <span className="social-sotto-label">Avversari</span>
+              <Input.TextArea
+                rows={3}
+                value={marcatoriLoro}
+                onChange={(e) => setMarcatoriLoro(e.target.value)}
+                placeholder={'Verdi 25\'\nNeri 88\''}
+              />
+            </div>
+          </div>
+          <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
+            Uno per riga, con il minuto se serve. I nostri arrivano dalla partita: puoi
+            correggerli qui senza toccare i dati.
+          </div>
         </div>
       )}
 
@@ -374,6 +521,32 @@ export function Social() {
             </div>
           )}
         </div>
+      )}
+
+      {kind === 'formazione' && (
+        <>
+          <div className="social-campo">
+            <span className="social-label">Mister</span>
+            <Input
+              value={allenatore}
+              onChange={(e) => setAllenatore(e.target.value)}
+              placeholder="chi siede in panchina"
+            />
+          </div>
+          <div className="social-campo">
+            <span className="social-label">Cambi (panchina)</span>
+            <Input.TextArea
+              rows={4}
+              value={panchinaTxt ?? panchinaDefault}
+              onChange={(e) => setPanchinaTxt(e.target.value)}
+              placeholder={'12 Rossi\n13 Bianchi'}
+            />
+            <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
+              Uno per riga, col numero davanti se vuoi. Arrivano dalla Formazione: correggerli
+              qui non cambia l'undici.
+            </div>
+          </div>
+        </>
       )}
 
       {kind === 'mese' && (

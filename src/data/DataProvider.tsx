@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Alert, Button, Result } from 'antd'
+import { Alert, Button, Result, Spin } from 'antd'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
@@ -31,6 +31,8 @@ interface DataValue {
   createDoc: (nome: string, tipo: 'documento' | 'foglio') => Promise<store.DocMeta>
   /** Rinomina un documento: il registro subito, e anche il file vero sul Drive. */
   renameDoc: (doc: store.DocMeta, nome: string) => void
+  /** true mentre si sta rileggendo dal Drive (l'app intanto usa la copia locale) */
+  aggiornando: boolean
 }
 
 const DataContext = createContext<DataValue | null>(null)
@@ -52,49 +54,133 @@ function leggiBase64(file: File): Promise<string> {
   })
 }
 
+/**
+ * L'ultima copia letta di ogni raccolta. Se ci sono tutte, l'app si apre
+ * subito con quelle e la rilettura dal Drive va in sottofondo; se ne manca
+ * anche una (prima apertura, o raccolta nuova) si aspetta il Drive come
+ * prima, per non mostrare pagine vuote.
+ */
+function copiaLocale(attiva: string): { data: Store; completa: boolean } {
+  const data: Store = {}
+  let trovate = 0
+  for (const c of COLLECTIONS) {
+    const items = store.listCache<{ id: string }>(c, seasonDi(c, attiva))
+    if (items) {
+      data[c] = items
+      trovate++
+    }
+  }
+  return { data, completa: trovate === COLLECTIONS.length }
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const { attiva } = useSeason()
-  const [data, setData] = useState<Store>({})
-  const [stato, setStato] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [copia] = useState(() => copiaLocale(attiva))
+  const [data, setData] = useState<Store>(copia.data)
+  const [stato, setStato] = useState<'loading' | 'ready' | 'error'>(
+    copia.completa ? 'ready' : 'loading',
+  )
   const [erroreCaricamento, setErroreCaricamento] = useState('')
   const [erroreSync, setErroreSync] = useState<string | null>(null)
+  const [aggiornando, setAggiornando] = useState(true)
   const [tentativo, setTentativo] = useState(0)
 
-  const dataRef = useRef<Store>({})
+  const dataRef = useRef<Store>(copia.data)
   useEffect(() => {
     dataRef.current = data
   }, [data])
 
+  // raccolte toccate qui dentro mentre si rilegge: la risposta del Drive
+  // (partita prima della modifica) non deve ributtarci sopra la versione vecchia
+  const modificate = useRef(new Set<string>())
+  const segnaModifica = useCallback((c: string) => {
+    modificate.current.add(c)
+  }, [])
+
+  // copie locali già salvate, per riscrivere solo quello che cambia
+  const salvate = useRef<Store>({ ...copia.data })
+
   useEffect(() => {
     let annullato = false
-    setStato('loading')
+    modificate.current = new Set()
+    setAggiornando(true)
     setErroreCaricamento('')
+    // «Riprova» dopo un errore: si torna allo spinner (con la copia locale
+    // in mano, invece, non si interrompe niente)
+    setStato((st) => (st === 'error' ? 'loading' : st))
     ;(async () => {
-      // ogni raccolta è caricata a sé: se una fallisce (es. non ancora nota
-      // allo script) resta vuota, senza bloccare le altre.
-      const results = await Promise.all(
+      // se nel frattempo l'abbiamo modificata qui, la risposta del Drive è già
+      // vecchia e non va posata sopra
+      const posa = (c: string, items: { id: string }[]) => {
+        if (!annullato && !modificate.current.has(c)) setData((s) => ({ ...s, [c]: items }))
+      }
+
+      // prima strada: tutte le raccolte in una richiesta sola (script aggiornato)
+      try {
+        const tutte = await store.listAll(
+          COLLECTIONS.map((c) => ({ collection: c, season: seasonDi(c, attiva) })),
+        )
+        if (annullato) return
+        if (tutte) {
+          for (const c of COLLECTIONS) {
+            // una sezione che lo script non è riuscito a leggere non c'è nella
+            // risposta: si tiene quella che abbiamo, non la si svuota
+            const items = tutte[c]
+            if (items) posa(c, items as { id: string }[])
+          }
+          setAggiornando(false)
+          setStato('ready')
+          return
+        }
+      } catch {
+        // niente panico: si riprova qui sotto una raccolta per volta
+      }
+      if (annullato) return
+
+      // ripiego: ogni raccolta per conto suo, e si posa appena arriva (se una
+      // fallisce — es. non ancora nota allo script — le altre non la aspettano)
+      const esiti = await Promise.all(
         COLLECTIONS.map(async (c) => {
           try {
-            return { c, items: await store.list<{ id: string }>(c, seasonDi(c, attiva)), errore: null as unknown }
+            posa(c, await store.list<{ id: string }>(c, seasonDi(c, attiva)))
+            return { c, errore: null as unknown }
           } catch (e) {
-            return { c, items: [] as { id: string }[], errore: e }
+            return { c, errore: e }
           }
         }),
       )
       if (annullato) return
-      if (results.every((r) => r.errore)) {
-        const e = results[0]?.errore as Error | undefined
+      setAggiornando(false)
+      if (esiti.every((r) => r.errore)) {
+        const e = esiti[0]?.errore as Error | undefined
         setErroreCaricamento(String(e?.message || e || 'Errore Drive'))
-        setStato('error')
+        // con la copia locale in mano si continua a lavorare: l'errore blocca
+        // solo chi non ha proprio niente da mostrare
+        setStato((st) => (st === 'ready' ? st : 'error'))
         return
       }
-      setData(Object.fromEntries(results.map((r) => [r.c, r.items])))
       setStato('ready')
     })()
     return () => {
       annullato = true
     }
   }, [attiva, tentativo])
+
+  // la copia locale segue quello che si vede: scritta poco dopo ogni
+  // cambiamento, così la prossima apertura parte da qui
+  useEffect(() => {
+    if (stato !== 'ready') return
+    const t = setTimeout(() => {
+      for (const c of COLLECTIONS) {
+        const items = data[c]
+        if (items && items !== salvate.current[c]) {
+          store.salvaCacheLista(c, seasonDi(c, attiva), items)
+          salvate.current[c] = items
+        }
+      }
+    }, 500)
+    return () => clearTimeout(t)
+  }, [data, stato, attiva])
 
   const fallita = useCallback((e: unknown) => {
     setErroreSync(String((e as Error)?.message || e))
@@ -106,11 +192,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <T,>(c: string, item: Omit<T, 'id'>): string => {
       const id = crypto.randomUUID()
       const record = { ...item, id } as { id: string }
+      segnaModifica(c)
       setData((s) => ({ ...s, [c]: [...(s[c] ?? []), record] }))
       store.put(c, seasonDi(c, attiva), record).catch(fallita)
       return id
     },
-    [attiva, fallita],
+    [attiva, fallita, segnaModifica],
   )
 
   const update = useCallback(
@@ -118,35 +205,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const current = dataRef.current[c] ?? []
       const next = current.map((i) => (i.id === id ? { ...i, ...patch } : i))
       const aggiornato = next.find((i) => i.id === id)
+      segnaModifica(c)
       setData((s) => ({ ...s, [c]: next }))
       if (aggiornato) store.put(c, seasonDi(c, attiva), aggiornato).catch(fallita)
     },
-    [attiva, fallita],
+    [attiva, fallita, segnaModifica],
   )
 
   const remove = useCallback(
     (c: string, id: string) => {
+      segnaModifica(c)
       setData((s) => ({ ...s, [c]: (s[c] ?? []).filter((i) => i.id !== id) }))
       store.remove(c, seasonDi(c, attiva), id).catch(fallita)
     },
-    [attiva, fallita],
+    [attiva, fallita, segnaModifica],
   )
 
   const restore = useCallback(
     (c: string, item: { id: string }) => {
       // il put del Drive fa upsert per id, quindi basta riaggiungerlo com'era
+      segnaModifica(c)
       setData((s) => (s[c] ?? []).some((i) => i.id === item.id) ? s : { ...s, [c]: [...(s[c] ?? []), item] })
       store.put(c, seasonDi(c, attiva), item).catch(fallita)
     },
-    [attiva, fallita],
+    [attiva, fallita, segnaModifica],
   )
 
   const replaceAll = useCallback(
     <T extends { id: string }>(c: string, items: T[]) => {
+      segnaModifica(c)
       setData((s) => ({ ...s, [c]: items }))
       store.replaceAll(c, seasonDi(c, attiva), items).catch(fallita)
     },
-    [attiva, fallita],
+    [attiva, fallita, segnaModifica],
   )
 
   /**
@@ -169,6 +260,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }
         const nome = nomeBase ? nomeBase + pronto.estensione : file.name
         const meta = await store.uploadDoc(attiva, nome, pronto.tipo, pronto.dataBase64)
+        segnaModifica('documenti')
         setData((s) => ({ ...s, documenti: [...(s.documenti ?? []), meta] }))
         return meta
       } catch (e) {
@@ -176,16 +268,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return undefined
       }
     },
-    [attiva, fallita],
+    [attiva, fallita, segnaModifica],
   )
 
   const createDoc = useCallback(
     async (nome: string, tipo: 'documento' | 'foglio') => {
       const meta = await store.createDoc(attiva, nome, tipo)
+      segnaModifica('documenti')
       setData((s) => ({ ...s, documenti: [...(s.documenti ?? []), meta] }))
       return meta
     },
-    [attiva],
+    [attiva, segnaModifica],
   )
 
   const renameDoc = useCallback(
@@ -204,7 +297,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider
-      value={{ getItems, add, update, remove, restore, replaceAll, uploadDoc, createDoc, renameDoc }}
+      value={{
+        getItems,
+        add,
+        update,
+        remove,
+        restore,
+        replaceAll,
+        uploadDoc,
+        createDoc,
+        renameDoc,
+        aggiornando,
+      }}
     >
       {erroreSync && (
         <Alert
@@ -216,8 +320,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
           style={{ marginBottom: 16 }}
         />
       )}
+      {erroreCaricamento && !aggiornando && (
+        <Alert
+          type="warning"
+          showIcon
+          message="Sto lavorando sull'ultima copia salvata sul telefono: il Drive non ha risposto."
+          action={
+            <Button size="small" onClick={() => setTentativo((t) => t + 1)}>
+              Riprova
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
       {children}
+      <Aggiornamento attivo={aggiornando && copia.completa} />
     </DataContext.Provider>
+  )
+}
+
+/**
+ * Il puntino "sto rileggendo dal Drive" in basso: compare solo se l'attesa
+ * si fa sentire (l'app intanto è già tutta lì, con la copia locale).
+ */
+function Aggiornamento({ attivo }: { attivo: boolean }) {
+  const [visibile, setVisibile] = useState(false)
+  useEffect(() => {
+    if (!attivo) {
+      setVisibile(false)
+      return
+    }
+    const t = setTimeout(() => setVisibile(true), 800)
+    return () => clearTimeout(t)
+  }, [attivo])
+
+  if (!visibile) return null
+  return (
+    <div className="sync-chip" role="status">
+      <Spin size="small" />
+      <span>Aggiorno dal Drive…</span>
+    </div>
   )
 }
 

@@ -40,9 +40,12 @@ const BORDO = '1px solid #000'
 
 function cella(inc: Incarico, i: number, colspan: number, testo: string, vuoto: boolean): string {
   const etichetta = etichettaCasella(inc, i)
+  // dove le caselle sono tante (il centro area ne ha sei) la colonna è stretta:
+  // il nome rimpicciolisce, altrimenti un cognome lungo va a capo
+  const corpo = inc.slot >= 4 ? 10.5 : 12
   return `<td colspan="${colspan}" style="border:${BORDO};padding:4px 6px;vertical-align:top;height:${vuoto ? 30 : 26}px;">
     ${etichetta ? `<div style="font-size:8.5px;color:#666;line-height:1.2;">${etichetta}</div>` : ''}
-    <div style="font-size:12px;font-weight:bold;line-height:1.3;">${testo || '&nbsp;'}</div>
+    <div style="font-size:${corpo}px;font-weight:bold;line-height:1.3;">${testo || '&nbsp;'}</div>
   </td>`
 }
 

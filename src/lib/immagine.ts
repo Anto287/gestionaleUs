@@ -40,6 +40,34 @@ export function estensionePrevista(file: File): string {
   return file.type.startsWith('image/') ? '.jpg' : estensioneDa(file.name, file.type)
 }
 
+export interface LogoPronto {
+  /** dataURL PNG: la trasparenza di uno stemma ritagliato va tenuta */
+  src: string
+  /** altezza diviso larghezza, per non schiacciare lo stemma nella grafica */
+  rapporto: number
+}
+
+/**
+ * Prepara il logo di una squadra per le grafiche: lo rimpicciolisce e lo
+ * riesporta in PNG (in JPEG il fondo trasparente diventerebbe bianco), e
+ * dice quanto è alto rispetto a quanto è largo.
+ */
+export async function preparaLogo(file: File, latoMax = 512): Promise<LogoPronto> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  try {
+    const scala = Math.min(1, latoMax / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scala))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scala))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas non disponibile')
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    return { src: canvas.toDataURL('image/png'), rapporto: canvas.height / canvas.width }
+  } finally {
+    bitmap.close()
+  }
+}
+
 export async function preparaCaricamento(file: File, latoMax = 2000): Promise<DaCaricare> {
   if (!file.type.startsWith('image/')) return comSuoi(file)
   try {

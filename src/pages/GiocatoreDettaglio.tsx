@@ -182,30 +182,24 @@ export function GiocatoreDettaglio() {
     setModaleVersamento(true)
   }
 
-  /** Registra un versamento della quota e il movimento gemello nei Conti. */
+  /**
+   * Registra un versamento della quota. Non tocca i Conti: le quote restano
+   * qui e a fine anno chi le raccoglie ne registra il totale come unica entrata.
+   */
   function aggiungiVersamento(v: { data: string; importo: number; note?: string }) {
-    const movimentoId = conti.add({
-      data: v.data,
-      descrizione: `Quota ${g!.cognome} ${g!.nome}${v.note?.trim() ? ' — ' + v.note.trim() : ''}`,
-      tipo: 'entrata',
-      importo: v.importo,
-      saldato: true,
-      controparte: `${g!.cognome} ${g!.nome}`,
-      categoria: 'Quote',
-    })
     const nuovo: VersamentoQuota = {
       id: crypto.randomUUID(),
       data: v.data,
       importo: v.importo,
       note: v.note?.trim() || undefined,
-      movimentoId,
     }
     update(g!.id, { versamentiQuota: [...(g!.versamentiQuota ?? []), nuovo] })
     setModaleVersamento(false)
-    message.success('Versamento registrato, movimento creato nei Conti')
+    message.success('Versamento registrato')
   }
 
   function rimuoviVersamento(v: VersamentoQuota) {
+    // i versamenti vecchi avevano il movimento gemello nei Conti: va via con loro
     if (v.movimentoId && conti.items.some((m) => m.id === v.movimentoId)) conti.remove(v.movimentoId)
     update(g!.id, { versamentiQuota: (g!.versamentiQuota ?? []).filter((x) => x.id !== v.id) })
   }
@@ -466,7 +460,11 @@ export function GiocatoreDettaglio() {
                       actions={[
                         <Popconfirm
                           key="del"
-                          title="Eliminare il versamento (e il movimento nei Conti)?"
+                          title={
+                            v.movimentoId
+                              ? 'Eliminare il versamento (e il vecchio movimento nei Conti)?'
+                              : 'Eliminare il versamento?'
+                          }
                           okText="Elimina"
                           cancelText="Annulla"
                           okButtonProps={{ danger: true }}
@@ -485,6 +483,10 @@ export function GiocatoreDettaglio() {
                     </List.Item>
                   )}
                 />
+                <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 13 }}>
+                  I versamenti non finiscono nei Conti: a fine anno chi raccoglie le quote registra il
+                  totale come unica entrata (il totale della rosa è nel riepilogo in Rosa).
+                </Text>
               </>
             )
           })()}
@@ -519,7 +521,8 @@ export function GiocatoreDettaglio() {
           </Form.Item>
         </Form>
         <Text type="secondary" style={{ fontSize: 12.5 }}>
-          Il versamento crea in automatico un'entrata saldata nei Conti intestata a {g.cognome} {g.nome}.
+          Resta qui, nella scheda di {g.cognome} {g.nome}: nei Conti va solo il totale delle quote, a fine
+          anno e a mano.
         </Text>
       </Modal>
 
