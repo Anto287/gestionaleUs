@@ -13,12 +13,13 @@ import {
   Popconfirm,
   Row,
   Select,
+  Space,
   Switch,
   Table,
   Tag,
   Typography,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, SearchOutlined, PrinterOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
@@ -28,6 +29,8 @@ import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData, oggiIso } from '../lib/format'
 import { REGEX_ORA } from '../lib/partita'
 import type { Partita, Torneo } from '../types'
+import { useSeason } from '../season/SeasonContext'
+import { StampaCalendario } from './partite/StampaCalendario'
 
 const { Text } = Typography
 
@@ -57,6 +60,8 @@ export function Partite() {
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
+  const [stampa, setStampa] = useState(false)
+  const { attiva } = useSeason()
   const [form] = Form.useForm()
   const giocataForm = Form.useWatch('giocata', form)
   const [q, setQ] = useState('')
@@ -66,6 +71,7 @@ export function Partite() {
   const [portaF, setPortaF] = useState<string | undefined>()
   const [statoF, setStatoF] = useState<string | undefined>()
   const [torneoF, setTorneoF] = useState<string | undefined>()
+  const [tipoF, setTipoF] = useState<string | undefined>()
 
   const partite = useMemo(() => [...items].sort((a, b) => b.data.localeCompare(a.data)), [items])
 
@@ -76,7 +82,7 @@ export function Partite() {
       .map((k) => ({ value: k, label: labelMese(k) }))
   }, [partite])
 
-  const nFiltri = [dove, esitoF, meseF, portaF, statoF, torneoF].filter(Boolean).length
+  const nFiltri = [dove, esitoF, meseF, portaF, statoF, torneoF, tipoF].filter(Boolean).length
   function azzeraFiltri() {
     setDove(undefined)
     setEsitoF(undefined)
@@ -84,6 +90,7 @@ export function Partite() {
     setPortaF(undefined)
     setStatoF(undefined)
     setTorneoF(undefined)
+    setTipoF(undefined)
   }
 
   const nomeTorneo = (id?: string) => tornei.items.find((t) => t.id === id)?.nome
@@ -104,14 +111,16 @@ export function Partite() {
         if (portaF === 'subito' && p.golSubiti === 0) return false
         if (meseF && p.data.slice(0, 7) !== meseF) return false
         if (torneoF && p.torneoId !== torneoF) return false
+        if (tipoF === 'ufficiali' && p.amichevole) return false
+        if (tipoF === 'amichevoli' && !p.amichevole) return false
         return true
       }),
-    [partite, q, dove, esitoF, meseF, portaF, statoF, torneoF],
+    [partite, q, dove, esitoF, meseF, portaF, statoF, torneoF, tipoF],
   )
 
   function apriNuova() {
     form.resetFields()
-    form.setFieldsValue({ data: oggiIso(), inCasa: true, giocata: true, golFatti: 0, golSubiti: 0 })
+    form.setFieldsValue({ data: oggiIso(), inCasa: true, amichevole: false, giocata: true, golFatti: 0, golSubiti: 0 })
     setModale(true)
   }
 
@@ -121,6 +130,7 @@ export function Partite() {
     avversario: string
     inCasa: boolean
     torneoId?: string
+    amichevole?: boolean
     giocata?: boolean
     golFatti: number
     golSubiti: number
@@ -133,6 +143,7 @@ export function Partite() {
       avversario: v.avversario.trim(),
       inCasa: v.inCasa,
       torneoId: v.torneoId || undefined,
+      amichevole: v.amichevole || undefined,
       giocata,
       golFatti: giocata ? (v.golFatti ?? 0) : 0,
       golSubiti: giocata ? (v.golSubiti ?? 0) : 0,
@@ -174,6 +185,7 @@ export function Partite() {
           </b>{' '}
           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
           {nomeTorneo(p.torneoId) && <Tag color="geekblue">{nomeTorneo(p.torneoId)}</Tag>}
+          {p.amichevole && <Tag color="purple">Amichevole</Tag>}
         </span>
       ),
     },
@@ -224,9 +236,14 @@ export function Partite() {
         sottotitolo={`${items.length} partite · tocca per marcatori e cartellini`}
         azioni={
           items.length > 0 && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={apriNuova}>
-              Nuova partita
-            </Button>
+            <Space wrap>
+              <Button icon={<PrinterOutlined />} onClick={() => setStampa(true)}>
+                Stampa calendario
+              </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={apriNuova}>
+                Nuova partita
+              </Button>
+            </Space>
           )
         }
       />
@@ -273,6 +290,19 @@ export function Partite() {
                   options={[
                     { value: 'casa', label: 'In casa' },
                     { value: 'trasferta', label: 'In trasferta' },
+                  ]}
+                />
+              </FiltroCampo>
+              <FiltroCampo label="Tipo">
+                <Select
+                  allowClear
+                  placeholder="Ufficiali e amichevoli"
+                  value={tipoF}
+                  onChange={setTipoF}
+                  style={{ width: '100%' }}
+                  options={[
+                    { value: 'ufficiali', label: 'Solo ufficiali' },
+                    { value: 'amichevoli', label: 'Solo amichevoli' },
                   ]}
                 />
               </FiltroCampo>
@@ -344,6 +374,7 @@ export function Partite() {
                           {p.ora && <span>· {p.ora}</span>}
                           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
                           {nomeTorneo(p.torneoId) && <Tag color="geekblue">{nomeTorneo(p.torneoId)}</Tag>}
+                          {p.amichevole && <Tag color="purple">Amichevole</Tag>}
                         </div>
                       </div>
                       <span onClick={(ev) => ev.stopPropagation()}>
@@ -388,6 +419,14 @@ export function Partite() {
           )}
         </>
       )}
+
+      <StampaCalendario
+        open={stampa}
+        onClose={() => setStampa(false)}
+        partite={items}
+        tornei={tornei.items}
+        stagione={attiva}
+      />
 
       <Modal
         title="Nuova partita"
@@ -445,6 +484,9 @@ export function Partite() {
               />
             </Form.Item>
           )}
+          <Form.Item label="Amichevole" name="amichevole" valuePropName="checked">
+            <Switch />
+          </Form.Item>
           <Form.Item
             label="Partita già giocata"
             name="giocata"

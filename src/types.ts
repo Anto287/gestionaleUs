@@ -104,6 +104,8 @@ export interface Partita {
   inCasa: boolean
   /** id del torneo/competizione (vedi Torneo); assente = non assegnata */
   torneoId?: string
+  /** true = amichevole (non ufficiale); assente = partita ufficiale */
+  amichevole?: boolean
   /**
    * true = già giocata (ha un risultato); false = in programma (nessun
    * risultato ancora). Assente vale già giocata, per i dati precedenti.

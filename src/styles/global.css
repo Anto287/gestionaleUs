@@ -2102,3 +2102,17 @@ body {
   background: var(--panna);
   padding: 2px;
 }
+
+/* Stampa calendario: anteprima del foglio (sempre carta bianca, anche col tema scuro) */
+.calendario-anteprima-scroll {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+  background: var(--panna);
+  padding: 10px;
+}
+.calendario-anteprima {
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}

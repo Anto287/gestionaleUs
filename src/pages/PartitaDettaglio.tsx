@@ -99,7 +99,7 @@ export function PartitaDettaglio() {
   const problemi = problemiPartita(p, nomeDi)
 
   function apriModifica() {
-    form.setFieldsValue({ ...p!, giocata: p!.giocata !== false })
+    form.setFieldsValue({ ...p!, amichevole: !!p!.amichevole, giocata: p!.giocata !== false })
     setModale(true)
   }
   function salvaModifica(v: Partial<Partita>) {
@@ -116,6 +116,7 @@ export function PartitaDettaglio() {
       ora: v.ora?.trim() || undefined,
       avversario: (v.avversario ?? p!.avversario).trim(),
       torneoId: v.torneoId || undefined,
+      amichevole: v.amichevole || undefined,
       golFatti: giocata ? (v.golFatti ?? 0) : 0,
       golSubiti: giocata ? (v.golSubiti ?? 0) : 0,
     })
@@ -174,6 +175,7 @@ export function PartitaDettaglio() {
             {formatData(p.data)}
             {p.ora ? ` · ore ${p.ora}` : ''} · {p.inCasa ? 'In casa' : 'In trasferta'}
             {nomeTorneo ? ` · ${nomeTorneo}` : ''}
+            {p.amichevole ? ' · Amichevole' : ''}
           </Text>
           <Space>
             <Button icon={<EditOutlined />} onClick={apriModifica}>
@@ -403,6 +405,9 @@ export function PartitaDettaglio() {
               />
             </Form.Item>
           )}
+          <Form.Item label="Amichevole" name="amichevole" valuePropName="checked">
+            <Switch />
+          </Form.Item>
           <Form.Item
             label="Partita già giocata"
             name="giocata"

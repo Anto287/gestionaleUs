@@ -49,7 +49,15 @@ export function Statistiche() {
     () =>
       partite
         .filter((p) => p.giocata !== false)
-        .filter((p) => competizione === 'tutte' || p.torneoId === competizione)
+        .filter((p) =>
+          competizione === 'tutte'
+            ? true
+            : competizione === 'ufficiali'
+              ? !p.amichevole
+              : competizione === 'amichevoli'
+                ? !!p.amichevole
+                : p.torneoId === competizione,
+        )
         .sort((a, b) => a.data.localeCompare(b.data)),
     [partite, competizione],
   )
@@ -59,8 +67,15 @@ export function Statistiche() {
     () => tornei.filter((t) => partite.some((p) => p.torneoId === t.id)),
     [tornei, partite],
   )
+  const ciSonoAmichevoli = useMemo(() => partite.some((p) => p.amichevole), [partite])
   const nomeCompetizione =
-    competizione === 'tutte' ? undefined : tornei.find((t) => t.id === competizione)?.nome
+    competizione === 'tutte'
+      ? undefined
+      : competizione === 'ufficiali'
+        ? 'Solo ufficiali'
+        : competizione === 'amichevoli'
+          ? 'Amichevoli'
+          : tornei.find((t) => t.id === competizione)?.nome
 
   const record = useMemo(() => {
     const r = { v: 0, p: 0, s: 0, gf: 0, gs: 0 }
@@ -375,13 +390,19 @@ export function Statistiche() {
         azioni={
           tab === 'stagione' && (
             <Space wrap>
-              {torneiUsati.length > 0 && (
+              {(torneiUsati.length > 0 || ciSonoAmichevoli) && (
                 <Select
                   value={competizione}
                   onChange={setCompetizione}
                   style={{ minWidth: 170 }}
                   options={[
                     { value: 'tutte', label: 'Tutte le competizioni' },
+                    ...(ciSonoAmichevoli
+                      ? [
+                          { value: 'ufficiali', label: 'Solo ufficiali' },
+                          { value: 'amichevoli', label: 'Solo amichevoli' },
+                        ]
+                      : []),
                     ...torneiUsati.map((t) => ({ value: t.id, label: t.nome })),
                   ]}
                 />
