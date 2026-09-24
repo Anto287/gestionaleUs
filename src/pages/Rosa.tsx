@@ -66,10 +66,54 @@ type Bozza = Pick<
   | 'scadenzaCertificato'
   | 'quotaPagata'
   | 'quotaImporto'
+  | 'quotaEsente'
   | 'infortunato'
   | 'rientroInfortunio'
   | 'note'
 >
+
+const STATI_QUOTA = [
+  { value: 'no', label: 'Da pagare', color: 'red' },
+  { value: 'pagata', label: 'Pagata', color: 'green' },
+  { value: 'esente', label: 'Esente', color: 'blue' },
+] as const
+
+/**
+ * La quota nella lista: con l'importo impostato lo stato deriva dai
+ * versamenti (si vede e basta, si gestisce nella scheda); altrimenti si
+ * sceglie qui fra da pagare, pagata ed esente.
+ */
+function CellaQuota({ g, onCambia }: { g: Giocatore; onCambia: (patch: Partial<Giocatore>) => void }) {
+  const q = statoQuota(g)
+  if (q.totale && !q.esente)
+    return (
+      <Tag color={q.completa ? 'green' : q.parziale ? 'orange' : 'red'} style={{ marginInlineEnd: 0 }}>
+        {q.label}
+      </Tag>
+    )
+  const valore = g.quotaEsente ? 'esente' : g.quotaPagata ? 'pagata' : 'no'
+  return (
+    <Select
+      size="small"
+      variant="borderless"
+      value={valore}
+      popupMatchSelectWidth={false}
+      style={{ minWidth: 104 }}
+      labelRender={({ value }) => {
+        const s = STATI_QUOTA.find((x) => x.value === value)
+        return <Tag color={s?.color} style={{ marginInlineEnd: 0 }}>{s?.label}</Tag>
+      }}
+      options={STATI_QUOTA.map((x) => ({ value: x.value, label: x.label }))}
+      onChange={(v) =>
+        onCambia(
+          v === 'esente'
+            ? { quotaEsente: true, quotaPagata: undefined }
+            : { quotaEsente: undefined, quotaPagata: v === 'pagata' },
+        )
+      }
+    />
+  )
+}
 
 export function Rosa() {
   const giocatori = useCollection<Giocatore>('giocatori')
@@ -92,6 +136,7 @@ export function Rosa() {
   const campiGiocatore = categoriaForm !== 'dirigente'
   const campiDirigente = categoriaForm === 'dirigente' || categoriaForm === 'entrambi'
   const infortunatoForm = Form.useWatch('infortunato', form)
+  const esenteForm = Form.useWatch('quotaEsente', form)
   const [q, setQ] = useState('')
   const [repartoF, setRepartoF] = useState<Area | undefined>()
   const [ruoloF, setRuoloF] = useState<string | undefined>()
@@ -167,8 +212,9 @@ export function Rosa() {
         if (categoriaF === 'extra' && !isExtra(g)) return false
         if (certF && (!isGiocatore(g) || statoCertificato(g).stato !== certF)) return false
         if (quotaF && !isGiocatore(g)) return false
-        if (quotaF === 'pagata' && !statoQuota(g).completa) return false
+        if (quotaF === 'pagata' && (!statoQuota(g).completa || g.quotaEsente)) return false
         if (quotaF === 'no' && statoQuota(g).completa) return false
+        if (quotaF === 'esente' && !g.quotaEsente) return false
         if (tesseraF === 'si' && !g.tessera) return false
         if (tesseraF === 'no' && g.tessera) return false
         return true
@@ -356,7 +402,7 @@ export function Rosa() {
     {
       title: 'Quota',
       key: 'quota',
-      width: 100,
+      width: 124,
       // prima lo stato (saldata o no), poi quanto è stato versato
       sorter: (a: Giocatore, b: Giocatore) => {
         const qa = statoQuota(a)
@@ -366,18 +412,7 @@ export function Rosa() {
       ...stopCell,
       render: (_: unknown, g: Giocatore) => {
         if (!isGiocatore(g)) return '—'
-        const q = statoQuota(g)
-        // con l'importo impostato lo stato deriva dai versamenti (scheda giocatore)
-        if (q.totale) return <Tag color={q.completa ? 'green' : q.parziale ? 'orange' : 'red'}>{q.label}</Tag>
-        return (
-          <Switch
-            size="small"
-            checked={!!g.quotaPagata}
-            checkedChildren="Pagata"
-            unCheckedChildren="No"
-            onChange={(v) => update(g.id, { quotaPagata: v })}
-          />
-        )
+        return <CellaQuota g={g} onCambia={(patch) => update(g.id, patch)} />
       },
     },
     {
@@ -473,6 +508,11 @@ export function Rosa() {
                   <b className="quote-riepilogo-num">
                     {quote.saldati}/{quote.totali}
                   </b>
+                  {quote.esenti > 0 && (
+                    <span className="quote-riepilogo-etichetta">
+                      + {quote.esenti} {quote.esenti === 1 ? 'esente' : 'esenti'}
+                    </span>
+                  )}
                 </div>
                 <Button size="small" icon={<CopyOutlined />} onClick={copiaTotaleQuote}>
                   Copia totale
@@ -563,6 +603,7 @@ export function Rosa() {
                   options={[
                     { value: 'pagata', label: 'Quota pagata' },
                     { value: 'no', label: 'Quota non pagata' },
+                    { value: 'esente', label: 'Esenti dalla quota' },
                   ]}
                   style={{ width: '100%' }}
                 />
@@ -660,29 +701,11 @@ export function Rosa() {
                       )}
                       {doc.label && <Tag color={doc.color}>Documento {doc.label.toLowerCase()}</Tag>}
                       {isGiocatore(g) && <span>· {presenze[g.id] ?? 0} pres.</span>}
-                      {isGiocatore(g) &&
-                        (statoQuota(g).totale ? (
-                          <span className="lista-card-fine">
-                            Quota{' '}
-                            <Tag
-                              color={statoQuota(g).completa ? 'green' : statoQuota(g).parziale ? 'orange' : 'red'}
-                              style={{ marginInlineEnd: 0 }}
-                            >
-                              {statoQuota(g).label}
-                            </Tag>
-                          </span>
-                        ) : (
-                          <span className="lista-card-fine" onClick={(e) => e.stopPropagation()}>
-                            Quota
-                            <Switch
-                              size="small"
-                              checked={!!g.quotaPagata}
-                              checkedChildren="Sì"
-                              unCheckedChildren="No"
-                              onChange={(v) => update(g.id, { quotaPagata: v })}
-                            />
-                          </span>
-                        ))}
+                      {isGiocatore(g) && (
+                        <span className="lista-card-fine" onClick={(e) => e.stopPropagation()}>
+                          Quota <CellaQuota g={g} onCambia={(patch) => update(g.id, patch)} />
+                        </span>
+                      )}
                     </div>
                   </div>
                 )
@@ -792,15 +815,27 @@ export function Rosa() {
                 <DataPicker />
               </Form.Item>
               <Form.Item
-                label="Importo quota (€)"
-                name="quotaImporto"
-                tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati nella scheda"
+                label="Esente dalla quota"
+                name="quotaEsente"
+                valuePropName="checked"
+                tooltip="Non deve pagare la quota (es. allenatore che gioca, accordi): non compare fra le quote da incassare"
               >
-                <CampoEuro placeholder="es. 150" />
-              </Form.Item>
-              <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
                 <Switch />
               </Form.Item>
+              {!esenteForm && (
+                <>
+                  <Form.Item
+                    label="Importo quota (€)"
+                    name="quotaImporto"
+                    tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati nella scheda"
+                  >
+                    <CampoEuro placeholder="es. 150" />
+                  </Form.Item>
+                  <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+                </>
+              )}
               <Form.Item label="Infortunato" name="infortunato" valuePropName="checked">
                 <Switch />
               </Form.Item>

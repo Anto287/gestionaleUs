@@ -13,6 +13,9 @@ import { AuthProvider } from './auth/AuthContext'
 import { TemaProvider } from './theme/TemaProvider'
 import './styles/global.css'
 import App from './App.tsx'
+import { avviaSenzaAutofill } from './lib/senzaAutofill'
+
+avviaSenzaAutofill()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

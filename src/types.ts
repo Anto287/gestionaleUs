@@ -36,6 +36,8 @@ export interface Giocatore {
   /** certificato medico (non riguarda chi è solo dirigente) */
   certificatoMedico?: boolean
   scadenzaCertificato?: string
+  /** esente dalla quota (es. allenatore che gioca, accordi): non deve niente, non conta fra le quote da incassare */
+  quotaEsente?: boolean
   /** quota associativa pagata: riparte da false a ogni nuova stagione (non riguarda chi è solo dirigente) */
   quotaPagata?: boolean
   /** importo della quota stagionale in euro; se impostato, lo stato quota deriva dai versamenti */

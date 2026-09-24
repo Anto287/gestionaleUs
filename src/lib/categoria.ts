@@ -51,6 +51,7 @@ const SOLO_GIOCATORE = [
   'scadenzaCertificato',
   'quotaPagata',
   'quotaImporto',
+  'quotaEsente',
   'infortunato',
   'rientroInfortunio',
 ] as const
@@ -72,5 +73,10 @@ export function ripulisciTesserato<T extends Partial<Giocatore>>(valori: T): T {
   if (out.categoria === 'dirigente') for (const k of SOLO_GIOCATORE) out[k] = undefined
   if (out.categoria === 'giocatore' || out.categoria === 'extra') out.ruoloDirigenza = undefined
   if (!out.infortunato) out.rientroInfortunio = undefined
+  // chi è esente non ha quota da seguire: via importo e interruttore (i versamenti già fatti restano)
+  if (out.quotaEsente) {
+    out.quotaImporto = undefined
+    out.quotaPagata = undefined
+  } else out.quotaEsente = undefined
   return out as T
 }

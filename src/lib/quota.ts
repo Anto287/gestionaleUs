@@ -1,7 +1,8 @@
 /**
  * Stato della quota associativa di un giocatore. Se è impostato l'importo
  * della quota (quotaImporto), lo stato deriva dalla somma dei versamenti;
- * altrimenti vale il vecchio interruttore pagata/non pagata.
+ * altrimenti vale il vecchio interruttore pagata/non pagata. Chi è esente
+ * non deve niente: conta come a posto, ma non come "saldato".
  */
 import { isGiocatore } from './categoria'
 import type { Giocatore } from '../types'
@@ -15,12 +16,17 @@ export interface StatoQuota {
   completa: boolean
   /** versamenti presenti ma non a saldo */
   parziale: boolean
-  /** etichetta breve per tag/elenco, es. "80/150 €" o "Pagata" */
+  /** esente dalla quota: niente da pagare */
+  esente: boolean
+  /** etichetta breve per tag/elenco, es. "80/150 €", "Pagata" o "Esente" */
   label: string
 }
 
-export function statoQuota(g: Pick<Giocatore, 'quotaPagata' | 'quotaImporto' | 'versamentiQuota'>): StatoQuota {
+export function statoQuota(
+  g: Pick<Giocatore, 'quotaPagata' | 'quotaImporto' | 'versamentiQuota' | 'quotaEsente'>,
+): StatoQuota {
   const versato = (g.versamentiQuota ?? []).reduce((s, v) => s + (v.importo || 0), 0)
+  if (g.quotaEsente) return { versato, completa: true, parziale: false, esente: true, label: 'Esente' }
   const totale = g.quotaImporto && g.quotaImporto > 0 ? g.quotaImporto : undefined
 
   if (totale) {
@@ -30,6 +36,7 @@ export function statoQuota(g: Pick<Giocatore, 'quotaPagata' | 'quotaImporto' | '
       totale,
       completa,
       parziale: !completa && versato > 0,
+      esente: false,
       label: completa ? 'Pagata' : `${versato}/${totale} €`,
     }
   }
@@ -38,6 +45,7 @@ export function statoQuota(g: Pick<Giocatore, 'quotaPagata' | 'quotaImporto' | '
     versato,
     completa: !!g.quotaPagata,
     parziale: false,
+    esente: false,
     label: g.quotaPagata ? 'Pagata' : 'Da pagare',
   }
 }
@@ -50,11 +58,13 @@ export interface RiepilogoQuote {
   atteso: number
   /** quanto manca all'appello, per chi ha l'importo impostato */
   mancante: number
-  /** quanti hanno saldato */
+  /** quanti hanno saldato (gli esenti no: stanno in esenti) */
   saldati: number
+  /** quanti sono esenti dalla quota */
+  esenti: number
   /** quanti devono ancora qualcosa */
   aperte: number
-  /** quanti giocatori sono contati qui (i soli dirigenti restano fuori) */
+  /** quanti giocatori devono una quota (fuori i soli dirigenti e gli esenti) */
   totali: number
   /** saldati col solo interruttore, senza importo: non entrano nel raccolto */
   soloInterruttore: number
@@ -68,9 +78,12 @@ export interface RiepilogoQuote {
  * serve proprio a sapere quale cifra scrivere.
  */
 export function riepilogoQuote(
-  tesserati: Pick<Giocatore, 'categoria' | 'quotaPagata' | 'quotaImporto' | 'versamentiQuota'>[],
+  tesserati: Pick<Giocatore, 'categoria' | 'quotaPagata' | 'quotaImporto' | 'versamentiQuota' | 'quotaEsente'>[],
 ): RiepilogoQuote {
-  const rosa = tesserati.filter(isGiocatore)
+  const giocatori = tesserati.filter(isGiocatore)
+  const esenti = giocatori.filter((g) => g.quotaEsente).length
+  // chi è esente non deve niente: fuori da atteso, saldati e aperte
+  const rosa = giocatori.filter((g) => !g.quotaEsente)
   let raccolto = 0
   let giaNeiConti = 0
   let atteso = 0
@@ -97,5 +110,5 @@ export function riepilogoQuote(
     if (q.completa && !q.totale) soloInterruttore++
   }
 
-  return { raccolto, atteso, mancante, saldati, aperte: rosa.length - saldati, totali: rosa.length, soloInterruttore, giaNeiConti }
+  return { raccolto, atteso, mancante, saldati, esenti, aperte: rosa.length - saldati, totali: rosa.length, soloInterruttore, giaNeiConti }
 }

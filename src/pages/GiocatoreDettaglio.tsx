@@ -79,6 +79,7 @@ export function GiocatoreDettaglio() {
   const campiGiocatore = categoriaForm !== 'dirigente'
   const campiDirigente = categoriaForm === 'dirigente' || categoriaForm === 'entrambi'
   const infortunatoForm = Form.useWatch('infortunato', form)
+  const esenteForm = Form.useWatch('quotaEsente', form)
 
   const g = items.find((x) => x.id === id)
 
@@ -420,7 +421,7 @@ export function GiocatoreDettaglio() {
                   {(() => {
                     const q = statoQuota(g)
                     return (
-                      <Tag color={q.completa ? 'green' : q.parziale ? 'orange' : 'red'}>{q.label}</Tag>
+                      <Tag color={q.esente ? 'blue' : q.completa ? 'green' : q.parziale ? 'orange' : 'red'}>{q.label}</Tag>
                     )
                   })()}
                 </Descriptions.Item>
@@ -445,7 +446,12 @@ export function GiocatoreDettaglio() {
             const q = statoQuota(g)
             return (
               <>
-                {q.totale ? (
+                {q.esente ? (
+                  <Text>
+                    <Tag color="blue">Esente</Tag> Non deve pagare la quota: non compare fra le quote da incassare.
+                    Si cambia con «Modifica» in alto.
+                  </Text>
+                ) : q.totale ? (
                   <>
                     <Progress
                       percent={Math.min(100, Math.round((q.versato / q.totale) * 100))}
@@ -617,15 +623,27 @@ export function GiocatoreDettaglio() {
                 <DataPicker />
               </Form.Item>
               <Form.Item
-                label="Importo quota (€)"
-                name="quotaImporto"
-                tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati qui sotto"
+                label="Esente dalla quota"
+                name="quotaEsente"
+                valuePropName="checked"
+                tooltip="Non deve pagare la quota (es. allenatore che gioca, accordi): non compare fra le quote da incassare"
               >
-                <CampoEuro placeholder="es. 150" />
-              </Form.Item>
-              <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
                 <Switch />
               </Form.Item>
+              {!esenteForm && (
+                <>
+                  <Form.Item
+                    label="Importo quota (€)"
+                    name="quotaImporto"
+                    tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati qui sotto"
+                  >
+                    <CampoEuro placeholder="es. 150" />
+                  </Form.Item>
+                  <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+                </>
+              )}
               <Form.Item label="Infortunato" name="infortunato" valuePropName="checked">
                 <Switch />
               </Form.Item>

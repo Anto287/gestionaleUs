@@ -56,6 +56,7 @@ export function Impostazioni() {
         // Non si portano avanti: la tessera (si rinnova ogni anno), la quota e i
         // suoi VERSAMENTI (sono soldi della stagione vecchia, già nei Conti di
         // allora) e gli infortuni, che a stagione nuova sono acqua passata.
+        // L'esenzione dalla quota (quotaEsente) invece resta: di solito vale anche l'anno dopo.
         await Promise.all(
           rosa.items.map((g) => {
             const {
@@ -156,7 +157,7 @@ export function Impostazioni() {
           />
           <Checkbox checked={copiaRosa} onChange={(e) => setCopiaRosa(e.target.checked)}>
             Copia la rosa dalla stagione attiva ({plurale(rosa.items.length, 'tesserato', 'tesserati')}) — statistiche,
-            tessera, quota (e versamenti) e infortuni ripartono da zero
+            tessera, quota (e versamenti) e infortuni ripartono da zero; chi è esente dalla quota resta esente
           </Checkbox>
           <Button type="primary" icon={<PlusOutlined />} loading={creando} onClick={creaStagione}>
             Crea stagione
