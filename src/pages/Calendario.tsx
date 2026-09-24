@@ -5,30 +5,27 @@ import {
   Button,
   Calendar,
   Card,
-  Form,
   Grid,
   Input,
   List,
-  Modal,
-  Popconfirm,
   Popover,
-  Select,
   Space,
   Tag,
   Typography,
 } from 'antd'
 import type { CalendarProps } from 'antd'
-import { CopyOutlined, DeleteOutlined, DownloadOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons'
+import { CopyOutlined, DownloadOutlined, LinkOutlined, PlusOutlined, PrinterOutlined, RightOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
-import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { useAppuntamenti } from '../lib/appuntamenti'
 import { scaricaIcs, type EventoCal } from '../lib/ics'
-import { formatData, oggiIso } from '../lib/format'
+import { formatData } from '../lib/format'
 import { config } from '../config'
 import { driveAttivo, getSecret } from '../services/driveStore'
-import type { Allenamento, Partita } from '../types'
+import type { Allenamento, Partita, Torneo } from '../types'
+import { StampaCalendario } from './partite/StampaCalendario'
+import { ImpegnoModale, type Selezione } from './calendario/ImpegnoModale'
 
 const { Text } = Typography
 
@@ -46,14 +43,31 @@ const NOME_TIPO: Record<EventoCal['tipo'], string> = {
 export function Calendario() {
   const { items: partite } = useCollection<Partita>('partite')
   const { items: allenamenti } = useCollection<Allenamento>('allenamenti')
-  const { list: appuntamenti, aggiungi, rimuovi } = useAppuntamenti()
+  const { items: tornei } = useCollection<Torneo>('tornei')
+  const { list: appuntamenti } = useAppuntamenti()
   const { attiva } = useSeason()
   const { message } = App.useApp()
   const screens = Grid.useBreakpoint()
   const grande = !!screens.md
   const [mese, setMese] = useState<Dayjs>(() => dayjs())
-  const [modale, setModale] = useState(false)
-  const [form] = Form.useForm()
+  const [selezione, setSelezione] = useState<Selezione | null>(null)
+  const [stampa, setStampa] = useState(false)
+
+  /** L'evento del calendario → il record vero da aprire nel modale. */
+  function apri(e: EventoCal) {
+    const [pref, ...resto] = e.id.split('-')
+    const id = resto.join('-')
+    if (pref === 'p') {
+      const item = partite.find((x) => x.id === id)
+      if (item) setSelezione({ kind: 'partita', item })
+    } else if (pref === 'a') {
+      const item = allenamenti.find((x) => x.id === id)
+      if (item) setSelezione({ kind: 'allenamento', item })
+    } else {
+      const item = appuntamenti.find((x) => x.id === id)
+      if (item) setSelezione({ kind: 'appuntamento', item })
+    }
+  }
 
   const eventi: EventoCal[] = useMemo(() => {
     const out: EventoCal[] = []
@@ -76,7 +90,12 @@ export function Calendario() {
         descrizione: a.note,
       })
     }
+    // un appuntamento con stessa data e avversario di una partita è la stessa
+    // gara: si mostra solo la partita
+    const chiave = (data: string, avv: string) => `${data}|${avv.trim().toLowerCase().replace(/\s+/g, ' ')}`
+    const gia = new Set(partite.map((p) => chiave(p.data, p.avversario)))
     for (const ap of appuntamenti) {
+      if (gia.has(chiave(ap.data, ap.avversario))) continue
       out.push({
         id: `ap-${ap.id}`,
         data: ap.data,
@@ -108,7 +127,16 @@ export function Calendario() {
       return (
         <ul className="cal-lista">
           {evs.map((e) => (
-            <li key={e.id}>
+            <li
+              key={e.id}
+              className="cal-evento"
+              title="Modifica"
+              onClick={(ev) => {
+                // non deve scattare anche il "nuovo impegno" del giorno
+                ev.stopPropagation()
+                apri(e)
+              }}
+            >
               <i className="cal-dot" style={{ background: COLORE_TIPO[e.tipo] }} />
               {e.ora ? `${e.ora} · ` : ''}
               {e.tipo === 'allenamento' ? 'Allenamento' : e.titolo.replace(/^Partita vs /, 'vs ').replace(/^Riolunato /, '')}
@@ -124,19 +152,6 @@ export function Calendario() {
         ))}
       </div>
     )
-  }
-
-  function salvaAppuntamento(v: { data: string; ora?: string; avversario: string; inCasa: boolean; luogo?: string }) {
-    aggiungi({
-      data: v.data,
-      ora: v.ora?.trim() || undefined,
-      avversario: v.avversario.trim(),
-      inCasa: v.inCasa,
-      luogo: v.luogo?.trim() || undefined,
-    })
-    setMese(dayjs(v.data))
-    setModale(false)
-    message.success('Impegno aggiunto al calendario')
   }
 
   function esportaIcs() {
@@ -167,7 +182,7 @@ export function Calendario() {
     <>
       <PageHeader
         titolo="Calendario"
-        sottotitolo="Partite, allenamenti e impegni in programma, mese per mese"
+        sottotitolo="Partite, allenamenti e impegni: tocca un impegno per modificarlo"
         azioni={
           <Space wrap>
             {urlFeed && (
@@ -193,17 +208,16 @@ export function Calendario() {
                 <Button icon={<LinkOutlined />}>Connetti</Button>
               </Popover>
             )}
+            <Button icon={<PrinterOutlined />} onClick={() => setStampa(true)}>
+              Stampa calendario
+            </Button>
             <Button icon={<DownloadOutlined />} onClick={esportaIcs}>
               Scarica .ics
             </Button>
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => {
-                form.resetFields()
-                form.setFieldsValue({ data: oggiIso(), inCasa: true })
-                setModale(true)
-              }}
+              onClick={() => setSelezione({ kind: 'nuovo', data: mese.format('YYYY-MM-DD') })}
             >
               Nuovo impegno
             </Button>
@@ -225,6 +239,11 @@ export function Calendario() {
           value={mese}
           onChange={setMese}
           onPanelChange={(d) => setMese(d)}
+          onSelect={(d, info) => {
+            // sul calendario grande un clic sul giorno crea un impegno lì
+            // (le tendine anno/mese in testata passano 'year'/'month')
+            if (grande && info.source === 'date') setSelezione({ kind: 'nuovo', data: d.format('YYYY-MM-DD') })
+          }}
           cellRender={cellRender}
         />
       </Card>
@@ -235,23 +254,9 @@ export function Calendario() {
           dataSource={delMese}
           renderItem={(e) => (
             <List.Item
-              style={{ padding: '10px 20px' }}
-              actions={
-                e.tipo === 'appuntamento'
-                  ? [
-                      <Popconfirm
-                        key="del"
-                        title="Eliminare l’impegno?"
-                        okText="Elimina"
-                        cancelText="Annulla"
-                        okButtonProps={{ danger: true }}
-                        onConfirm={() => rimuovi(e.id.replace(/^ap-/, ''))}
-                      >
-                        <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-                      </Popconfirm>,
-                    ]
-                  : undefined
-              }
+              style={{ padding: '10px 20px', cursor: 'pointer' }}
+              onClick={() => apri(e)}
+              extra={<RightOutlined style={{ color: 'var(--testo-2)' }} />}
             >
               <Space size={10} wrap>
                 <Tag color={COLORE_TIPO[e.tipo]} style={{ marginInlineEnd: 0 }}>
@@ -268,51 +273,17 @@ export function Calendario() {
         />
       </Card>
 
-      <Modal
-        title="Nuovo impegno in programma"
-        open={modale}
-        onCancel={() => setModale(false)}
-        onOk={() => form.submit()}
-        okText="Aggiungi"
-        cancelText="Annulla"
-        maskClosable={false}
-        forceRender
-      >
-        <Form form={form} layout="vertical" onFinish={salvaAppuntamento} requiredMark={false}>
-          <div className="social-due">
-            <Form.Item label="Data" name="data" rules={[{ required: true, message: 'Scegli la data' }]} {...propsCampoData}>
-              <DataPicker />
-            </Form.Item>
-            <Form.Item label="Ora" name="ora">
-              <Input placeholder="es. 15:30" autoComplete="off" />
-            </Form.Item>
-          </div>
-          <Form.Item
-            label="Avversario"
-            name="avversario"
-            rules={[{ required: true, message: 'Inserisci l’avversario' }]}
-          >
-            <Input placeholder="es. Pievepelago" autoComplete="off" />
-          </Form.Item>
-          <div className="social-due">
-            <Form.Item label="Dove" name="inCasa" initialValue={true}>
-              <Select
-                options={[
-                  { value: true, label: 'In casa' },
-                  { value: false, label: 'In trasferta' },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item label="Luogo (facoltativo)" name="luogo">
-              <Input placeholder="es. Comunale di Riolunato" autoComplete="off" />
-            </Form.Item>
-          </div>
-        </Form>
-        <Text type="secondary" style={{ fontSize: 12.5 }}>
-          Gli impegni compaiono anche nella grafica IG «Mese». Le partite giocate e gli allenamenti
-          arrivano da soli dalle rispettive pagine.
-        </Text>
-      </Modal>
+      <ImpegnoModale selezione={selezione} onClose={() => setSelezione(null)} onSalvato={(d) => setMese(dayjs(d))} />
+
+      <StampaCalendario
+        open={stampa}
+        onClose={() => setStampa(false)}
+        partite={partite}
+        allenamenti={allenamenti}
+        appuntamenti={appuntamenti}
+        tornei={tornei}
+        stagione={attiva}
+      />
     </>
   )
 }

@@ -117,5 +117,6 @@ export function scaricaIcs(eventi: EventoCal[], nomeCalendario: string, nomeFile
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  // Safari avvia lo scaricamento dopo: liberato subito, il file non arriva
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

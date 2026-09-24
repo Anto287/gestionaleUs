@@ -34,11 +34,13 @@ function leggiTutte(): Tutte {
   }
 }
 
-function scriviTutte(t: Tutte): void {
+/** false se il browser non l'ha salvato (es. spazio pieno per le foto di sfondo). */
+function scriviTutte(t: Tutte): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(t))
+    return true
   } catch {
-    /* quota piena: si tiene per la sessione corrente */
+    return false
   }
 }
 
@@ -46,10 +48,10 @@ export function leggiPrefs(kind: KindGrafica): GraficaPrefs {
   return leggiTutte()[kind] ?? {}
 }
 
-export function salvaPrefs(kind: KindGrafica, p: GraficaPrefs): void {
+export function salvaPrefs(kind: KindGrafica, p: GraficaPrefs): boolean {
   const t = leggiTutte()
   t[kind] = p
-  scriviTutte(t)
+  return scriviTutte(t)
 }
 
 export function azzeraPrefs(kind: KindGrafica): void {

@@ -41,6 +41,7 @@ import {
   TrophyOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
+import { CampoEuro } from '../components/CampoEuro'
 import { StatCard } from '../components/StatCard'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
@@ -48,13 +49,14 @@ import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE } from '../ruoli'
 import { statoCertificato } from '../lib/certificato'
 import { statoScadenza } from '../lib/scadenza'
-import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA } from '../lib/categoria'
+import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, ripulisciTesserato } from '../lib/categoria'
 import { statisticheGiocatore } from '../lib/statistiche'
 import { useArchivio } from '../data/ArchivioProvider'
 import { ArchivioTesserato } from '../components/archivio/ArchivioTesserato'
 import { statoQuota } from '../lib/quota'
 import { formatData, formatEuro, iniziali, oggiIso } from '../lib/format'
 import type { Allenamento, Giocatore, Movimento, Partita, VersamentoQuota } from '../types'
+import { seduteSvolte } from '../lib/allenamenti'
 
 const { Title, Text } = Typography
 
@@ -100,6 +102,8 @@ export function GiocatoreDettaglio() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (modale || modaleVersamento) return
+      // anche con aperti i modali dell'archivio (anteprima, carica file)
+      if (document.querySelector('.ant-modal-wrap:not([style*="display: none"])')) return
       const t = e.target as HTMLElement | null
       if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) return
       if (e.key === 'ArrowLeft' && precedente) navigate(`/rosa/${precedente.id}`)
@@ -111,9 +115,11 @@ export function GiocatoreDettaglio() {
 
   const presenze = useMemo(() => {
     if (!g) return { fatte: 0, totali: 0 }
+    // le sedute future (create in anticipo dal calendario) non contano ancora
+    const svolte = seduteSvolte(allenamenti.items)
     return {
-      totali: allenamenti.items.length,
-      fatte: allenamenti.items.filter((a) => a.presenze[g.id]).length,
+      totali: svolte.length,
+      fatte: svolte.filter((a) => a.presenze[g.id]).length,
     }
   }, [allenamenti.items, g])
 
@@ -121,13 +127,22 @@ export function GiocatoreDettaglio() {
   const archivio = useArchivio()
   const foto = archivio.miniatura(archivio.scheda(g?.id ?? '').foto?.id)
 
+  // solo le partite giocate: quelle in programma non hanno ancora statistiche
+  const giocate = useMemo(() => partite.items.filter((p) => p.giocata !== false), [partite.items])
   const stat = useMemo(
     () =>
       g
-        ? statisticheGiocatore(g.id, partite.items)
+        ? statisticheGiocatore(g.id, giocate)
         : { gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0, presenzePartita: 0, daTitolare: 0 },
-    [g, partite.items],
+    [g, giocate],
   )
+  // quanti dei gol sono arrivati in amichevole
+  const golAmichevole = useMemo(
+    () => (g ? statisticheGiocatore(g.id, giocate.filter((p) => p.amichevole)).gol : 0),
+    [g, giocate],
+  )
+  // con statistiche, eliminarlo lo toglie da classifiche e albo d'oro
+  const haStatistiche = stat.gol + stat.assist + stat.presenzePartita > 0
 
   if (!g) {
     return (
@@ -149,29 +164,13 @@ export function GiocatoreDettaglio() {
   const percPresenze = presenze.totali ? Math.round((presenze.fatte / presenze.totali) * 100) : 0
 
   function apriModifica() {
+    // svuota prima: i campi facoltativi del giocatore precedente non devono restare
+    form.resetFields()
     form.setFieldsValue({ ...g, categoria: g!.categoria ?? 'giocatore' })
     setModale(true)
   }
   function salvaModifica(valori: Partial<Giocatore>) {
-    // scarta i valori dei campi nascosti rimasti da un cambio di categoria
-    if (valori.categoria === 'dirigente') {
-      valori = {
-        ...valori,
-        ruoloPreferito: undefined,
-        ruoliAdattati: undefined,
-        bravura: undefined,
-        numeroMaglia: undefined,
-        certificatoMedico: undefined,
-        scadenzaCertificato: undefined,
-        quotaPagata: undefined,
-        quotaImporto: undefined,
-        infortunato: undefined,
-        rientroInfortunio: undefined,
-      }
-    }
-    if (valori.categoria === 'giocatore' || valori.categoria === 'extra')
-      valori = { ...valori, ruoloDirigenza: undefined }
-    if (!valori.infortunato) valori = { ...valori, rientroInfortunio: undefined }
+    valori = ripulisciTesserato(valori)
     update(g!.id, valori)
     setModale(false)
   }
@@ -252,7 +251,7 @@ export function GiocatoreDettaglio() {
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Avatar src={foto} size={64} style={{ background: '#c22026', fontSize: 24, flex: 'none' }}>
+          <Avatar src={foto} size={64} style={{ background: 'var(--rosso)', fontSize: 24, flex: 'none' }}>
             {iniziali(g)}
           </Avatar>
           <div style={{ flex: 1, minWidth: 200 }}>
@@ -292,6 +291,11 @@ export function GiocatoreDettaglio() {
             </Button>
             <Popconfirm
               title={`Eliminare ${g.nome} ${g.cognome}?`}
+              description={
+                haStatistiche
+                  ? "Ha gol, assist o presenze in partita: sparirà da classifiche e albo d'oro. Meglio cambiarlo in categoria «Giocatore Extra»."
+                  : undefined
+              }
               okText="Elimina"
               cancelText="Annulla"
               okButtonProps={{ danger: true }}
@@ -315,7 +319,7 @@ export function GiocatoreDettaglio() {
                   <Progress
                     percent={percPresenze}
                     showInfo={false}
-                    strokeColor="#c22026"
+                    strokeColor="var(--rosso)"
                     size={['100%', 5]}
                     style={{ display: 'block', margin: '2px 0' }}
                   />
@@ -333,7 +337,12 @@ export function GiocatoreDettaglio() {
             />
           </Col>
           <Col xs={12} sm={8} lg={4}>
-            <StatCard icona={<AimOutlined />} titolo="Gol" valore={stat.gol} />
+            <StatCard
+              icona={<AimOutlined />}
+              titolo="Gol"
+              valore={stat.gol}
+              sotto={golAmichevole > 0 ? `di cui ${golAmichevole} in amichevole` : undefined}
+            />
           </Col>
           <Col xs={12} sm={8} lg={4}>
             <StatCard icona={<ThunderboltOutlined />} titolo="Assist" valore={stat.assist} />
@@ -343,7 +352,7 @@ export function GiocatoreDettaglio() {
               icona={<WarningOutlined />}
               titolo="Ammonizioni"
               valore={stat.ammonizioni}
-              colore={stat.ammonizioni > 0 ? '#9a6b1e' : undefined}
+              colore={stat.ammonizioni > 0 ? 'var(--ocra)' : undefined}
             />
           </Col>
           <Col xs={12} sm={8} lg={4}>
@@ -351,7 +360,7 @@ export function GiocatoreDettaglio() {
               icona={<StopOutlined />}
               titolo="Espulsioni"
               valore={stat.espulsioni}
-              colore={stat.espulsioni > 0 ? '#b1352f' : undefined}
+              colore={stat.espulsioni > 0 ? 'var(--rosso-testo)' : undefined}
             />
           </Col>
         </Row>
@@ -382,7 +391,7 @@ export function GiocatoreDettaglio() {
               <Descriptions.Item label="Scadenza documento">
                 {g.scadenzaDocumento ? (
                   <Space size={4}>
-                    <span style={{ color: doc.critico ? '#b1352f' : undefined, fontWeight: doc.critico ? 600 : undefined }}>
+                    <span style={{ color: doc.critico ? 'var(--rosso-testo)' : undefined, fontWeight: doc.critico ? 600 : undefined }}>
                       {formatData(g.scadenzaDocumento, true)}
                     </span>
                     {doc.label && <Tag color={doc.color}>{doc.label}</Tag>}
@@ -393,13 +402,17 @@ export function GiocatoreDettaglio() {
               </Descriptions.Item>
               {!soloDirigente && (
                 <Descriptions.Item label="Certificato medico">
-                  <Tag color={cert.color}>{cert.label}</Tag>
-                  {g.scadenzaCertificato && (
-                    <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-                      {' '}
-                      scad. {formatData(g.scadenzaCertificato, true)}
-                    </Text>
-                  )}
+                  {/* va a capo sul telefono: tag e data insieme sbordavano */}
+                  <Space size={[4, 2]} wrap>
+                    <Tag color={cert.color} style={{ marginInlineEnd: 0 }}>
+                      {cert.label}
+                    </Tag>
+                    {g.scadenzaCertificato && (
+                      <Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
+                        scad. {formatData(g.scadenzaCertificato, true)}
+                      </Text>
+                    )}
+                  </Space>
                 </Descriptions.Item>
               )}
               {!soloDirigente && (
@@ -436,8 +449,8 @@ export function GiocatoreDettaglio() {
                   <>
                     <Progress
                       percent={Math.min(100, Math.round((q.versato / q.totale) * 100))}
-                      strokeColor={q.completa ? '#3f7a52' : '#e5a800'}
-                      trailColor="#eee4d3"
+                      strokeColor={q.completa ? 'var(--verde)' : 'var(--oro)'}
+                      trailColor="var(--linea)"
                     />
                     <Text strong>
                       {formatEuro(q.versato)} versati su {formatEuro(q.totale)}
@@ -475,7 +488,7 @@ export function GiocatoreDettaglio() {
                       ]}
                     >
                       <Space>
-                        <EuroOutlined style={{ color: '#3f7a52' }} />
+                        <EuroOutlined style={{ color: 'var(--verde)' }} />
                         <Text strong>{formatEuro(v.importo)}</Text>
                         <Text type="secondary">{formatData(v.data, true)}</Text>
                         {v.note && <Text type="secondary">· {v.note}</Text>}
@@ -511,7 +524,7 @@ export function GiocatoreDettaglio() {
             name="importo"
             rules={[{ required: true, message: 'Inserisci l’importo' }]}
           >
-            <InputNumber min={1} style={{ width: '100%' }} placeholder="es. 50" autoFocus />
+            <CampoEuro min={0.01} placeholder="es. 50" autoFocus />
           </Form.Item>
           <Form.Item label="Data" name="data" rules={[{ required: true, message: 'Scegli la data' }]} {...propsCampoData}>
             <DataPicker />
@@ -537,10 +550,10 @@ export function GiocatoreDettaglio() {
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={salvaModifica} requiredMark={false}>
-          <Form.Item label="Nome" name="nome" rules={[{ required: true, message: 'Inserisci il nome' }]}>
+          <Form.Item label="Nome" name="nome" rules={[{ required: true, whitespace: true, message: 'Inserisci il nome' }]}>
             <Input />
           </Form.Item>
-          <Form.Item label="Cognome" name="cognome" rules={[{ required: true, message: 'Inserisci il cognome' }]}>
+          <Form.Item label="Cognome" name="cognome" rules={[{ required: true, whitespace: true, message: 'Inserisci il cognome' }]}>
             <Input />
           </Form.Item>
           <Form.Item label="Categoria" name="categoria">
@@ -578,7 +591,7 @@ export function GiocatoreDettaglio() {
               </Form.Item>
             </>
           )}
-          <Form.Item label="Data di nascita" name="nascita">
+          <Form.Item label="Data di nascita (gg/mm/aaaa)" name="nascita">
             <Input placeholder="es. 12/03/2001" />
           </Form.Item>
           <Form.Item label="N. tessera" name="tessera">
@@ -608,7 +621,7 @@ export function GiocatoreDettaglio() {
                 name="quotaImporto"
                 tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati qui sotto"
               >
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="es. 150" />
+                <CampoEuro placeholder="es. 150" />
               </Form.Item>
               <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
                 <Switch />

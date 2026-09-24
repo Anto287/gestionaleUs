@@ -5,6 +5,8 @@ import { useCollection } from '../hooks/useCollection'
 import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { formatData } from '../lib/format'
+import { isGiocatore } from '../lib/categoria'
+import { statoCertificato } from '../lib/certificato'
 import type { Distinta, Divisa, Giocatore, TestataDistinta, Torneo } from '../types'
 import { SelectorList, type Convocato } from './distinte/SelectorList'
 import { TestataForm } from './distinte/TestataForm'
@@ -64,6 +66,23 @@ export function Distinte() {
           : nomeCompleto,
       }
     })
+  }, [items])
+
+  // avvisi accanto al nome nella scelta dei convocati (fuori da `rows`, che
+  // finiscono nella distinta salvata)
+  const avvisi = useMemo(() => {
+    const m: Record<string, string[]> = {}
+    for (const g of items) {
+      const a: string[] = []
+      if (isGiocatore(g) && g.infortunato) a.push('Infortunato')
+      if (isGiocatore(g)) {
+        const c = statoCertificato(g)
+        if (c.critico) a.push(`Certificato ${c.label.toLowerCase()}`)
+      }
+      if (!g.tessera?.trim()) a.push('Senza tessera')
+      if (a.length) m[g.id] = a
+    }
+    return m
   }, [items])
 
   const salvate = useMemo(
@@ -179,6 +198,7 @@ export function Distinte() {
                 <SelectorList
                   key={resetKey}
                   rows={rows}
+                  avvisi={avvisi}
                   initialList={initConvocati}
                   onListChange={setSelezionati}
                 />

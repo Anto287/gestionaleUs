@@ -14,9 +14,13 @@ export type VistaDettaglio = 'cassa' | 'daIncassare' | 'daPagare'
 /** quanti movimenti di cassa si mostrano per volta ("Mostra altri" carica i successivi) */
 const PASSO = 20
 
-const VERDE = '#3f7a52'
-const ROSSO = '#b1352f'
-const OCRA = '#9a6b1e'
+// variabili CSS: seguono il tema chiaro/scuro
+const VERDE = 'var(--verde)'
+const ROSSO = 'var(--rosso-testo)'
+const OCRA = 'var(--ocra)'
+
+/** Arrotonda ai centesimi (niente "-0,00 €" in rosso). */
+const cent = (n: number) => Math.round(n * 100) / 100 || 0
 
 const TESTI: Record<VistaDettaglio, { titolo: string; totale: string; nota: string; vuoto: string }> = {
   cassa: {
@@ -32,8 +36,8 @@ const TESTI: Record<VistaDettaglio, { titolo: string; totale: string; nota: stri
     vuoto: 'Niente da incassare: tutte le entrate sono state riscosse.',
   },
   daPagare: {
-    titolo: 'Soldi da dare',
-    totale: 'Totale da dare',
+    titolo: 'Soldi da pagare',
+    totale: 'Totale da pagare',
     nota: 'Uscite registrate ma non ancora pagate, raggruppate per chi le aspetta.',
     vuoto: 'Nessun pagamento in sospeso.',
   },
@@ -52,7 +56,7 @@ function raggruppaAperti(movimenti: Movimento[], tipo: 'entrata' | 'uscita'): Gr
   const gruppi = new Map<string, Gruppo>()
   const aperti = movimenti
     .filter((m) => !m.saldato && m.tipo === tipo)
-    .sort((a, b) => a.data.localeCompare(b.data))
+    .sort((a, b) => (a.data ?? '').localeCompare(b.data ?? ''))
   for (const m of aperti) {
     const controparte = m.controparte?.trim()
     const chi = controparte || m.descrizione
@@ -101,10 +105,10 @@ export function DettaglioMovimenti({
   const v = vista ?? memoVista
 
   const cassa = useMemo(() => {
-    const chrono = movimenti.filter((m) => m.saldato).sort((a, b) => a.data.localeCompare(b.data))
+    const chrono = movimenti.filter((m) => m.saldato).sort((a, b) => (a.data ?? '').localeCompare(b.data ?? ''))
     let saldo = 0
     const righe = chrono.map((m) => {
-      saldo += m.tipo === 'entrata' ? m.importo : -m.importo
+      saldo = cent(saldo + (m.tipo === 'entrata' ? m.importo : -m.importo))
       return { m, saldo }
     })
     return { righe: righe.reverse(), saldo }
@@ -115,7 +119,7 @@ export function DettaglioMovimenti({
     [movimenti, v],
   )
 
-  const totale = v === 'cassa' ? cassa.saldo : gruppi.reduce((s, g) => s + g.totale, 0)
+  const totale = v === 'cassa' ? cassa.saldo : cent(gruppi.reduce((s, g) => s + g.totale, 0))
   const coloreTotale =
     v === 'cassa' ? (cassa.saldo < 0 ? ROSSO : undefined) : v === 'daIncassare' ? VERDE : OCRA
 

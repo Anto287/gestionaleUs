@@ -6,7 +6,7 @@ import { useArchivio } from '../../data/ArchivioProvider'
 import dayjs from 'dayjs'
 import { DataPicker } from '../DataPicker'
 import { estensionePrevista } from '../../lib/immagine'
-import { chiaveFile, nomeArchivio, type Cartella, type Faccia } from '../../lib/archivio'
+import { chiaveFile, nascitaIso, nomeArchivio, type Cartella, type Faccia } from '../../lib/archivio'
 import type { Giocatore } from '../../types'
 
 const { Text } = Typography
@@ -39,7 +39,7 @@ export function CaricaFile({
   onChiudi: () => void
 }) {
   const { items: rosa } = useCollection<Giocatore>('giocatori')
-  const { carica, scheda, omonimo, documenti, foto } = useArchivio()
+  const { carica, elimina, scheda, omonimo, documenti, foto } = useArchivio()
   const { message } = App.useApp()
   const screens = Grid.useBreakpoint()
 
@@ -80,7 +80,8 @@ export function CaricaFile({
   )
   const nomeUsato = (tesserato?.nome ?? nome).trim()
   const cognomeUsato = (tesserato?.cognome ?? cognome).trim()
-  const nascitaUsata = tesserato?.nascita ?? nascita
+  // in rosa la data è testo libero: per il nome del file serve in ISO
+  const nascitaUsata = (tesserato ? nascitaIso(tesserato.nascita) : nascita) ?? ''
 
   // due tesserati con lo stesso nome: la data di nascita nel nome del file
   // è l'unico modo per distinguerli
@@ -123,6 +124,15 @@ export function CaricaFile({
     setCaricando(true)
     try {
       const item = await carica({ cartella, base, file })
+      // il Drive sostituisce solo a parità di nome: se quello di prima si
+      // chiamava diversamente lo si toglie qui, come promesso dall'avviso
+      if (gia && gia.id !== item.id && chiaveFile(gia.nome) !== chiaveFile(item.nome)) {
+        try {
+          await elimina(gia)
+        } catch {
+          message.warning(`Caricato, ma "${gia.nome}" è rimasto sul Drive: eliminalo a mano.`)
+        }
+      }
       message.success(`Caricato come "${item.nome}".`)
       onChiudi()
     } catch (e) {

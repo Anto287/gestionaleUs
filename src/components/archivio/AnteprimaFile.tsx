@@ -42,7 +42,10 @@ export function AnteprimaFile({
     const a = document.createElement('a')
     a.href = `data:${dati.tipo};base64,${dati.dataBase64}`
     a.download = file.nome
+    // alcuni browser scaricano solo se il link è nella pagina
+    document.body.appendChild(a)
     a.click()
+    a.remove()
   }
 
   function chiediElimina() {
@@ -104,7 +107,7 @@ export function AnteprimaFile({
           type="warning"
           showIcon
           message="Non riesco a mostrare questo file"
-          description={`${errore}. Puoi aprirlo direttamente sul Drive.`}
+          description={`${errore.replace(/\.+$/, '')}.${file?.url ? ' Puoi aprirlo direttamente sul Drive.' : ''}`}
         />
       )}
       {!errore && !dati && (
@@ -113,7 +116,7 @@ export function AnteprimaFile({
           <Typography.Text type="secondary">Scarico il file dal Drive…</Typography.Text>
         </div>
       )}
-      {dati?.tipo === 'application/pdf' ? (
+      {errore ? null : dati?.tipo === 'application/pdf' ? (
         <AnteprimaPdf
           base64={dati.dataBase64}
           onErrore={() => setErrore('anteprima del PDF non riuscita')}

@@ -44,8 +44,18 @@ import type {
   SpesaCondivisa,
   VoceMagazzino,
 } from '../types'
+import { seduteSvolte } from '../lib/allenamenti'
 
 const { Title, Text } = Typography
+
+/** Arrotonda ai centesimi (niente "-0,00 €" in rosso). */
+const cent = (n: number) => Math.round(n * 100) / 100 || 0
+
+/** Tono delle voci "da fare": decide colore dell'icona e del contatore. */
+const TONI = {
+  rosso: { colore: 'var(--rosso-testo)', tag: 'red' },
+  ocra: { colore: 'var(--ocra)', tag: 'orange' },
+} as const
 
 export function Dashboard() {
   const { attiva } = useSeason()
@@ -101,6 +111,12 @@ export function Dashboard() {
     const certInScadenza = soloGiocatori.filter((g) => statoCertificato(g).stato === 'scadenza')
     const quoteAperte = soloGiocatori.filter((g) => !statoQuota(g).completa)
     const senzaTessera = giocatori.items.filter((g) => !g.tessera)
+    // documento d'identità: scaduto (rosso) o in scadenza entro un mese (ocra)
+    const docScaduti = giocatori.items.filter((g) => (statoScadenza(g.scadenzaDocumento).giorni ?? 0) < 0)
+    const docInScadenza = giocatori.items.filter((g) => {
+      const d = statoScadenza(g.scadenzaDocumento)
+      return d.critico && (d.giorni ?? 0) >= 0
+    })
     const infortunati = soloGiocatori.filter((g) => g.infortunato)
     const speseAperte = spese.items.filter((s) => !s.saldata)
     const borsaScaduta = borsaMedica.items.filter((v) => statoScadenza(v.scadenza).critico)
@@ -115,7 +131,7 @@ export function Dashboard() {
       {
         key: 'cert',
         icona: <SafetyCertificateOutlined />,
-        colore: '#b1352f',
+        tono: 'rosso' as const,
         testo: 'Certificati medici da regolarizzare',
         dettaglio: nomi(certCritici),
         n: certCritici.length,
@@ -124,7 +140,7 @@ export function Dashboard() {
       {
         key: 'cert2',
         icona: <SafetyCertificateOutlined />,
-        colore: '#9a6b1e',
+        tono: 'ocra' as const,
         testo: 'Certificati in scadenza entro un mese',
         dettaglio: nomi(certInScadenza),
         n: certInScadenza.length,
@@ -133,7 +149,7 @@ export function Dashboard() {
       {
         key: 'quote',
         icona: <EuroOutlined />,
-        colore: '#9a6b1e',
+        tono: 'ocra' as const,
         testo: 'Quote associative da incassare',
         dettaglio: nomi(quoteAperte),
         n: quoteAperte.length,
@@ -142,16 +158,34 @@ export function Dashboard() {
       {
         key: 'tessere',
         icona: <IdcardOutlined />,
-        colore: '#b1352f',
+        tono: 'rosso' as const,
         testo: 'Tesserati senza numero di tessera',
         dettaglio: nomi(senzaTessera),
         n: senzaTessera.length,
         to: '/rosa',
       },
       {
+        key: 'doc',
+        icona: <IdcardOutlined />,
+        tono: 'rosso' as const,
+        testo: "Documenti d'identità scaduti",
+        dettaglio: nomi(docScaduti),
+        n: docScaduti.length,
+        to: '/rosa',
+      },
+      {
+        key: 'doc2',
+        icona: <IdcardOutlined />,
+        tono: 'ocra' as const,
+        testo: "Documenti d'identità in scadenza entro un mese",
+        dettaglio: nomi(docInScadenza),
+        n: docInScadenza.length,
+        to: '/rosa',
+      },
+      {
         key: 'borsa',
         icona: <MedicineBoxOutlined />,
-        colore: '#b1352f',
+        tono: 'rosso' as const,
         testo: 'Borsa medica: articoli scaduti o in scadenza',
         dettaglio: borsaScaduta.map((v) => v.nome).join(', '),
         n: borsaScaduta.length,
@@ -160,7 +194,7 @@ export function Dashboard() {
       {
         key: 'scorte',
         icona: <InboxOutlined />,
-        colore: '#9a6b1e',
+        tono: 'ocra' as const,
         testo: 'Articoli sotto scorta da riordinare',
         dettaglio: daRiordinare.map((v) => v.nome).join(', '),
         n: daRiordinare.length,
@@ -169,7 +203,7 @@ export function Dashboard() {
       {
         key: 'spese',
         icona: <SwapOutlined />,
-        colore: '#9a6b1e',
+        tono: 'ocra' as const,
         testo: 'Spese condivise ancora da saldare',
         dettaglio: [...new Set(speseAperte.map((s) => s.societa))].join(', '),
         n: speseAperte.length,
@@ -178,7 +212,7 @@ export function Dashboard() {
       {
         key: 'infortuni',
         icona: <MedicineBoxOutlined />,
-        colore: '#9a6b1e',
+        tono: 'ocra' as const,
         testo: 'Giocatori infortunati',
         dettaglio: nomi(infortunati),
         n: infortunati.length,
@@ -195,15 +229,15 @@ export function Dashboard() {
     spese.items,
   ])
 
-  const saldo = conti.items
-    .filter((m) => m.saldato)
-    .reduce((s, m) => s + (m.tipo === 'entrata' ? m.importo : -m.importo), 0)
-  const daIncassare = conti.items
-    .filter((m) => !m.saldato && m.tipo === 'entrata')
-    .reduce((s, m) => s + m.importo, 0)
-  const daPagare = conti.items
-    .filter((m) => !m.saldato && m.tipo === 'uscita')
-    .reduce((s, m) => s + m.importo, 0)
+  const saldo = cent(
+    conti.items.filter((m) => m.saldato).reduce((s, m) => s + (m.tipo === 'entrata' ? m.importo : -m.importo), 0),
+  )
+  const daIncassare = cent(
+    conti.items.filter((m) => !m.saldato && m.tipo === 'entrata').reduce((s, m) => s + m.importo, 0),
+  )
+  const daPagare = cent(
+    conti.items.filter((m) => !m.saldato && m.tipo === 'uscita').reduce((s, m) => s + m.importo, 0),
+  )
   const inScadenza = magazzino.items.filter((a) => statoScadenza(a.scadenza).critico).length
 
   const oggi = oggiIso()
@@ -228,7 +262,7 @@ export function Dashboard() {
     )[0]
   }, [partite.items, appuntamenti.items, distinte.items, oggi])
 
-  const ultimoAllenamento = allenamenti.items.map((a) => a.data).sort((a, b) => b.localeCompare(a))[0]
+  const ultimoAllenamento = seduteSvolte(allenamenti.items).map((a) => a.data).sort((a, b) => b.localeCompare(a))[0]
 
   const sottotitolo = prossimo
     ? `Prossimo impegno: ${prossimo.chi} · ${formatData(prossimo.data, true)}${prossimo.ora ? ` alle ${prossimo.ora}` : ''}`
@@ -259,7 +293,7 @@ export function Dashboard() {
             icona={<WalletOutlined />}
             titolo="Saldo di cassa"
             valore={formatEuro(saldo)}
-            colore={saldo < 0 ? '#b1352f' : undefined}
+            colore={saldo < 0 ? 'var(--rosso-testo)' : undefined}
             onApri={() => setDettaglio('cassa')}
             apriLabel="vedi gli ultimi movimenti"
           />
@@ -269,7 +303,7 @@ export function Dashboard() {
             icona={<RiseOutlined />}
             titolo="Da incassare"
             valore={formatEuro(daIncassare)}
-            colore="#3f7a52"
+            colore="var(--verde)"
             onApri={() => setDettaglio('daIncassare')}
             apriLabel="vedi da chi dobbiamo ricevere soldi"
           />
@@ -279,7 +313,7 @@ export function Dashboard() {
             icona={<CreditCardOutlined />}
             titolo="Da pagare"
             valore={formatEuro(daPagare)}
-            colore={daPagare > 0 ? '#9a6b1e' : undefined}
+            colore={daPagare > 0 ? 'var(--ocra)' : undefined}
             onApri={() => setDettaglio('daPagare')}
             apriLabel="vedi a chi dobbiamo dare soldi"
           />
@@ -298,7 +332,7 @@ export function Dashboard() {
             icona={<ClockCircleOutlined />}
             titolo="Articoli in scadenza"
             valore={inScadenza}
-            colore={inScadenza > 0 ? '#9a6b1e' : undefined}
+            colore={inScadenza > 0 ? 'var(--ocra)' : undefined}
             onApri={() => navigate('/magazzino')}
             apriLabel="apri il Magazzino"
           />
@@ -324,8 +358,8 @@ export function Dashboard() {
       >
         {daFare.length === 0 && promemoriaOrdinati.length === 0 ? (
           <Text type="secondary">
-            <CheckCircleOutlined style={{ color: '#3f7a52', marginRight: 8 }} />
-            Tutto in ordine: certificati, quote, tessere e borsa medica sono a posto.
+            <CheckCircleOutlined style={{ color: 'var(--verde)', marginRight: 8 }} />
+            Tutto in ordine: certificati, documenti, quote, tessere e borsa medica sono a posto.
           </Text>
         ) : (
           <>
@@ -350,7 +384,7 @@ export function Dashboard() {
                     {(p.entro || p.assegnatoA) && (
                       <span className="dafare-dettaglio">
                         {p.entro && (
-                          <span style={scaduto ? { color: '#b1352f', fontWeight: 600 } : undefined}>
+                          <span style={scaduto ? { color: 'var(--rosso-testo)', fontWeight: 600 } : undefined}>
                             entro {formatData(p.entro, true)}
                           </span>
                         )}
@@ -373,17 +407,17 @@ export function Dashboard() {
             })}
             {daFare.map((v) => (
               <Link key={v.key} to={v.to} className="dafare-riga">
-                <span className="dafare-icona" style={{ color: v.colore }}>
+                <span className="dafare-icona" style={{ color: TONI[v.tono].colore }}>
                   {v.icona}
                 </span>
                 <span className="dafare-testo">
                   {v.testo}
                   {v.dettaglio && <span className="dafare-dettaglio">{v.dettaglio}</span>}
                 </span>
-                <Tag color={v.colore === '#b1352f' ? 'red' : 'orange'} style={{ marginInlineEnd: 0 }}>
+                <Tag color={TONI[v.tono].tag} style={{ marginInlineEnd: 0 }}>
                   {v.n}
                 </Tag>
-                <RightOutlined style={{ color: '#c9bfad', fontSize: 12 }} />
+                <RightOutlined style={{ color: 'var(--testo-2)', fontSize: 12 }} />
               </Link>
             ))}
           </>

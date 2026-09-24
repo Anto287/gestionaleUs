@@ -145,11 +145,34 @@ export function Social() {
     () => [...appuntamenti].sort((a, b) => (a.data + (a.ora ?? '')).localeCompare(b.data + (b.ora ?? ''))),
     [appuntamenti],
   )
+  // voci del mese: gli appuntamenti più le partite in programma create da
+  // Partite/Calendario (giocata === false); una partita con stessa data e
+  // avversario di un appuntamento non si ripete
+  const vociMese = useMemo(() => {
+    // un impegno a mano con stessa data e avversario di una partita è un
+    // doppione: vale la partita (come in Calendario e nella stampa), ma se
+    // l'impegno ha il luogo lo si tiene per la riga
+    const chiave = (data: string, avv: string) => `${data}|${avv.trim().toLowerCase().replace(/\s+/g, ' ')}`
+    const luogoDi = new Map(apptOrdinati.map((a) => [chiave(a.data, a.avversario), a.luogo]))
+    const inProgramma = partite
+      .filter((p) => p.giocata === false)
+      .map((p) => ({ id: p.id, data: p.data, ora: p.ora, avversario: p.avversario, inCasa: p.inCasa, luogo: luogoDi.get(chiave(p.data, p.avversario)) }))
+    const gia = new Set(inProgramma.map((p) => chiave(p.data, p.avversario)))
+    const soloImpegni = apptOrdinati.filter((a) => !gia.has(chiave(a.data, a.avversario)))
+    return [...soloImpegni, ...inProgramma].sort((a, b) =>
+      (a.data + (a.ora ?? '')).localeCompare(b.data + (b.ora ?? '')),
+    )
+  }, [apptOrdinati, partite])
   const mesiAppt = useMemo(() => {
-    const chiavi = new Set(apptOrdinati.map((a) => a.data.slice(0, 7)))
+    const chiavi = new Set(vociMese.map((a) => a.data.slice(0, 7)))
     return [...chiavi].sort((a, b) => a.localeCompare(b)).map((k) => ({ value: k, label: etichettaMese(k) }))
-  }, [apptOrdinati])
-  const meseAttivo = meseSel ?? mesiAppt[0]?.value ?? oggiIso().slice(0, 7)
+  }, [vociMese])
+  // si parte dal mese corrente (o dal primo futuro), non dal più vecchio
+  const meseAttivo =
+    meseSel ??
+    mesiAppt.find((m) => m.value >= oggiIso().slice(0, 7))?.value ??
+    mesiAppt.at(-1)?.value ??
+    oggiIso().slice(0, 7)
 
   const partiteGiocate = useMemo(
     () => partite.filter((p) => p.giocata !== false).sort((a, b) => b.data.localeCompare(a.data)),
@@ -170,7 +193,7 @@ export function Social() {
 
   const fixtures: FixtureRiga[] = useMemo(
     () =>
-      apptOrdinati
+      vociMese
         .filter((a) => a.data.slice(0, 7) === meseAttivo)
         .map((a) => ({
           dow: giornoBreve(a.data),
@@ -181,7 +204,7 @@ export function Social() {
           ora: a.ora,
           luogo: a.luogo,
         })),
-    [apptOrdinati, meseAttivo],
+    [vociMese, meseAttivo],
   )
 
   const piede = leggiPrefs(kind).piede ?? '#FORZARIOLUNATO'
@@ -237,7 +260,8 @@ export function Social() {
       }
       return {
         input: inp,
-        seedKey: `risultato|${formatoChiave}|${p?.id ?? 'none'}|${crestAvv?.src ? 'logo' : ''}|${marcatoriNoi ?? ''}|${marcatoriLoro}`,
+        // anche i dati della partita: se arrivano aggiornati dal Drive la tela si rifà
+        seedKey: `risultato|${formatoChiave}|${p?.id ?? 'none'}|${p ? `${p.data}|${p.ora ?? ''}|${p.avversario}|${p.inCasa}|${p.golFatti}|${p.golSubiti}` : ''}|${crestAvv?.src ? 'logo' : ''}|${marcatoriNoi ?? marcatoriDefault}|${marcatoriLoro}`,
         nomeFile: p ? `riolunato-${p.data}-${slug(p.avversario)}.png` : 'riolunato-risultato.png',
       }
     }
@@ -265,7 +289,10 @@ export function Social() {
     }
     return {
       input: inp,
-      seedKey: `mese|${formatoChiave}|${meseAttivo}|${fixtures.length}|${apptOrdinati.map((a) => a.id).join(',')}`,
+      // il contenuto delle righe, non solo gli id: così un aggiornamento dal Drive si vede
+      seedKey: `mese|${formatoChiave}|${meseAttivo}|${fixtures
+        .map((f) => `${f.gg}${f.mmm}|${f.ora ?? ''}|${f.avversario}|${f.inCasa}|${f.luogo ?? ''}`)
+        .join(',')}`,
       nomeFile: `riolunato-appuntamenti-${meseAttivo}.png`,
     }
   }, [
@@ -290,7 +317,6 @@ export function Social() {
     panchinaTxt,
     meseAttivo,
     fixtures,
-    apptOrdinati,
     formazioneGrafica,
   ])
 
@@ -562,11 +588,14 @@ export function Social() {
               optionFilterProp="label"
             />
           ) : (
-            <div className="social-vuoto">Nessun appuntamento: aggiungine uno qui sotto.</div>
+            <div className="social-vuoto">Nessun appuntamento né partita in programma: aggiungine uno qui sotto.</div>
           )}
           <Button icon={<CalendarOutlined />} onClick={apriModaleAppt} block style={{ marginTop: 8 }}>
             Gestisci appuntamenti{appuntamenti.length ? ` (${appuntamenti.length})` : ''}
           </Button>
+          <div className="social-suggerimento">
+            Nel mese ci sono anche le partite in programma: quelle si gestiscono in Partite.
+          </div>
         </div>
       )}
 

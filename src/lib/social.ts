@@ -130,7 +130,7 @@ export function nomiMarcatori(
   return marcatori
     .filter((m) => m.quantita > 0)
     .map((m) => {
-      const nome = cognomi[m.giocatoreId] ?? '—'
+      const nome = cognomi[m.giocatoreId] ?? 'Ex tesserato'
       return m.quantita > 1 ? `${nome} ×${m.quantita}` : nome
     })
     .join(' · ')

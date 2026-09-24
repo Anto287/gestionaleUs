@@ -40,8 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false
   }, [])
 
-  const esci = useCallback(() => {
-    if (driveMode) store.clearSecret()
+  const esci = useCallback(async () => {
+    // le modifiche ancora in viaggio partono con la chiave: la si toglie solo
+    // dopo (al massimo 10 s, per non restare appesi se la rete non risponde)
+    if (driveMode) {
+      await Promise.race([
+        store.attendiScritture(),
+        new Promise<void>((res) => setTimeout(res, 10_000)),
+      ])
+      store.clearSecret()
+    }
     else localStorage.removeItem(GATE_KEY)
     // le copie locali (dati dei tesserati e archivio documenti) non devono
     // restare sul dispositivo di chi è uscito

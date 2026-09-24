@@ -17,6 +17,8 @@ export interface DatiReport {
   /** nome della competizione, se il report è filtrato (es. "Campionato") */
   competizione?: string
   giocate: Partita[]
+  /** quante delle partite giocate sono amichevoli (0 = nessuna o non rilevante) */
+  amichevoli?: number
   record: { v: number; p: number; s: number; gf: number; gs: number }
   marcatori: RigaConteggio[]
   assist: RigaConteggio[]
@@ -27,10 +29,19 @@ export interface DatiReport {
   bilancio: { entrate: number; uscite: number; saldo: number }
 }
 
+/** I testi (nomi, avversari, competizione) finiscono in innerHTML: vanno schermati. */
+function esc(s?: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 function tabella(titolo: string, intestazioni: string[], righe: string[][]): string {
   if (!righe.length) return ''
   return `
-    <h3 style="font-size:15px;margin:24px 0 8px;">${titolo}</h3>
+    <h3 style="font-size:15px;margin:24px 0 8px;">${esc(titolo)}</h3>
     <table cellpadding="5" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:12px;">
       <thead>
         <tr style="background:#d9d9d9;">
@@ -41,7 +52,7 @@ function tabella(titolo: string, intestazioni: string[], righe: string[][]): str
         ${righe
           .map(
             (r) =>
-              `<tr>${r.map((c) => `<td style="border:1px solid #000;padding:5px;">${c}</td>`).join('')}</tr>`,
+              `<tr>${r.map((c) => `<td style="border:1px solid #000;padding:5px;">${esc(c)}</td>`).join('')}</tr>`,
           )
           .join('')}
       </tbody>
@@ -64,13 +75,13 @@ export async function esportaReportStagione(d: DatiReport): Promise<void> {
   box.innerHTML = `
     <div style="position:relative;text-align:center;margin-bottom:20px;">
       <img src="${import.meta.env.BASE_URL}logo.png" alt="" style="position:absolute;top:0;right:0;height:64px;" />
-      <h2 style="font-size:22px;font-weight:bold;margin:0 0 6px;">REPORT STAGIONE ${d.stagione}${d.competizione ? ` — ${d.competizione.toUpperCase()}` : ''}</h2>
+      <h2 style="font-size:22px;font-weight:bold;margin:0 0 6px;">REPORT STAGIONE ${d.stagione}${d.competizione ? ` — ${esc(d.competizione.toUpperCase())}` : ''}</h2>
       <div style="font-size:13px;">U.S. RIOLUNATO</div>
     </div>
 
     <h3 style="font-size:15px;margin:0 0 8px;">Riepilogo</h3>
     <div style="font-size:13px;line-height:1.7;">
-      Partite giocate: <b>${d.giocate.length}</b> —
+      Partite giocate: <b>${d.giocate.length}</b>${d.amichevoli ? ` (di cui ${d.amichevoli} ${d.amichevoli === 1 ? 'amichevole' : 'amichevoli'})` : ''} —
       Vittorie <b>${d.record.v}</b> · Pareggi <b>${d.record.p}</b> · Sconfitte <b>${d.record.s}</b><br/>
       Gol fatti <b>${d.record.gf}</b> · Gol subiti <b>${d.record.gs}</b> · Differenza reti <b>${d.record.gf - d.record.gs >= 0 ? '+' : ''}${d.record.gf - d.record.gs}</b><br/>
       Allenamenti svolti: <b>${d.totaleSedute}</b><br/>
@@ -103,21 +114,22 @@ export async function esportaReportStagione(d: DatiReport): Promise<void> {
     const img = box.querySelector('img')
     if (img && !img.complete) await new Promise((res) => ((img.onload = res), (img.onerror = res)))
     const canvas = await html2canvas(box, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-    const imgData = canvas.toDataURL('image/png')
+    // JPEG: in PNG il file veniva di diversi MB
+    const imgData = canvas.toDataURL('image/jpeg', 0.95)
     const pdf = new jsPDF('p', 'mm', 'a4')
     const w = pdf.internal.pageSize.getWidth()
     const hgt = (canvas.height * w) / canvas.width
     let left = hgt
     let pos = 0
-    pdf.addImage(imgData, 'PNG', 0, pos, w, hgt)
+    pdf.addImage(imgData, 'JPEG', 0, pos, w, hgt)
     left -= pdf.internal.pageSize.getHeight()
     while (left > 0) {
       pos = left - hgt
       pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, pos, w, hgt)
+      pdf.addImage(imgData, 'JPEG', 0, pos, w, hgt)
       left -= pdf.internal.pageSize.getHeight()
     }
-    const suffisso = d.competizione ? `-${d.competizione.toLowerCase().replace(/\s+/g, '-')}` : ''
+    const suffisso = d.competizione ? `-${d.competizione.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : ''
     pdf.save(`report-stagione-${d.stagione.replace('/', '-')}${suffisso}.pdf`)
   } finally {
     box.remove()

@@ -34,6 +34,7 @@ import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
 import { useArchivio } from '../data/ArchivioProvider'
+import { CampoEuro } from '../components/CampoEuro'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
@@ -42,8 +43,9 @@ import { statoCertificato } from '../lib/certificato'
 import { statoScadenza } from '../lib/scadenza'
 import { riepilogoQuote, statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
-import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, LABEL_CATEGORIA } from '../lib/categoria'
-import type { Allenamento, Giocatore } from '../types'
+import { seduteSvolte } from '../lib/allenamenti'
+import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, ripulisciTesserato, LABEL_CATEGORIA } from '../lib/categoria'
+import type { Allenamento, Giocatore, Partita } from '../types'
 import { formatData, formatEuro, iniziali, plurale } from '../lib/format'
 
 type Bozza = Pick<
@@ -74,6 +76,7 @@ export function Rosa() {
   const { items, add, update } = giocatori
   const eliminaConUndo = useEliminaUndo()
   const allenamenti = useCollection<Allenamento>('allenamenti')
+  const partite = useCollection<Partita>('partite')
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
   // la foto dell'archivio sul Drive, quando c'è, fa da avatar
@@ -116,13 +119,30 @@ export function Rosa() {
 
   const presenze = useMemo(() => {
     const conteggio: Record<string, number> = {}
-    for (const a of allenamenti.items) {
+    // le sedute future (create dal calendario) non contano
+    for (const a of seduteSvolte(allenamenti.items)) {
       for (const [id, presente] of Object.entries(a.presenze)) {
         if (presente) conteggio[id] = (conteggio[id] ?? 0) + 1
       }
     }
     return conteggio
   }, [allenamenti.items])
+
+  // chi ha gol, assist o presenze in partita: eliminarlo lo toglie da classifiche e albo d'oro
+  const conStatistiche = useMemo(() => {
+    const ids = new Set<string>()
+    for (const p of partite.items) {
+      if (p.giocata === false) continue
+      for (const m of p.marcatori ?? []) ids.add(m.giocatoreId)
+      for (const a of p.assist ?? []) ids.add(a.giocatoreId)
+      for (const id of [...(p.titolari ?? []), ...(p.subentrati ?? [])]) ids.add(id)
+    }
+    return ids
+  }, [partite.items])
+  const avvisoElimina = (g: Giocatore) =>
+    conStatistiche.has(g.id)
+      ? 'Ha gol, assist o presenze in partita: sparirà da classifiche e albo d\'oro. Meglio cambiarlo in categoria «Giocatore Extra».'
+      : undefined
 
   const ordinati = useMemo(
     () =>
@@ -182,28 +202,19 @@ export function Rosa() {
   }
 
   function salva(valori: Bozza) {
-    // il form nasconde i campi che non riguardano la categoria scelta: qui si
-    // scartano anche i valori rimasti da un cambio di categoria
-    if (valori.categoria === 'dirigente') {
-      valori = {
-        ...valori,
-        ruoloPreferito: undefined,
-        ruoliAdattati: undefined,
-        bravura: undefined,
-        numeroMaglia: undefined,
-        certificatoMedico: undefined,
-        scadenzaCertificato: undefined,
-        quotaPagata: undefined,
-        quotaImporto: undefined,
-        infortunato: undefined,
-        rientroInfortunio: undefined,
-      }
-    }
-    if (valori.categoria === 'giocatore' || valori.categoria === 'extra')
-      valori = { ...valori, ruoloDirigenza: undefined }
-    if (!valori.infortunato) valori = { ...valori, rientroInfortunio: undefined }
+    valori = ripulisciTesserato(valori)
+    // un omonimo si può avere, ma va segnalato: archivio e albo d'oro
+    // riconoscono le persone dal nome (e dalla data di nascita, se c'è)
+    const stesso = (g: Giocatore) =>
+      `${g.cognome} ${g.nome}`.toLowerCase() === `${valori.cognome} ${valori.nome}`.toLowerCase()
+    const omonimo = items.find(stesso)
     add(valori)
     setModale(false)
+    if (omonimo)
+      message.warning(
+        `C'era già un ${valori.cognome} ${valori.nome} in rosa: segna la data di nascita a entrambi, così l'archivio li distingue.`,
+        6,
+      )
   }
 
   // il click su Elimina (e sul suo Popconfirm) non deve aprire la scheda del giocatore
@@ -231,7 +242,7 @@ export function Rosa() {
           <Avatar
             src={fotoDi(g)}
             size={26}
-            style={{ background: '#c22026', fontSize: 11, marginRight: 8, flex: 'none' }}
+            style={{ background: 'var(--rosso)', fontSize: 11, marginRight: 8, flex: 'none' }}
           >
             {iniziali(g)}
           </Avatar>
@@ -334,7 +345,7 @@ export function Rosa() {
         const s = statoScadenza(g.scadenzaDocumento)
         return (
           <Space size={4}>
-            <span style={{ color: s.critico ? '#b1352f' : undefined, fontWeight: s.critico ? 600 : undefined }}>
+            <span style={{ color: s.critico ? 'var(--rosso-testo)' : undefined, fontWeight: s.critico ? 600 : undefined }}>
               {formatData(g.scadenzaDocumento, true)}
             </span>
             {s.label && <Tag color={s.color}>{s.label}</Tag>}
@@ -346,7 +357,12 @@ export function Rosa() {
       title: 'Quota',
       key: 'quota',
       width: 100,
-      sorter: (a: Giocatore, b: Giocatore) => Number(!!a.quotaPagata) - Number(!!b.quotaPagata),
+      // prima lo stato (saldata o no), poi quanto è stato versato
+      sorter: (a: Giocatore, b: Giocatore) => {
+        const qa = statoQuota(a)
+        const qb = statoQuota(b)
+        return Number(qa.completa) - Number(qb.completa) || qa.versato - qb.versato
+      },
       ...stopCell,
       render: (_: unknown, g: Giocatore) => {
         if (!isGiocatore(g)) return '—'
@@ -372,6 +388,7 @@ export function Rosa() {
       render: (_: unknown, g: Giocatore) => (
         <Popconfirm
           title={`Eliminare ${g.nome} ${g.cognome}?`}
+          description={avvisoElimina(g)}
           okText="Elimina"
           cancelText="Annulla"
           okButtonProps={{ danger: true }}
@@ -438,7 +455,7 @@ export function Rosa() {
         </Empty>
       ) : (
         <>
-          {(quote.raccolto > 0 || quote.atteso > 0) && (
+          {(quote.raccolto > 0 || quote.atteso > 0 || quote.saldati > 0 || quote.giaNeiConti > 0) && (
             <Card size="small" className="quote-riepilogo">
               <div className="quote-riepilogo-cifre">
                 <div className="quote-riepilogo-voce">
@@ -464,6 +481,10 @@ export function Rosa() {
               <div className="quote-riepilogo-nota">
                 Le quote non entrano nei Conti da sole: a fine anno chi le raccoglie registra il totale
                 come unica entrata.
+                {quote.soloInterruttore > 0 &&
+                  ` Il raccolto esclude i pagati segnati solo con l'interruttore (${quote.soloInterruttore}).`}
+                {quote.giaNeiConti > 0 &&
+                  ` ${formatEuro(quote.giaNeiConti)} già registrati nei Conti dai versamenti vecchi.`}
               </div>
             </Card>
           )}
@@ -573,7 +594,7 @@ export function Rosa() {
                         <Avatar
                           src={fotoDi(g)}
                           size={40}
-                          style={{ background: '#c22026', fontSize: 15, flex: 'none' }}
+                          style={{ background: 'var(--rosso)', fontSize: 15, flex: 'none' }}
                         >
                           {iniziali(g)}
                         </Avatar>
@@ -618,6 +639,7 @@ export function Rosa() {
                       <span onClick={(e) => e.stopPropagation()}>
                         <Popconfirm
                           title={`Eliminare ${g.nome} ${g.cognome}?`}
+                          description={avvisoElimina(g)}
                           okText="Elimina"
                           cancelText="Annulla"
                           okButtonProps={{ danger: true }}
@@ -682,7 +704,7 @@ export function Rosa() {
       )}
 
       <Modal
-        title="Nuovo giocatore"
+        title={categoriaForm === 'dirigente' ? 'Nuovo dirigente' : 'Nuovo giocatore'}
         open={modale}
         onCancel={() => setModale(false)}
         onOk={() => form.submit()}
@@ -692,13 +714,13 @@ export function Rosa() {
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={salva} requiredMark={false}>
-          <Form.Item label="Nome" name="nome" rules={[{ required: true, message: 'Inserisci il nome' }]}>
+          <Form.Item label="Nome" name="nome" rules={[{ required: true, whitespace: true, message: 'Inserisci il nome' }]}>
             <Input autoComplete="off" />
           </Form.Item>
           <Form.Item
             label="Cognome"
             name="cognome"
-            rules={[{ required: true, message: 'Inserisci il cognome' }]}
+            rules={[{ required: true, whitespace: true, message: 'Inserisci il cognome' }]}
           >
             <Input autoComplete="off" />
           </Form.Item>
@@ -774,7 +796,7 @@ export function Rosa() {
                 name="quotaImporto"
                 tooltip="Se impostato, lo stato della quota deriva dai versamenti registrati nella scheda"
               >
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="es. 150" />
+                <CampoEuro placeholder="es. 150" />
               </Form.Item>
               <Form.Item label="Quota associativa pagata" name="quotaPagata" valuePropName="checked">
                 <Switch />

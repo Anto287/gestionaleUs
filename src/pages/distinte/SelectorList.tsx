@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { Select, InputNumber, Button, List, Card, Row, Col, Space, Checkbox, Radio, App } from 'antd'
+import { Select, InputNumber, Button, List, Card, Row, Col, Space, Checkbox, Radio, App, Tag } from 'antd'
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { isDirigente, isGiocatore } from '../../lib/categoria'
 import type { Categoria, Convocato, RigaConvocato } from '../../types'
@@ -38,10 +38,13 @@ export function SelectorList({
   rows,
   onListChange,
   initialList,
+  avvisi,
 }: {
   rows: Row[]
   onListChange: (list: Convocato[]) => void
   initialList?: Convocato[]
+  /** id giocatore → avvisi da mostrare accanto al nome (infortunio, certificato, tessera) */
+  avvisi?: Record<string, string[]>
 }) {
   const { message } = App.useApp()
 
@@ -57,6 +60,13 @@ export function SelectorList({
       })),
     [rows],
   )
+
+  const tagAvvisi = (id: string) =>
+    (avvisi?.[id] ?? []).map((a) => (
+      <Tag key={a} color={a === 'Infortunato' ? 'volcano' : 'orange'} style={{ marginLeft: 6, marginRight: 0 }}>
+        {a}
+      </Tag>
+    ))
 
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined)
   const [amount, setAmount] = useState(1)
@@ -213,23 +223,22 @@ export function SelectorList({
 
   function updateAmount(id: string, newAmount: number) {
     if (newAmount < 1) return
-    setList((prev) => {
-      const updated = [...prev]
-      const idx = updated.findIndex((it) => it.id === id)
-      if (idx === -1 || hasSpecialCheckbox(updated[idx])) return prev
-      const conflictIdx = updated.findIndex(
-        (it) => it.amount === newAmount && !hasSpecialCheckbox(it) && it.id !== id,
-      )
-      if (conflictIdx !== -1) {
-        const oldAmount = updated[idx].amount
-        updated[idx].amount = newAmount
-        updated[conflictIdx].amount = oldAmount
-        message.info(`Scambiato numero ${newAmount} con ${oldAmount}`)
-      } else {
-        updated[idx].amount = newAmount
-      }
-      return sortList(updated)
-    })
+    // copie dei convocati: lo stato non si tocca mai sul posto
+    const updated = list.map((it) => ({ ...it }))
+    const idx = updated.findIndex((it) => it.id === id)
+    if (idx === -1 || hasSpecialCheckbox(updated[idx])) return
+    const conflictIdx = updated.findIndex(
+      (it) => it.amount === newAmount && !hasSpecialCheckbox(it) && it.id !== id,
+    )
+    if (conflictIdx !== -1) {
+      const oldAmount = updated[idx].amount
+      updated[idx].amount = newAmount
+      updated[conflictIdx].amount = oldAmount
+      message.info(`Scambiato numero ${newAmount} con ${oldAmount}`)
+    } else {
+      updated[idx].amount = newAmount
+    }
+    setList(sortList(updated))
   }
 
   function removeItem(id: string) {
@@ -248,7 +257,15 @@ export function SelectorList({
             onChange={(v) => setSelectedKey(v)}
             onSearch={(v) => setFilter(v)}
             filterOption={false}
-            options={filteredOptions.map((o) => ({ value: o.key, label: o.label }))}
+            options={filteredOptions.map((o) => ({
+              value: o.key,
+              label: (
+                <>
+                  {o.label}
+                  {tagAvvisi(o.key)}
+                </>
+              ),
+            }))}
           />
           <Row gutter={[8, 8]} align="middle">
             <Col xs={12} sm={8}>
@@ -274,7 +291,7 @@ export function SelectorList({
             </Col>
           </Row>
           <div>
-            <div style={{ marginBottom: 8, fontSize: 12, color: '#666', fontWeight: 500 }}>
+            <div style={{ marginBottom: 8, fontSize: 12, color: 'var(--testo-2)', fontWeight: 500 }}>
               Ruolo (opzionale):
             </div>
             <Radio.Group
@@ -327,7 +344,10 @@ export function SelectorList({
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
                 <Row gutter={[8, 8]} align="middle">
                   <Col xs={14} sm={16}>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{item.label}</div>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>
+                      {item.label}
+                      {tagAvvisi(item.id)}
+                    </div>
                   </Col>
                   <Col xs={10} sm={8} style={{ textAlign: 'right' }}>
                     {!isSpecial ? (
@@ -348,7 +368,7 @@ export function SelectorList({
                         size="small"
                       />
                     ) : (
-                      <span style={{ color: '#999', fontSize: 14 }}>Senza numero</span>
+                      <span style={{ color: 'var(--testo-2)', fontSize: 14 }}>Senza numero</span>
                     )}
                   </Col>
                 </Row>

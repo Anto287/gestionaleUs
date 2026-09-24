@@ -83,12 +83,14 @@ export async function leggiBilancio(file: File): Promise<Omit<Movimento, 'id'>[]
   const movimenti: Omit<Movimento, 'id'>[] = []
   let cassaPrec = 0 // per le righe scritte solo nel "Totale in cassa"
   let ultimaData = ''
+  // uno 0 nella colonna vuota vale come cella vuota (se no la riga sembra un totale)
+  const nz = (n: number | null) => (n ? n : null)
   for (let i = inizio; i < righe.length; i++) {
     const r = righe[i]
     const testo = String(r[col.nome] ?? '').trim()
     if (!testo || testo.toUpperCase() === 'TOTALI') continue
-    const uscita = col.uscita >= 0 ? aNumero(r[col.uscita]) : null
-    const entrata = col.entrata >= 0 ? aNumero(r[col.entrata]) : null
+    const uscita = col.uscita >= 0 ? nz(aNumero(r[col.uscita])) : null
+    const entrata = col.entrata >= 0 ? nz(aNumero(r[col.entrata])) : null
     const daDare = col.daDare >= 0 ? aNumero(r[col.daDare]) : null
     const cassa = col.cassa >= 0 ? aNumero(r[col.cassa]) : null
     if (uscita != null && entrata != null) continue // riga di totali senza etichetta
@@ -98,13 +100,13 @@ export async function leggiBilancio(file: File): Promise<Omit<Movimento, 'id'>[]
     let descrizioneForzata: string | undefined
     if (uscita != null) {
       tipo = 'uscita'
-      importo = uscita
+      importo = Math.abs(uscita) // c'è chi scrive le uscite in negativo
     } else if (entrata != null) {
       tipo = 'entrata'
-      importo = entrata
+      importo = Math.abs(entrata)
     } else if (daDare != null && daDare !== 0) {
       tipo = 'uscita' // "da dare" puro: debito ancora aperto
-      importo = daDare
+      importo = Math.abs(daDare)
     } else if (cassa != null) {
       // importo indicato solo nel totale progressivo: si ricava per differenza
       const delta = Math.round((cassa - cassaPrec) * 100) / 100

@@ -31,7 +31,7 @@ import { useEliminaUndo } from '../../hooks/useEliminaUndo'
 import { useAggancioLista } from '../../hooks/useAggancioLista'
 import { useDettatura } from '../../hooks/useDettatura'
 import { DataPicker, propsCampoData } from '../../components/DataPicker'
-import { formatData } from '../../lib/format'
+import { formatData, ripulisciTesti } from '../../lib/format'
 import { statoScadenza, giorniAllaScadenza, GIORNI_ALLARME } from '../../lib/scadenza'
 import { sottoScorta } from '../../lib/scorta'
 import { esportaExcel } from '../../lib/excel'
@@ -147,6 +147,13 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
     return { scaduti, inScadenzaSoon }
   }, [items, conScadenza])
 
+  // filtro categoria: quelle configurate più quelle davvero usate (anche vecchie o scritte a mano)
+  const categorieFiltro = useMemo(() => {
+    if (!categorie) return []
+    const usate = items.map((a) => a.categoria?.trim()).filter(Boolean) as string[]
+    return [...new Set([...categorie, ...usate])]
+  }, [categorie, items])
+
   const nSottoScorta = useMemo(
     () => (conQuantita ? items.filter(sottoScorta).length : 0),
     [items, conQuantita],
@@ -196,10 +203,12 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
     .join(', ')
   function apriModifica(a: VoceMagazzino) {
     setInModifica(a)
+    form.resetFields() // se no i campi facoltativi dell'articolo precedente restano nel form
     form.setFieldsValue(a)
     setModale(true)
   }
   function salva(valori: Bozza) {
+    valori = ripulisciTesti(valori)
     if (inModifica) update(inModifica.id, valori)
     else add(valori)
     dettatura.ferma()
@@ -219,7 +228,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
           {a.nome}
         </div>
         {conNote && a.note && (
-          <div className="tronca" style={{ maxWidth: 260, fontSize: 12, color: '#8a7d6b' }} title={a.note}>
+          <div className="tronca" style={{ maxWidth: 260, fontSize: 12, color: 'var(--testo-2)' }} title={a.note}>
             {a.note}
           </div>
         )}
@@ -243,7 +252,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
       const s = statoScadenza(a.scadenza)
       return (
         <Space>
-          <span style={{ color: s.critico ? '#b1352f' : undefined, fontWeight: s.critico ? 600 : undefined }}>
+          <span style={{ color: s.critico ? 'var(--rosso-testo)' : undefined, fontWeight: s.critico ? 600 : undefined }}>
             {formatData(a.scadenza, true)}
           </span>
           {s.label && <Tag color={s.color}>{s.label}</Tag>}
@@ -265,7 +274,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
             <b
               style={{
                 color:
-                  (a.quantita ?? 0) === 0 ? '#b1352f' : sottoScorta(a) ? '#9a6b1e' : undefined,
+                  (a.quantita ?? 0) === 0 ? 'var(--rosso-testo)' : sottoScorta(a) ? 'var(--ocra)' : undefined,
               }}
             >
               {a.quantita ?? 0}
@@ -328,7 +337,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
       <Flex justify="space-between" align="center" wrap gap={12} style={{ marginBottom: 16 }}>
         <Space size={[8, 8]} wrap>
           <Text>
-            <b>{items.length}</b> {plurale}
+            <b>{items.length}</b> {items.length === 1 ? singolare : plurale}
           </Text>
           {scaduti > 0 && <Tag color="red">{scaduti} scadut{scaduti > 1 ? 'i' : 'o'}</Tag>}
           {inScadenzaSoon > 0 && <Tag color="gold">{inScadenzaSoon} in scadenza</Tag>}
@@ -376,7 +385,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                 placeholder="Categoria"
                 value={cat}
                 onChange={setCat}
-                options={categorie.map((c) => ({ value: c, label: c }))}
+                options={categorieFiltro.map((c) => ({ value: c, label: c }))}
                 style={{ width: 180 }}
               />
             )}
@@ -386,7 +395,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                 value={entroGiorni}
                 onChange={setEntroGiorni}
                 placeholder="Scade entro…"
-                addonAfter="gg"
+                suffix="gg"
                 style={{ width: 190 }}
               />
             )}
@@ -395,7 +404,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                 Solo esauriti
               </Checkbox>
             )}
-            {conQuantita && nSottoScorta > 0 && (
+            {conQuantita && (nSottoScorta > 0 || soloSottoScorta) && (
               <Checkbox checked={soloSottoScorta} onChange={(e) => setSoloSottoScorta(e.target.checked)}>
                 Solo sotto scorta
               </Checkbox>
@@ -419,7 +428,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                       <div>
                         <div className="lista-card-title">{a.nome}</div>
                         {conNote && a.note && (
-                          <div style={{ fontSize: 12, color: '#8a7d6b', marginTop: 2 }}>{a.note}</div>
+                          <div style={{ fontSize: 12, color: 'var(--testo-2)', marginTop: 2 }}>{a.note}</div>
                         )}
                         {(categorie || s) && (
                           <div className="lista-card-meta" style={{ marginTop: 6 }}>
@@ -427,7 +436,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                               <Tag color={coloreCategoria(a.categoria)}>{a.categoria}</Tag>
                             )}
                             {s && a.scadenza && (
-                              <span style={{ color: s.critico ? '#b1352f' : 'var(--testo-2)' }}>
+                              <span style={{ color: s.critico ? 'var(--rosso-testo)' : 'var(--testo-2)' }}>
                                 {formatData(a.scadenza, true)}
                                 {s.label && (
                                   <Tag color={s.color} style={{ marginLeft: 6 }}>
@@ -463,7 +472,16 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
                               disabled={(a.quantita ?? 0) <= 0}
                             />
                             <Button style={{ pointerEvents: 'none', minWidth: 56 }}>
-                              <b style={{ color: (a.quantita ?? 0) === 0 ? '#b1352f' : undefined }}>
+                              <b
+                                style={{
+                                  color:
+                                    (a.quantita ?? 0) === 0
+                                      ? 'var(--rosso-testo)'
+                                      : sottoScorta(a)
+                                        ? 'var(--ocra)'
+                                        : undefined,
+                                }}
+                              >
                                 {a.quantita ?? 0}
                               </b>
                             </Button>

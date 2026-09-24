@@ -109,8 +109,16 @@ export function Impostazioni() {
                   ),
                   <Popconfirm
                     key="d"
-                    title={`Eliminare la stagione ${s} e tutti i suoi dati? Non è reversibile.`}
-                    okText="Elimina"
+                    title={`Togliere la stagione ${s} dall'elenco?`}
+                    // lo script riceve solo il nuovo elenco: non è garantito che cancelli la cartella
+                    description={
+                      <div style={{ maxWidth: 300 }}>
+                        La stagione sparisce dall'elenco e dalle copie su questo dispositivo. La sua
+                        cartella sul Drive non viene cancellata dall'app: se non serve più, eliminala a
+                        mano dal Drive.
+                      </div>
+                    }
+                    okText="Togli"
                     cancelText="Annulla"
                     okButtonProps={{ danger: true }}
                     disabled={stagioni.length <= 1}

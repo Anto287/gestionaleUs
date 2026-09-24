@@ -40,3 +40,37 @@ export const RUOLI_DIRIGENZA = [
 ]
 
 export const OPZIONI_RUOLI_DIRIGENZA = RUOLI_DIRIGENZA.map((r) => ({ value: r }))
+
+/** I campi che valgono solo per chi gioca (via se diventa solo dirigente). */
+const SOLO_GIOCATORE = [
+  'ruoloPreferito',
+  'ruoliAdattati',
+  'bravura',
+  'numeroMaglia',
+  'certificatoMedico',
+  'scadenzaCertificato',
+  'quotaPagata',
+  'quotaImporto',
+  'infortunato',
+  'rientroInfortunio',
+] as const
+
+/**
+ * Ripulisce i valori del modulo di un tesserato prima di salvarli: toglie gli
+ * spazi ai testi (nome e cognome agganciano archivio e albo d'oro tra le
+ * stagioni: " Rossi" e "Rossi" devono essere la stessa persona), svuota i
+ * testi lasciati bianchi e scarta i campi rimasti nascosti da un cambio di
+ * categoria.
+ */
+export function ripulisciTesserato<T extends Partial<Giocatore>>(valori: T): T {
+  const out: Record<string, unknown> = { ...valori }
+  for (const [k, v] of Object.entries(out)) {
+    if (typeof v === 'string') out[k] = v.trim() || undefined
+  }
+  if (typeof valori.nome === 'string') out.nome = valori.nome.trim()
+  if (typeof valori.cognome === 'string') out.cognome = valori.cognome.trim()
+  if (out.categoria === 'dirigente') for (const k of SOLO_GIOCATORE) out[k] = undefined
+  if (out.categoria === 'giocatore' || out.categoria === 'extra') out.ruoloDirigenza = undefined
+  if (!out.infortunato) out.rientroInfortunio = undefined
+  return out as T
+}

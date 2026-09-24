@@ -174,7 +174,7 @@ export function Archivio() {
                       <Avatar
                         src={miniatura(s.foto?.id)}
                         size={40}
-                        style={{ background: '#c22026', fontSize: 15, flex: 'none' }}
+                        style={{ background: 'var(--rosso)', fontSize: 15, flex: 'none' }}
                       >
                         {iniziali(g)}
                       </Avatar>

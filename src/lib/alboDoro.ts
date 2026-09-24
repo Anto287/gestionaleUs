@@ -6,10 +6,15 @@
  * solo la stagione attiva. Ogni stagione ha i suoi giocatori con id propri:
  * la stessa persona si riconosce per nome e cognome (normalizzati), l'unico
  * aggancio possibile tra stagioni.
+ *
+ * Le amichevoli restano fuori dall'albo (classifiche, record, strisce): hanno
+ * un quadro a parte, `calcolaAmichevoli`.
  */
 import * as store from '../services/driveStore'
 import { esitoPartita } from './social'
 import { formatData } from './format'
+import { seduteSvolte } from './allenamenti'
+import { isGiocatore } from './categoria'
 import type { Allenamento, Giocatore, Partita } from '../types'
 
 export interface StagioneStorico {
@@ -82,31 +87,37 @@ export interface Albo {
   curiosita: Curiosita
 }
 
-// le stagioni passate non cambiano: una volta lette restano in memoria
-let cache: { chiave: string; dati: StagioneStorico[] } | null = null
+// le stagioni passate non cambiano: una volta lette restano in memoria.
+// La stagione attiva invece si rilegge sempre (partite appena registrate).
+const cache = new Map<string, StagioneStorico>()
 
-export async function caricaStorico(stagioni: string[], forza = false): Promise<StagioneStorico[]> {
-  const chiave = stagioni.join('|')
-  if (!forza && cache?.chiave === chiave) return cache.dati
-  const dati = await Promise.all(
+export async function caricaStorico(
+  stagioni: string[],
+  forza = false,
+  attiva?: string,
+): Promise<StagioneStorico[]> {
+  return Promise.all(
     stagioni.map(async (stagione) => {
+      const inCache = cache.get(stagione)
+      if (!forza && stagione !== attiva && inCache) return inCache
       const [giocatori, partite, allenamenti] = await Promise.all([
         store.list<Giocatore>('giocatori', stagione),
         store.list<Partita>('partite', stagione),
         store.list<Allenamento>('allenamenti', stagione),
       ])
-      return {
+      const dati: StagioneStorico = {
         stagione,
         giocatori,
         partite: partite
           .filter((p) => p.giocata !== false)
           .sort((a, b) => a.data.localeCompare(b.data)),
-        allenamenti,
+        // le sedute future (create in anticipo dal calendario) non contano ancora
+        allenamenti: seduteSvolte(allenamenti),
       }
+      cache.set(stagione, dati)
+      return dati
     }),
   )
-  cache = { chiave, dati }
-  return dati
 }
 
 /** "Rossi Mario" e "ROSSI mario" sono la stessa persona. */
@@ -152,7 +163,7 @@ function migliore(righe: { nome: string; n: number }[]): CampioneStagione | unde
   return top ? { nome: top.nome, n: top.n } : undefined
 }
 
-/** Da tutto lo storico ricava classifiche di sempre, albo per stagione e curiosità. */
+/** Da tutto lo storico ricava classifiche di sempre, albo per stagione e curiosità (solo partite ufficiali). */
 export function calcolaAlbo(storico: StagioneStorico[]): Albo {
   const gol = new Map<string, Accumulo>()
   const assist = new Map<string, Accumulo>()
@@ -163,7 +174,8 @@ export function calcolaAlbo(storico: StagioneStorico[]): Albo {
   const tutteLePartite: { p: Partita; stagione: string }[] = []
 
   for (const anno of storico) {
-    const { stagione, giocatori, partite, allenamenti } = anno
+    const { stagione, giocatori, allenamenti } = anno
+    const partite = anno.partite.filter((x) => !x.amichevole)
     // id → persona di questa stagione (i nomi agganciano le stagioni tra loro)
     const persone = new Map(giocatori.map((g) => [g.id, { chiave: chiaveNome(g), nome: `${g.cognome} ${g.nome}` }]))
 
@@ -240,16 +252,19 @@ export function calcolaAlbo(storico: StagioneStorico[]): Albo {
       }
     }
 
+    // affluenza: solo i giocatori (niente dirigenti né id di ex tesserati)
+    const idGiocatori = new Set(giocatori.filter(isGiocatore).map((g) => g.id))
     for (const seduta of allenamenti) {
       const presenti = Object.entries(seduta.presenze).filter(([, ok]) => ok)
       for (const [id] of presenti) somma(seduteAnno, id, 1)
+      const nPresenti = presenti.filter(([id]) => idGiocatori.has(id)).length
       const rec = curiosita.affluenzaRecord
-      if (presenti.length > 0 && (!rec || presenti.length > rec.presenti)) {
+      if (nPresenti > 0 && (!rec || nPresenti > rec.presenti)) {
         curiosita.affluenzaRecord = {
           stagione,
           data: seduta.data,
-          presenti: presenti.length,
-          su: giocatori.length,
+          presenti: nPresenti,
+          su: idGiocatori.size,
         }
       }
     }
@@ -318,6 +333,76 @@ export function calcolaAlbo(storico: StagioneStorico[]): Albo {
     perStagione: [...perStagione].sort((a, b) => b.stagione.localeCompare(a.stagione, 'it', { numeric: true })),
     curiosita,
   }
+}
+
+/** Un'amichevole nell'elenco della sezione a parte. */
+export interface AmichevoleGiocata {
+  id: string
+  stagione: string
+  data: string
+  avversario: string
+  inCasa: boolean
+  gf: number
+  gs: number
+}
+
+/** Il quadro delle amichevoli di tutte le stagioni, fuori dall'albo d'oro. */
+export interface AlboAmichevoli {
+  giocate: number
+  v: number
+  p: number
+  s: number
+  gf: number
+  gs: number
+  gol: RigaAlbo[]
+  assist: RigaAlbo[]
+  presenze: RigaAlbo[]
+  /** dalla più recente */
+  partite: AmichevoleGiocata[]
+}
+
+export function calcolaAmichevoli(storico: StagioneStorico[]): AlboAmichevoli {
+  const gol = new Map<string, Accumulo>()
+  const assist = new Map<string, Accumulo>()
+  const presenze = new Map<string, Accumulo>()
+  const out: AlboAmichevoli = { giocate: 0, v: 0, p: 0, s: 0, gf: 0, gs: 0, gol: [], assist: [], presenze: [], partite: [] }
+
+  for (const { stagione, giocatori, partite } of storico) {
+    const persone = new Map(giocatori.map((g) => [g.id, { chiave: chiaveNome(g), nome: `${g.cognome} ${g.nome}` }]))
+    const somma = (m: Map<string, Accumulo>, id: string, n: number) => {
+      const per = persone.get(id)
+      if (per) accumula(m, per.chiave, per.nome, stagione, n)
+    }
+    for (const partita of partite) {
+      if (!partita.amichevole) continue
+      const esito = esitoPartita(partita).code
+      out.giocate++
+      if (esito === 'V') out.v++
+      else if (esito === 'P') out.p++
+      else out.s++
+      out.gf += partita.golFatti
+      out.gs += partita.golSubiti
+      for (const m of partita.marcatori ?? []) somma(gol, m.giocatoreId, m.quantita)
+      for (const a of partita.assist ?? []) somma(assist, a.giocatoreId, a.quantita)
+      for (const id of partita.titolari ?? []) somma(presenze, id, 1)
+      for (const id of partita.subentrati ?? []) somma(presenze, id, 1)
+      out.partite.push({
+        id: partita.id,
+        stagione,
+        data: partita.data,
+        avversario: partita.avversario,
+        inCasa: partita.inCasa,
+        gf: partita.golFatti,
+        gs: partita.golSubiti,
+      })
+    }
+  }
+
+  out.gol = classifica(gol)
+  out.assist = classifica(assist)
+  out.presenze = classifica(presenze)
+  out.partite.sort((a, b) => b.data.localeCompare(a.data))
+  return out
 }
 
 /** "vs Pievepelago · 12/10/2025 · 2025/26" per le tessere dei record. */

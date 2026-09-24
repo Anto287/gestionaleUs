@@ -42,6 +42,7 @@ import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
 import { useData } from '../data/DataProvider'
+import { CampoEuro } from '../components/CampoEuro'
 import { PageHeader } from '../components/PageHeader'
 import { StatCard } from '../components/StatCard'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
@@ -83,8 +84,8 @@ function descrizioneMovimento(s: Pick<SpesaCondivisa, 'descrizione'>): string {
 
 /** Colore del conguaglio: verde se entra, rosso se esce. */
 function coloreConto(dovuto: number): string | undefined {
-  if (dovuto > 0) return '#3f7a52'
-  if (dovuto < 0) return '#b1352f'
+  if (dovuto > 0) return 'var(--verde)'
+  if (dovuto < 0) return 'var(--rosso-testo)'
   return undefined
 }
 
@@ -155,7 +156,7 @@ export function Spese() {
         if (annoF && s.data?.slice(0, 4) !== annoF) return false
         return true
       })
-      .sort((a, b) => b.data.localeCompare(a.data))
+      .sort((a, b) => (b.data ?? '').localeCompare(a.data ?? ''))
   }, [items, q, societaF, statoF, anticipoF, annoF])
 
   // --- form ---
@@ -171,6 +172,7 @@ export function Spese() {
   function apriModifica(s: SpesaCondivisa) {
     setInModifica(s)
     setScontrino(null)
+    form.resetFields() // se no i campi facoltativi della spesa precedente restano nel form
     form.setFieldsValue({ ...s })
     setModale(true)
   }
@@ -197,8 +199,9 @@ export function Spese() {
         allegato = meta
       }
       if (inModifica) {
-        update(inModifica.id, { ...dati, scontrino: allegato })
-        allineaMovimento({ ...inModifica, ...dati })
+        // un solo update: due di fila sullo stesso record si pesterebbero i piedi
+        const extra = allineaMovimento({ ...inModifica, ...dati })
+        update(inModifica.id, { ...dati, scontrino: allegato, ...extra })
       } else {
         add({ ...dati, scontrino: allegato })
       }
@@ -213,27 +216,57 @@ export function Spese() {
    * Se la spesa è già saldata e ha il movimento gemello nei Conti, cambiando
    * importo, percentuale o chi ha anticipato cambia anche il conguaglio: il
    * movimento va riallineato, altrimenti in cassa resta la cifra vecchia.
+   * Se il conguaglio si azzera il movimento sparisce, e torna quando il
+   * conguaglio torna diverso da zero: restituisce la patch da aggiungere
+   * alla spesa (movimentoId tolto o nuovo).
    */
-  function allineaMovimento(s: SpesaCondivisa) {
-    if (!s.saldata || !s.movimentoId) return
-    const m = conti.items.find((x) => x.id === s.movimentoId)
-    if (!m) return
+  function allineaMovimento(s: SpesaCondivisa): Partial<SpesaCondivisa> {
+    // le spese saldate prima di neiConti: registrate se hanno il movimento
+    const registrata = s.neiConti ?? !!s.movimentoId
+    if (!s.saldata || !registrata) return {}
+    const m = s.movimentoId ? conti.items.find((x) => x.id === s.movimentoId) : undefined
+    // movimento eliminato a mano dai Conti: si rispetta la scelta, niente ricreazione
+    if (s.movimentoId && !m) return { movimentoId: undefined, neiConti: false }
     const { dovuto } = contoSpesa(s)
+    if (Math.abs(dovuto) < 0.005) {
+      if (!m) return {}
+      conti.remove(m.id)
+      message.info('Conguaglio a zero: ho tolto il movimento dai Conti.')
+      return { movimentoId: undefined, neiConti: true }
+    }
+    if (!m) {
+      // il conguaglio era a zero (movimento tolto da qui, neiConti resta true): lo si ricrea
+      const movimentoId = conti.add({
+        data: s.dataSaldo ?? oggiIso(),
+        descrizione: descrizioneMovimento(s),
+        tipo: dovuto > 0 ? 'entrata' : 'uscita',
+        importo: Math.abs(dovuto),
+        saldato: true,
+        controparte: s.societa,
+        categoria: s.categoria?.trim() || 'Spese condivise',
+      })
+      message.info('Ho registrato il conguaglio anche nei Conti.')
+      return { movimentoId, neiConti: true }
+    }
     const patch = {
       importo: Math.abs(dovuto),
       tipo: (dovuto > 0 ? 'entrata' : 'uscita') as Movimento['tipo'],
       descrizione: descrizioneMovimento(s),
       controparte: s.societa,
+      // come al saldo (vedi salda)
+      categoria: s.categoria?.trim() || 'Spese condivise',
     }
     if (
       m.importo === patch.importo &&
       m.tipo === patch.tipo &&
       m.descrizione === patch.descrizione &&
-      m.controparte === patch.controparte
+      m.controparte === patch.controparte &&
+      m.categoria === patch.categoria
     )
-      return
+      return {}
     conti.update(m.id, patch)
     message.info('Ho aggiornato anche il movimento nei Conti.')
+    return {}
   }
 
   // --- saldo ---
@@ -253,7 +286,7 @@ export function Spese() {
         categoria: s.categoria?.trim() || 'Spese condivise',
       })
     }
-    update(s.id, { saldata: true, dataSaldo: data, movimentoId })
+    update(s.id, { saldata: true, dataSaldo: data, movimentoId, neiConti: registra })
     setDaSaldare(null)
     message.success(movimentoId ? 'Spesa saldata, movimento creato nei Conti.' : 'Spesa saldata.')
   }
@@ -261,7 +294,7 @@ export function Spese() {
   /** Riapre il conto e toglie il movimento gemello, se c'è ancora. */
   function riapri(s: SpesaCondivisa) {
     if (s.movimentoId && conti.items.some((m) => m.id === s.movimentoId)) conti.remove(s.movimentoId)
-    update(s.id, { saldata: false, dataSaldo: undefined, movimentoId: undefined })
+    update(s.id, { saldata: false, dataSaldo: undefined, movimentoId: undefined, neiConti: undefined })
     message.success('Spesa riaperta.')
   }
 
@@ -282,7 +315,7 @@ export function Spese() {
             'A carico nostro (€)': c.nostra,
             'A carico loro (€)': c.loro,
             Conguaglio: fraseConto(s),
-            Stato: s.saldata ? `saldata il ${s.dataSaldo ?? ''}`.trim() : 'aperta',
+            Stato: s.saldata ? `saldata${s.dataSaldo ? ` il ${formatData(s.dataSaldo, true)}` : ''}` : 'aperta',
             Note: s.note ?? '',
           }
         }),
@@ -338,7 +371,7 @@ export function Spese() {
     {
       title: 'Data',
       width: 108,
-      sorter: (a: SpesaCondivisa, b: SpesaCondivisa) => a.data.localeCompare(b.data),
+      sorter: (a: SpesaCondivisa, b: SpesaCondivisa) => (a.data ?? '').localeCompare(b.data ?? ''),
       render: (_: unknown, s: SpesaCondivisa) => formatData(s.data, true),
     },
     {
@@ -448,7 +481,7 @@ export function Spese() {
             icona={<RiseOutlined />}
             titolo="Da ricevere"
             valore={formatEuro(totali.daRicevere)}
-            colore={totali.daRicevere > 0 ? '#3f7a52' : undefined}
+            colore={totali.daRicevere > 0 ? 'var(--verde)' : undefined}
             sotto="quote che ci devono"
           />
         </Col>
@@ -457,7 +490,7 @@ export function Spese() {
             icona={<FallOutlined />}
             titolo="Da versare"
             valore={formatEuro(totali.daVersare)}
-            colore={totali.daVersare > 0 ? '#9a6b1e' : undefined}
+            colore={totali.daVersare > 0 ? 'var(--ocra)' : undefined}
             sotto="quote che dobbiamo"
           />
         </Col>
@@ -725,7 +758,12 @@ function ModaleSpesa({
       forceRender
     >
       <Form form={form} layout="vertical" onFinish={onSalva} requiredMark={false}>
-        <Form.Item label="Data della spesa" name="data" {...propsCampoData}>
+        <Form.Item
+          label="Data della spesa"
+          name="data"
+          rules={[{ required: true, message: 'Scegli la data' }]}
+          {...propsCampoData}
+        >
           <DataPicker />
         </Form.Item>
         <Form.Item
@@ -753,7 +791,7 @@ function ModaleSpesa({
           name="importo"
           rules={[{ required: true, message: 'Inserisci quanto è costata in tutto' }]}
         >
-          <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
+          <CampoEuro />
         </Form.Item>
         <Form.Item label="Chi ha anticipato i soldi" name="anticipataDa">
           <Segmented

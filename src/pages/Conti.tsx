@@ -11,7 +11,6 @@ import {
   Form,
   Grid,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Row,
@@ -36,19 +35,20 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
+import { CampoEuro } from '../components/CampoEuro'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { StatCard } from '../components/StatCard'
 import { DettaglioMovimenti, type VistaDettaglio } from '../components/DettaglioMovimenti'
 import dayjs from 'dayjs'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData, formatEuro, oggiIso, plurale } from '../lib/format'
+import { formatData, formatEuro, oggiIso, plurale, ripulisciTesti } from '../lib/format'
 import { esportaExcel } from '../lib/excel'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { BilancioMensile, type MeseBilancio, type TipoBilancio } from './conti/BilancioMensile'
 import { PerCategoria, type VoceCategoria } from './conti/PerCategoria'
 import { leggiBilancio } from './conti/importaBilancio'
-import type { Movimento } from '../types'
+import type { Movimento, SpesaCondivisa } from '../types'
 
 /** Categorie proposte nel form (si può comunque scrivere qualsiasi testo). */
 const CATEGORIE_SUGGERITE = [
@@ -66,6 +66,9 @@ const CATEGORIE_SUGGERITE = [
 
 const SENZA_CATEGORIA = 'Senza categoria'
 
+/** Arrotonda ai centesimi (niente "-0,00 €" né 1234.5600000000002 nell'Excel). */
+const cent = (n: number) => Math.round(n * 100) / 100 || 0
+
 function labelMese(chiave: string) {
   const [y, m] = chiave.split('-')
   return `${m}/${y.slice(2)}`
@@ -73,6 +76,14 @@ function labelMese(chiave: string) {
 
 export function Conti() {
   const conti = useCollection<Movimento>('conti')
+  const speseCondivise = useCollection<SpesaCondivisa>('speseCondivise')
+  /** Avviso per il Popconfirm se il movimento è il conguaglio di una spesa condivisa. */
+  function avvisoSpesa(m: Movimento): string | undefined {
+    const s = speseCondivise.items.find((x) => x.movimentoId === m.id)
+    return s
+      ? `È il conguaglio della spesa «${s.descrizione}» con ${s.societa}: la spesa resta segnata come saldata.`
+      : undefined
+  }
   const { items, add, update, replace } = conti
   const eliminaConUndo = useEliminaUndo()
   const { modal, message } = AntApp.useApp()
@@ -115,14 +126,16 @@ export function Conti() {
   const [periodoCategorie, setPeriodoCategorie] = useState<PeriodoChart>('tutto')
 
   const anni = useMemo(() => {
-    const chiavi = new Set(items.map((m) => m.data.slice(0, 4)))
+    const chiavi = new Set(items.map((m) => (m.data ?? '').slice(0, 4)))
     return [...chiavi].sort((a, b) => b.localeCompare(a)).map((y) => ({ value: y, label: y }))
   }, [items])
 
   // i mesi disponibili si restringono all'anno scelto
   const mesi = useMemo(() => {
     const chiavi = new Set(
-      items.filter((m) => !annoF || m.data.slice(0, 4) === annoF).map((m) => m.data.slice(0, 7)),
+      items
+        .filter((m) => !annoF || (m.data ?? '').slice(0, 4) === annoF)
+        .map((m) => (m.data ?? '').slice(0, 7)),
     )
     return [...chiavi]
       .sort((a, b) => b.localeCompare(a))
@@ -162,11 +175,11 @@ export function Conti() {
 
   // saldo progressivo su TUTTI i movimenti (i filtri non alterano la cassa)
   const vista = useMemo(() => {
-    const chrono = [...items].sort((a, b) => a.data.localeCompare(b.data))
+    const chrono = [...items].sort((a, b) => (a.data ?? '').localeCompare(b.data ?? ''))
     let cassa = 0
     const conCassa = chrono.map((m) => {
       if (m.saldato) cassa += m.tipo === 'entrata' ? m.importo : -m.importo
-      return { m, cassa }
+      return { m, cassa: cent(cassa) }
     })
     return conCassa.reverse()
   }, [items])
@@ -179,8 +192,8 @@ export function Conti() {
         if (tipo && m.tipo !== tipo) return false
         if (stato === 'saldato' && !m.saldato) return false
         if (stato === 'aperto' && m.saldato) return false
-        if (annoF && m.data.slice(0, 4) !== annoF) return false
-        if (meseF && m.data.slice(0, 7) !== meseF) return false
+        if (annoF && (m.data ?? '').slice(0, 4) !== annoF) return false
+        if (meseF && (m.data ?? '').slice(0, 7) !== meseF) return false
         if (categoriaF === SENZA_CATEGORIA && m.categoria?.trim()) return false
         if (categoriaF && categoriaF !== SENZA_CATEGORIA && m.categoria?.trim() !== categoriaF) return false
         if (controparteF && m.controparte?.trim() !== controparteF) return false
@@ -191,36 +204,30 @@ export function Conti() {
     [vista, q, tipo, stato, annoF, meseF, categoriaF, controparteF, importoF, importoOp],
   )
 
-  const saldo = items
-    .filter((m) => m.saldato)
-    .reduce((s, m) => s + (m.tipo === 'entrata' ? m.importo : -m.importo), 0)
-  const daIncassare = items
-    .filter((m) => !m.saldato && m.tipo === 'entrata')
-    .reduce((s, m) => s + m.importo, 0)
-  const daPagare = items
-    .filter((m) => !m.saldato && m.tipo === 'uscita')
-    .reduce((s, m) => s + m.importo, 0)
+  const saldo = cent(
+    items.filter((m) => m.saldato).reduce((s, m) => s + (m.tipo === 'entrata' ? m.importo : -m.importo), 0),
+  )
+  const daIncassare = cent(
+    items.filter((m) => !m.saldato && m.tipo === 'entrata').reduce((s, m) => s + m.importo, 0),
+  )
+  const daPagare = cent(
+    items.filter((m) => !m.saldato && m.tipo === 'uscita').reduce((s, m) => s + m.importo, 0),
+  )
 
   const bilancio: MeseBilancio[] = useMemo(() => {
     const perMese = new Map<string, { entrate: number; uscite: number }>()
     for (const m of items) {
-      const k = m.data.slice(0, 7)
+      const k = (m.data ?? '').slice(0, 7)
       const v = perMese.get(k) ?? { entrate: 0, uscite: 0 }
       if (m.tipo === 'entrata') v.entrate += m.importo
       else v.uscite += m.importo
       perMese.set(k, v)
     }
     const ordinati = [...perMese.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-    // restringe alla finestra scelta (di default 'tutto' = tutti i mesi)
+    // restringe alla finestra scelta (di default 'tutto' = tutti i mesi), contando da oggi come «Per categoria»
     const mesi = mesiPeriodo(periodoBilancio)
-    const sel =
-      mesi && ordinati.length
-        ? (() => {
-            const ultimo = ordinati[ordinati.length - 1][0]
-            const cutoff = dayjs(ultimo + '-01').subtract(mesi - 1, 'month').format('YYYY-MM')
-            return ordinati.filter(([k]) => k >= cutoff)
-          })()
-        : ordinati
+    const cutoff = mesi ? dayjs().subtract(mesi - 1, 'month').format('YYYY-MM') : ''
+    const sel = cutoff ? ordinati.filter(([k]) => k >= cutoff) : ordinati
     return sel.map(([k, v]) => ({ mese: labelMese(k), entrate: v.entrate, uscite: v.uscite }))
   }, [items, periodoBilancio])
 
@@ -248,11 +255,12 @@ export function Conti() {
   }
   function apriModifica(m: Movimento) {
     setInModifica(m)
+    form.resetFields() // se no i campi facoltativi del movimento precedente restano nel form
     form.setFieldsValue(m)
     setModale(true)
   }
   function salva(v: Omit<Movimento, 'id'>) {
-    const dati = { ...v, importo: Number(v.importo), categoria: v.categoria?.trim() || undefined }
+    const dati = { ...ripulisciTesti(v), importo: Number(v.importo) }
     if (inModifica) update(inModifica.id, dati)
     else add(dati)
     setModale(false)
@@ -270,7 +278,9 @@ export function Conti() {
           Categoria: r.m.categoria ?? '',
           Tipo: r.m.tipo,
           'Importo (€)': r.m.importo,
-          Stato: r.m.saldato ? 'saldato' : r.m.tipo === 'entrata' ? 'da incassare' : 'da dare',
+          // con il segno: sommando la colonna viene il saldo
+          'Importo con segno (€)': r.m.tipo === 'entrata' ? r.m.importo : -r.m.importo,
+          Stato: r.m.saldato ? 'saldato' : r.m.tipo === 'entrata' ? 'da incassare' : 'da pagare',
           'Totale in cassa (€)': r.cassa,
         })),
       },
@@ -337,7 +347,7 @@ export function Conti() {
     {
       title: 'Data',
       width: 110,
-      sorter: (a: { m: Movimento }, b: { m: Movimento }) => a.m.data.localeCompare(b.m.data),
+      sorter: (a: { m: Movimento }, b: { m: Movimento }) => (a.m.data ?? '').localeCompare(b.m.data ?? ''),
       render: (_: unknown, r: { m: Movimento }) => formatData(r.m.data, true),
     },
     {
@@ -360,7 +370,7 @@ export function Conti() {
           )}
           {!r.m.saldato && (
             <Tag color="warning" style={{ marginLeft: 8 }}>
-              {r.m.tipo === 'entrata' ? 'Da incassare' : 'Da dare'}
+              {r.m.tipo === 'entrata' ? 'Da incassare' : 'Da pagare'}
             </Tag>
           )}
         </span>
@@ -370,13 +380,13 @@ export function Conti() {
       title: 'Uscita',
       align: 'right' as const,
       render: (_: unknown, r: { m: Movimento }) =>
-        r.m.tipo === 'uscita' ? <span style={{ color: '#b1352f' }}>{formatEuro(r.m.importo)}</span> : '',
+        r.m.tipo === 'uscita' ? <span style={{ color: 'var(--rosso-testo)' }}>{formatEuro(r.m.importo)}</span> : '',
     },
     {
       title: 'Entrata',
       align: 'right' as const,
       render: (_: unknown, r: { m: Movimento }) =>
-        r.m.tipo === 'entrata' ? <span style={{ color: '#3f7a52' }}>{formatEuro(r.m.importo)}</span> : '',
+        r.m.tipo === 'entrata' ? <span style={{ color: 'var(--verde)' }}>{formatEuro(r.m.importo)}</span> : '',
     },
     {
       title: 'Totale in cassa',
@@ -392,6 +402,7 @@ export function Conti() {
       render: (_: unknown, r: { m: Movimento }) => (
         <Popconfirm
           title="Eliminare questo movimento?"
+          description={avvisoSpesa(r.m)}
           okText="Elimina"
           cancelText="Annulla"
           okButtonProps={{ danger: true }}
@@ -430,7 +441,7 @@ export function Conti() {
             icona={<WalletOutlined />}
             titolo="Totale in cassa"
             valore={formatEuro(saldo)}
-            colore={saldo < 0 ? '#b1352f' : undefined}
+            colore={saldo < 0 ? 'var(--rosso-testo)' : undefined}
             onApri={() => setDettaglio('cassa')}
             apriLabel="vedi gli ultimi movimenti"
           />
@@ -440,7 +451,7 @@ export function Conti() {
             icona={<RiseOutlined />}
             titolo="Da incassare"
             valore={formatEuro(daIncassare)}
-            colore="#3f7a52"
+            colore="var(--verde)"
             onApri={() => setDettaglio('daIncassare')}
             apriLabel="vedi da chi dobbiamo ricevere soldi"
           />
@@ -448,9 +459,9 @@ export function Conti() {
         <Col xs={12} sm={8}>
           <StatCard
             icona={<FallOutlined />}
-            titolo="Da dare"
+            titolo="Da pagare"
             valore={formatEuro(daPagare)}
-            colore={daPagare > 0 ? '#9a6b1e' : undefined}
+            colore={daPagare > 0 ? 'var(--ocra)' : undefined}
             onApri={() => setDettaglio('daPagare')}
             apriLabel="vedi a chi dobbiamo dare soldi"
           />
@@ -538,7 +549,7 @@ export function Conti() {
               allowClear
               autoComplete="off"
               prefix={<SearchOutlined />}
-              placeholder="Cerca descrizione"
+              placeholder="Cerca descrizione o controparte"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -611,14 +622,7 @@ export function Conti() {
                       { value: 'minore', label: '≤' },
                     ]}
                   />
-                  <InputNumber
-                    min={0}
-                    step={0.01}
-                    placeholder="es. 100 o 130,40"
-                    value={importoF}
-                    onChange={setImportoF}
-                    style={{ width: '100%' }}
-                  />
+                  <CampoEuro placeholder="es. 100 o 130,40" value={importoF} onChange={setImportoF} />
                 </Space.Compact>
               </FiltroCampo>
               <FiltroCampo label="Anno">
@@ -660,13 +664,14 @@ export function Conti() {
                         {r.m.controparte && <span>· {r.m.controparte}</span>}
                         {r.m.categoria && <Tag bordered={false}>{r.m.categoria}</Tag>}
                         {!r.m.saldato && (
-                          <Tag color="warning">{r.m.tipo === 'entrata' ? 'Da incassare' : 'Da dare'}</Tag>
+                          <Tag color="warning">{r.m.tipo === 'entrata' ? 'Da incassare' : 'Da pagare'}</Tag>
                         )}
                       </div>
                     </div>
                     <span onClick={(e) => e.stopPropagation()}>
                       <Popconfirm
                         title="Eliminare questo movimento?"
+                        description={avvisoSpesa(r.m)}
                         okText="Elimina"
                         cancelText="Annulla"
                         okButtonProps={{ danger: true }}
@@ -679,7 +684,7 @@ export function Conti() {
                   <div className="lista-card-meta">
                     <span
                       className="lista-card-num"
-                      style={{ fontSize: 15, color: r.m.tipo === 'entrata' ? '#3f7a52' : '#b1352f' }}
+                      style={{ fontSize: 15, color: r.m.tipo === 'entrata' ? 'var(--verde)' : 'var(--rosso-testo)' }}
                     >
                       {r.m.tipo === 'entrata' ? '+ ' : '− '}
                       {formatEuro(r.m.importo)}
@@ -735,7 +740,7 @@ export function Conti() {
               ]}
             />
           </Form.Item>
-          <Form.Item label="Data" name="data" {...propsCampoData}>
+          <Form.Item label="Data" name="data" rules={[{ required: true, message: 'Scegli la data' }]} {...propsCampoData}>
             <DataPicker />
           </Form.Item>
           <Form.Item
@@ -746,7 +751,7 @@ export function Conti() {
             <Input placeholder="es. Sponsor, Pagamento campo…" autoComplete="off" />
           </Form.Item>
           <Form.Item label="Importo (€)" name="importo" rules={[{ required: true, message: 'Inserisci l’importo' }]}>
-            <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
+            <CampoEuro />
           </Form.Item>
           <Form.Item label="Controparte (facoltativa)" name="controparte">
             <Input placeholder="fornitore, sponsor…" autoComplete="off" />

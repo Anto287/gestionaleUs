@@ -48,3 +48,13 @@ export function formatKB(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+/**
+ * Toglie gli spazi in testa e in coda a tutti i testi di un modulo e svuota
+ * quelli rimasti bianchi (un campo facoltativo lasciato a " " non va salvato).
+ */
+export function ripulisciTesti<T extends object>(valori: T): T {
+  const out: Record<string, unknown> = { ...(valori as Record<string, unknown>) }
+  for (const [k, v] of Object.entries(out)) if (typeof v === 'string') out[k] = v.trim() || undefined
+  return out as T
+}

@@ -9,7 +9,7 @@
  * fogli.
  */
 import { formatData, oggiIso } from '../../lib/format'
-import type { Partita } from '../../types'
+import type { Allenamento, Partita } from '../../types'
 
 export const NOI = 'U.S. Riolunato'
 
@@ -21,6 +21,8 @@ export interface OpzioniCalendario {
   /** riga sotto il titolo: periodo e filtri scelti */
   sottotitolo?: string
   partite: Partita[]
+  /** allenamenti da mettere nel foglio (dal Calendario); assente = solo partite */
+  allenamenti?: Allenamento[]
   /** estremi del periodo (ISO), per la griglia: si disegnano tutti i mesi */
   da?: string
   a?: string
@@ -80,13 +82,35 @@ function competizione(p: Partita, o: OpzioniCalendario): string {
   return [o.nomeTorneo(p.torneoId), p.amichevole ? 'Amichevole' : ''].filter(Boolean).join(' · ')
 }
 
-function perMese(partite: Partita[]): Map<string, Partita[]> {
-  const m = new Map<string, Partita[]>()
-  for (const p of [...partite].sort((a, b) => (a.data + (a.ora ?? '')).localeCompare(b.data + (b.ora ?? '')))) {
-    const k = p.data.slice(0, 7)
-    m.set(k, [...(m.get(k) ?? []), p])
+/** Una riga del foglio: una partita o una seduta di allenamento. */
+type Riga = { tipo: 'partita'; p: Partita } | { tipo: 'allenamento'; a: Allenamento }
+
+const dataRiga = (r: Riga) => (r.tipo === 'partita' ? r.p.data : r.a.data)
+const oraRiga = (r: Riga) => (r.tipo === 'partita' ? (r.p.ora ?? '') : '')
+
+function perMese(o: OpzioniCalendario): Map<string, Riga[]> {
+  const righe: Riga[] = [
+    ...o.partite.map((p) => ({ tipo: 'partita' as const, p })),
+    ...(o.allenamenti ?? []).map((a) => ({ tipo: 'allenamento' as const, a })),
+  ]
+  righe.sort((x, y) => (dataRiga(x) + oraRiga(x)).localeCompare(dataRiga(y) + oraRiga(y)))
+  const m = new Map<string, Riga[]>()
+  for (const r of righe) {
+    const k = dataRiga(r).slice(0, 7)
+    m.set(k, [...(m.get(k) ?? []), r])
   }
   return m
+}
+
+/** "3 partite · 2 allenamenti" (solo le partite se il foglio è di sole partite). */
+function conteggio(righe: Riga[], o: OpzioniCalendario): string {
+  const np = righe.filter((r) => r.tipo === 'partita').length
+  const na = righe.length - np
+  const partite = `${np} ${np === 1 ? 'partita' : 'partite'}`
+  if (!o.allenamenti) return partite
+  return [np ? partite : '', na ? `${na} ${na === 1 ? 'allenamento' : 'allenamenti'}` : '']
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** Tutti i mesi fra due date ISO, estremi compresi ('YYYY-MM'). */
@@ -133,7 +157,7 @@ function testata(o: OpzioniCalendario): string {
  * i seguenti sono solo righe, attaccati sotto (margine -1px: il bordo resta
  * singolo), così la pagina può andare a capo fra un pezzo e l'altro.
  */
-function bloccoElenco(chiave: string, partite: Partita[], o: OpzioniCalendario, totale: number, primo: boolean): string {
+function bloccoElenco(chiave: string, righeMese: Riga[], o: OpzioniCalendario, totale: string, primo: boolean): string {
   const col = new Set(o.colonne)
   const th = (t: string) =>
     `<th style="border:${BORDO};padding:5px 7px;text-align:left;font-size:11px;">${t}</th>`
@@ -143,7 +167,7 @@ function bloccoElenco(chiave: string, partite: Partita[], o: OpzioniCalendario, 
   const tutte: [Colonna | 'giorno' | 'partita', string, string?][] = [
     ['giorno', 'Giorno', '84px'],
     ['ora', 'Ora', '48px'],
-    ['partita', 'Partita'],
+    ['partita', o.allenamenti ? 'Impegno' : 'Partita'],
     ['competizione', 'Competizione', '17%'],
     ['risultato', 'Ris.', '52px'],
     ['ritrovo', 'Ritrovo', '14%'],
@@ -153,8 +177,21 @@ function bloccoElenco(chiave: string, partite: Partita[], o: OpzioniCalendario, 
     .filter(([k]) => k === 'giorno' || k === 'partita' || col.has(k))
     .map(([, t, w]) => [t, w] as const)
   const colgroup = `<colgroup>${colonne.map(([, w]) => `<col${w ? ` style="width:${w};"` : ''} />`).join('')}</colgroup>`
-  const righe = partite
-    .map((p) => {
+  const righe = righeMese
+    .map((r) => {
+      if (r.tipo === 'allenamento') {
+        const a = r.a
+        return `<tr>
+        ${td(`<b>${giornoBreve(a.data)}</b>`, 'white-space:nowrap;')}
+        ${col.has('ora') ? td('—', 'white-space:nowrap;') : ''}
+        ${td(`<b>Allenamento</b>${!col.has('note') && a.note ? `<div style="font-size:10px;color:#555;margin-top:1px;">${esc(a.note)}</div>` : ''}`)}
+        ${col.has('competizione') ? td('') : ''}
+        ${col.has('risultato') ? td('') : ''}
+        ${col.has('ritrovo') ? td('&nbsp;') : ''}
+        ${col.has('note') ? td(esc(a.note)) : ''}
+      </tr>`
+      }
+      const p = r.p
       const sfondo = o.evidenziaCasa && p.inCasa ? `background:${GRIGIO};` : ''
       return `<tr style="${sfondo}">
         ${td(`<b>${giornoBreve(p.data)}</b>`, 'white-space:nowrap;')}
@@ -179,7 +216,7 @@ function bloccoElenco(chiave: string, partite: Partita[], o: OpzioniCalendario, 
         <tr>
           <th colspan="${colonne.length}" style="border:${BORDO};background:#d9d9d9;padding:6px 8px;text-align:left;font-size:14px;letter-spacing:.05em;">
             ${esc(titoloMese(chiave).toUpperCase())}
-            <span style="font-weight:normal;font-size:11px;letter-spacing:0;"> — ${totale} ${totale === 1 ? 'partita' : 'partite'}</span>
+            <span style="font-weight:normal;font-size:11px;letter-spacing:0;"> — ${totale}</span>
           </th>
         </tr>
         <tr>${colonne.map(([t]) => th(t)).join('')}</tr>
@@ -188,16 +225,16 @@ function bloccoElenco(chiave: string, partite: Partita[], o: OpzioniCalendario, 
     </table>`
 }
 
-function bloccoGriglia(chiave: string, partite: Partita[], o: OpzioniCalendario): string {
+function bloccoGriglia(chiave: string, righeMese: Riga[], o: OpzioniCalendario): string {
   const col = new Set(o.colonne)
   const [y, m] = chiave.split('-').map(Number)
   const giorniMese = new Date(y, m, 0).getDate()
   // lunedì = 0
   const primo = (new Date(y, m - 1, 1).getDay() + 6) % 7
-  const perGiorno = new Map<number, Partita[]>()
-  for (const p of partite) {
-    const g = Number(p.data.slice(8, 10))
-    perGiorno.set(g, [...(perGiorno.get(g) ?? []), p])
+  const perGiorno = new Map<number, Riga[]>()
+  for (const r of righeMese) {
+    const g = Number(dataRiga(r).slice(8, 10))
+    perGiorno.set(g, [...(perGiorno.get(g) ?? []), r])
   }
   const altezza = o.orizzontale ? 78 : 96
   const celle: string[] = []
@@ -205,7 +242,13 @@ function bloccoGriglia(chiave: string, partite: Partita[], o: OpzioniCalendario)
   for (let g = 1; g <= giorniMese; g++) {
     const weekend = (primo + g - 1) % 7 >= 5
     const gare = (perGiorno.get(g) ?? [])
-      .map((p) => {
+      .map((r) => {
+        if (r.tipo === 'allenamento')
+          return `<div style="border:1px dashed #000;border-radius:4px;padding:2px 4px;margin-top:3px;line-height:1.25;">
+          <div style="font-size:9.5px;font-weight:bold;">ALLENAMENTO</div>
+          ${r.a.note ? `<div style="font-size:8.5px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.a.note)}</div>` : ''}
+        </div>`
+        const p = r.p
         const sfondo = o.evidenziaCasa && p.inCasa ? GRIGIO : '#fff'
         const ris = col.has('risultato') ? risultato(p) : ''
         const comp = col.has('competizione') ? competizione(p, o) : ''
@@ -227,7 +270,7 @@ function bloccoGriglia(chiave: string, partite: Partita[], o: OpzioniCalendario)
     <div style="margin-top:14px;">
       <div style="font-size:18px;font-weight:bold;margin-bottom:6px;letter-spacing:.03em;">
         ${esc(titoloMese(chiave).toUpperCase())}
-        <span style="font-weight:normal;font-size:11px;letter-spacing:0;color:#444;"> — ${partite.length ? `${partite.length} ${partite.length === 1 ? 'partita' : 'partite'}` : 'nessuna partita'}</span>
+        <span style="font-weight:normal;font-size:11px;letter-spacing:0;color:#444;"> — ${righeMese.length ? conteggio(righeMese, o) : o.allenamenti ? 'nessun impegno' : 'nessuna partita'}</span>
       </div>
       <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;table-layout:fixed;">
         <thead><tr>${GIORNI.map((g, i) => `<th style="border:${BORDO};background:${i >= 5 ? '#bfbfbf' : '#d9d9d9'};padding:4px;font-size:11px;">${g}</th>`).join('')}</tr></thead>
@@ -250,7 +293,7 @@ function piede(o: OpzioniCalendario): string {
 
 /** Il foglio a blocchi: testata, un blocco per mese, piede. */
 export function blocchiCalendario(o: OpzioniCalendario): Blocco[] {
-  const mesi = perMese(o.partite)
+  const mesi = perMese(o)
   const blocchi: Blocco[] = [{ html: testata(o) }]
   if (o.impaginazione === 'griglia') {
     const chiavi =
@@ -259,11 +302,13 @@ export function blocchiCalendario(o: OpzioniCalendario): Blocco[] {
       blocchi.push({ html: bloccoGriglia(k, mesi.get(k) ?? [], o), nuovaPagina: o.mesePerPagina && i > 0 }),
     )
   } else if (mesi.size === 0) {
-    blocchi.push({ html: '<div style="margin-top:24px;font-size:14px;">Nessuna partita nel periodo scelto.</div>' })
+    blocchi.push({
+      html: `<div style="margin-top:24px;font-size:14px;">${o.allenamenti ? 'Nessun impegno' : 'Nessuna partita'} nel periodo scelto.</div>`,
+    })
   } else {
     for (const [k, ps] of mesi)
       for (let i = 0; i < ps.length; i += RIGHE_PER_PEZZO)
-        blocchi.push({ html: bloccoElenco(k, ps.slice(i, i + RIGHE_PER_PEZZO), o, ps.length, i === 0) })
+        blocchi.push({ html: bloccoElenco(k, ps.slice(i, i + RIGHE_PER_PEZZO), o, conteggio(ps, o), i === 0) })
   }
   blocchi.push({ html: piede(o) })
   return blocchi
@@ -294,7 +339,9 @@ async function fotografa(o: OpzioniCalendario) {
   try {
     const img = box.querySelector('img')
     if (img && !img.complete) await new Promise((res) => ((img.onload = res), (img.onerror = res)))
-    const scala = 2
+    // su iPhone un canvas oltre ~16 milioni di pixel esce bianco: con un
+    // foglio lunghissimo (stagione intera con gli allenamenti) si scende di scala
+    const scala = box.offsetWidth * box.offsetHeight * 4 > 16e6 ? 1 : 2
     const canvas = await html2canvas(box, { scale: scala, useCORS: true, backgroundColor: '#ffffff', logging: false })
     const blocchi = [...box.querySelectorAll<HTMLElement>('[data-blocco]')].map((el) => ({
       inizio: el.offsetTop * scala,
@@ -307,10 +354,10 @@ async function fotografa(o: OpzioniCalendario) {
   }
 }
 
-/** Nome file: "calendario-partite-12-10-2026.pdf" */
-function nomeFile(ext: string): string {
+/** Nome file: "calendario-partite-12-10-2026.pdf" (o "calendario-impegni-…" con gli allenamenti) */
+function nomeFile(o: OpzioniCalendario, ext: string): string {
   const oggi = new Date().toLocaleDateString('it-IT').replace(/\//g, '-')
-  return `calendario-partite-${oggi}.${ext}`
+  return `calendario-${o.allenamenti ? 'impegni' : 'partite'}-${oggi}.${ext}`
 }
 
 export async function esportaCalendarioPdf(o: OpzioniCalendario): Promise<void> {
@@ -354,7 +401,7 @@ export async function esportaCalendarioPdf(o: OpzioniCalendario): Promise<void> 
       pdf.text(`${i + 1} / ${pagine.length}`, wMm - MARGINE_MM, hMm - 5, { align: 'right' })
     }
   })
-  pdf.save(nomeFile('pdf'))
+  pdf.save(nomeFile(o, 'pdf'))
 }
 
 /** Un'unica immagine lunga, comoda da mandare nel gruppo WhatsApp. */
@@ -370,6 +417,6 @@ export async function esportaCalendarioPng(o: OpzioniCalendario): Promise<void> 
   ctx.drawImage(canvas, 0, 40)
   const a = document.createElement('a')
   a.href = out.toDataURL('image/png')
-  a.download = nomeFile('png')
+  a.download = nomeFile(o, 'png')
   a.click()
 }

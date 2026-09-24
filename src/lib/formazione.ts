@@ -148,6 +148,9 @@ export function fitGiocatore(g: Giocatore, role: string): Fit {
   const aree = areeGiocatore(g)
   // il portiere è un mondo a parte: nessuno entra o esce dalla porta per adattamento
   if (target === 'Portiere' || aree.has('Portiere')) return 'no'
+  // senza ruolo impostato può coprire un buco ovunque, ma solo in emergenza
+  // (prima restava in panchina anche con metà campo vuoto)
+  if (aree.size === 0) return 'emergenza'
   if (aree.has(target)) return 'reparto'
   if ([...aree].some((a) => ADIACENTI[target].includes(a))) return 'emergenza'
   return 'no'

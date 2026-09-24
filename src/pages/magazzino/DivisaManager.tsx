@@ -3,6 +3,7 @@ import { Button, Empty, Flex, Form, Grid, Input, Modal, Popconfirm, Space, Table
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
 import type { Divisa } from '../../types'
+import { ripulisciTesti } from '../../lib/format'
 
 const { Text } = Typography
 
@@ -10,7 +11,7 @@ type Bozza = Pick<Divisa, 'nome' | 'coloreMaglia' | 'colorePantaloncini' | 'colo
 
 /** Un pallino colorato + testo, o un trattino se il colore non è indicato. */
 function Colore({ valore }: { valore?: string }) {
-  if (!valore) return <span style={{ color: '#bbb' }}>—</span>
+  if (!valore) return <span style={{ color: 'var(--testo-2)' }}>—</span>
   return <Tag>{valore}</Tag>
 }
 
@@ -33,10 +34,12 @@ export function DivisaManager() {
   }
   function apriModifica(d: Divisa) {
     setInModifica(d)
+    form.resetFields() // se no i campi facoltativi della divisa precedente restano nel form
     form.setFieldsValue(d)
     setModale(true)
   }
   function salva(valori: Bozza) {
+    valori = ripulisciTesti(valori)
     if (inModifica) update(inModifica.id, valori)
     else add(valori)
     setModale(false)
@@ -108,7 +111,7 @@ export function DivisaManager() {
     <>
       <Flex justify="space-between" align="center" wrap gap={12} style={{ marginBottom: 16 }}>
         <Text>
-          <b>{items.length}</b> divise
+          <b>{items.length}</b> {items.length === 1 ? 'divisa' : 'divise'}
         </Text>
         {items.length > 0 && (
           <Button type="primary" icon={<PlusOutlined />} onClick={apriNuova}>

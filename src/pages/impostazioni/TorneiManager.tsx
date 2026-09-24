@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Button, Card, Empty, Form, Input, List, Modal, Popconfirm, Tag, Typography } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, TrophyOutlined } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
-import type { Torneo } from '../../types'
+import { useEliminaUndo } from '../../hooks/useEliminaUndo'
+import type { Partita, Torneo } from '../../types'
+import { plurale, ripulisciTesti } from '../../lib/format'
 
 const { Text } = Typography
 
@@ -13,7 +15,10 @@ type Bozza = Pick<Torneo, 'nome' | 'girone'>
  * con il rispettivo girone. Nella distinta si scelgono da un elenco a tendina.
  */
 export function TorneiManager() {
-  const { items, add, update, remove } = useCollection<Torneo>('tornei')
+  const tornei = useCollection<Torneo>('tornei')
+  const { items, add, update } = tornei
+  const partite = useCollection<Partita>('partite')
+  const eliminaConUndo = useEliminaUndo()
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Torneo | null>(null)
   const [form] = Form.useForm()
@@ -29,9 +34,18 @@ export function TorneiManager() {
     setModale(true)
   }
   function salva(valori: Bozza) {
+    valori = ripulisciTesti(valori)
     if (inModifica) update(inModifica.id, valori)
     else add(valori)
     setModale(false)
+  }
+
+  // quante partite fanno riferimento al torneo: restano, ma senza competizione
+  function usatoDa(id: string) {
+    const n = partite.items.filter((p) => p.torneoId === id).length
+    return n
+      ? `È usato da ${plurale(n, 'partita', 'partite')}: ${n === 1 ? 'resterà' : 'resteranno'} senza competizione.`
+      : 'Nessuna partita lo usa.'
   }
 
   return (
@@ -73,10 +87,11 @@ export function TorneiManager() {
                 <Popconfirm
                   key="d"
                   title={`Eliminare il torneo ${t.nome}?`}
+                  description={usatoDa(t.id)}
                   okText="Elimina"
                   cancelText="Annulla"
                   okButtonProps={{ danger: true }}
-                  onConfirm={() => remove(t.id)}
+                  onConfirm={() => eliminaConUndo(tornei, t, `Torneo ${t.nome} eliminato`)}
                 >
                   <Button type="text" danger icon={<DeleteOutlined />} />
                 </Popconfirm>,

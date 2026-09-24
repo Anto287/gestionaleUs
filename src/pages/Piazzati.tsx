@@ -83,14 +83,22 @@ export function Piazzati() {
     return (id: string) => m.get(id) ?? ''
   }, [giocatori])
 
-  const assegnate = caselleAssegnate(incarichi)
+  // gli id di ex tesserati (caselle mostrate vuote) non contano come assegnati
+  const assegnate = useMemo(() => {
+    const ids = new Set(giocatori.map((g) => g.id))
+    const validi = Object.fromEntries(
+      Object.entries(incarichi).map(([k, v]) => [k, v.map((id) => (id && ids.has(id) ? id : ''))]),
+    )
+    return caselleAssegnate(validi)
+  }, [incarichi, giocatori])
   const percento = Math.round((assegnate / CASELLE_TOTALI) * 100)
 
-  /** Salva una modifica: la scheda è una sola, si crea alla prima scelta. */
+  /** Salva una modifica: la scheda è una sola, si crea alla prima scelta.
+   *  note assente = lascia quella salvata; stringa vuota = cancellala. */
   function salva(prossimi: Record<string, string[]>, note?: string) {
     const dati = {
       incarichi: prossimi,
-      note: note ?? scheda?.note,
+      note: note === undefined ? scheda?.note : note || undefined,
       aggiornato: oggiIso(),
     }
     if (scheda) schede.update(scheda.id, dati)
@@ -230,7 +238,12 @@ export function Piazzati() {
                         optionFilterProp="label"
                         className="piazzati-select"
                         placeholder={etichettaCasella(inc, i) || 'Chi lo fa'}
-                        value={(incarichi[inc.key] ?? [])[i] || undefined}
+                        value={
+                          // un ex tesserato non è più tra le opzioni: niente id grezzo
+                          opzioni.some((o) => o.value === (incarichi[inc.key] ?? [])[i])
+                            ? (incarichi[inc.key] ?? [])[i]
+                            : undefined
+                        }
                         onChange={(v) => scegli(inc, i, v)}
                         options={opzioni}
                       />
@@ -245,12 +258,14 @@ export function Piazzati() {
 
       <Card title="Note">
         <Input.TextArea
+          // si rimonta quando cambia la nota salvata (dati dal Drive o dopo l'onBlur)
+          key={`${scheda?.id ?? 'nuova'}-${scheda?.note ?? ''}`}
           rows={3}
           placeholder="Schemi particolari, chi chiama il segnale, cosa fare sul 1-0…"
           defaultValue={scheda?.note}
           onBlur={(e) => {
             const testo = e.target.value.trim()
-            if (testo !== (scheda?.note ?? '')) salva(incarichi, testo || undefined)
+            if (testo !== (scheda?.note ?? '')) salva(incarichi, testo)
           }}
         />
         <Text type="secondary" style={{ fontSize: 12.5 }}>

@@ -18,7 +18,7 @@ const chiaro: ThemeConfig = {
     colorLink: '#c22026',
     colorText: '#241d16',
     colorTextSecondary: '#75695a',
-    colorTextTertiary: '#9c9184',
+    colorTextTertiary: '#807361', // era #9c9184: sulla carta non arrivava a 3:1
     colorBgLayout: '#f5f2eb',
     colorBorder: '#dcd2c2',
     colorBorderSecondary: '#ece4d6',
@@ -40,7 +40,7 @@ const chiaro: ThemeConfig = {
     Modal: { borderRadiusLG: 14 },
     Table: {
       headerBg: '#ffffff',
-      headerColor: '#8a7d6b',
+      headerColor: '#7d705e',
       headerSplitColor: 'transparent',
       rowHoverBg: '#faf6ec',
       borderColor: '#efe8da',

@@ -26,7 +26,10 @@ export function PerCategoria({ dati, tipo }: { dati: VoceCategoria[]; tipo: 'ent
             tickLine={false}
             axisLine={{ stroke: COLORI.griglia }}
             tick={{ fontSize: 10.5, fill: COLORI.testo }}
-            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(v))}
+            tickFormatter={(v: number) =>
+              // come nel Bilancio mensile: "1,4k" con la virgola
+              v >= 1000 ? `${(v / 1000).toLocaleString('it-IT', { maximumFractionDigits: 1 })}k` : String(v)
+            }
           />
           <YAxis
             type="category"
@@ -38,7 +41,15 @@ export function PerCategoria({ dati, tipo }: { dati: VoceCategoria[]; tipo: 'ent
           />
           <Tooltip
             formatter={(v) => [formatEuro(Number(v)), tipo === 'entrata' ? 'Entrate' : 'Uscite']}
-            contentStyle={{ borderRadius: 10, border: `1px solid ${COLORI.griglia}`, fontSize: 13 }}
+            contentStyle={{
+              borderRadius: 10,
+              border: `1px solid ${COLORI.griglia}`,
+              fontSize: 13,
+              // seguono il tema (chiaro/scuro)
+              background: 'var(--cartoncino)',
+              color: 'var(--inchiostro)',
+            }}
+            labelStyle={{ color: 'var(--inchiostro)' }}
             cursor={{ fill: 'rgba(194,32,38,0.06)' }}
           />
           <Bar dataKey="importo" fill={colore} radius={[0, 4, 4, 0]} maxBarSize={18} />

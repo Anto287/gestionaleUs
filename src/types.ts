@@ -295,6 +295,8 @@ export interface SpesaCondivisa {
   dataSaldo?: string
   /** id del movimento creato nei Conti al saldo, per toglierlo insieme */
   movimentoId?: string
+  /** al saldo si è scelto di registrarla nei Conti (il movimento segue il conguaglio) */
+  neiConti?: boolean
   /** scontrino o fattura, caricato nella cartella Documenti della stagione */
   scontrino?: Documento
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Col, Empty, Row, Select, Space, Statistic, Tabs, Tag, Typography } from 'antd'
+import { App, Button, Card, Col, Empty, Row, Select, Space, Statistic, Tabs, Tag, Typography } from 'antd'
 import {
   Bar,
   BarChart,
@@ -23,6 +23,7 @@ import { AlboDoro } from './statistiche/AlboDoro'
 import { esportaReportStagione } from './statistiche/report'
 import type { Allenamento, Giocatore, Movimento, Partita, Torneo } from '../types'
 import { plurale } from '../lib/format'
+import { seduteSvolte } from '../lib/allenamenti'
 
 const { Text } = Typography
 
@@ -34,9 +35,12 @@ function labelBreve(iso: string) {
 }
 
 export function Statistiche() {
+  const { message } = App.useApp()
   const { items: partite } = useCollection<Partita>('partite')
   const { items: giocatori } = useCollection<Giocatore>('giocatori')
-  const { items: allenamenti } = useCollection<Allenamento>('allenamenti')
+  const { items: tutteLeSedute } = useCollection<Allenamento>('allenamenti')
+  // le sedute future (create in anticipo dal calendario) non contano ancora
+  const allenamenti = useMemo(() => seduteSvolte(tutteLeSedute), [tutteLeSedute])
   const { items: conti } = useCollection<Movimento>('conti')
   const { items: tornei } = useCollection<Torneo>('tornei')
   const { attiva } = useSeason()
@@ -68,6 +72,12 @@ export function Statistiche() {
     [tornei, partite],
   )
   const ciSonoAmichevoli = useMemo(() => partite.some((p) => p.amichevole), [partite])
+  // amichevoli comprese nella selezione (non ha senso dirlo col filtro "Amichevoli")
+  const nAmichevoli =
+    competizione === 'amichevoli' ? 0 : giocate.filter((p) => p.amichevole).length
+  const diCuiAmichevoli = nAmichevoli
+    ? ` (di cui ${plurale(nAmichevoli, 'amichevole', 'amichevoli')})`
+    : ''
   const nomeCompetizione =
     competizione === 'tutte'
       ? undefined
@@ -118,10 +128,11 @@ export function Statistiche() {
     [giocate],
   )
 
-  // classifiche individuali (solo giocatori, dai tabellini delle partite)
+  // classifiche individuali (dai tabellini delle partite)
   const { marcatori, assist, disciplina } = useMemo(() => {
-    const soloGiocatori = giocatori.filter(isGiocatore)
-    const stats = soloGiocatori.map((g) => ({
+    // tutti i tesserati: chi è passato dirigente dopo aver segnato resta in
+    // classifica (le righe a zero vengono comunque filtrate sotto)
+    const stats = giocatori.map((g) => ({
       g,
       nome: `${g.cognome} ${g.nome}`,
       s: statisticheGiocatore(g.id, giocate),
@@ -154,8 +165,8 @@ export function Statistiche() {
   const nConPresenze = useMemo(() => partiteConPresenze(giocate), [giocate])
   const presenzePartita: RigaClassifica[] = useMemo(() => {
     if (!nConPresenze) return []
+    // anche i non-giocatori con presenze > 0 (es. riclassificati dirigenti)
     return giocatori
-      .filter(isGiocatore)
       .map((g) => {
         const s = statisticheGiocatore(g.id, giocate)
         return {
@@ -192,12 +203,16 @@ export function Statistiche() {
   async function esporta() {
     setEsportando(true)
     try {
-      const entrate = conti.filter((m) => m.saldato && m.tipo === 'entrata').reduce((s, m) => s + m.importo, 0)
-      const uscite = conti.filter((m) => m.saldato && m.tipo === 'uscita').reduce((s, m) => s + m.importo, 0)
+      // conti è una raccolta globale: solo i movimenti della stagione (luglio-giugno)
+      const anno = Number(attiva.slice(0, 4))
+      const diStagione = conti.filter((m) => m.data >= `${anno}-07-01` && m.data <= `${anno + 1}-06-30`)
+      const entrate = diStagione.filter((m) => m.saldato && m.tipo === 'entrata').reduce((s, m) => s + m.importo, 0)
+      const uscite = diStagione.filter((m) => m.saldato && m.tipo === 'uscita').reduce((s, m) => s + m.importo, 0)
       await esportaReportStagione({
         stagione: attiva,
         competizione: nomeCompetizione,
         giocate,
+        amichevoli: nAmichevoli,
         record,
         marcatori: marcatori.map((r) => ({ nome: r.nome, n: r.presenze })),
         assist: assist.map((r) => ({ nome: r.nome, n: r.presenze })),
@@ -206,6 +221,9 @@ export function Statistiche() {
         totaleSedute: allenamenti.length,
         bilancio: { entrate, uscite, saldo: entrate - uscite },
       })
+    } catch (e) {
+      console.error(e)
+      message.error('Non sono riuscito a creare il report. Riprova.')
     } finally {
       setEsportando(false)
     }
@@ -232,7 +250,7 @@ export function Statistiche() {
         </Col>
         <Col xs={12} sm={6}>
           <Card className="stat-card">
-            <Statistic title="Pareggi" value={record.p} valueStyle={{ color: '#9a6b1e' }} />
+            <Statistic title="Pareggi" value={record.p} valueStyle={{ color: 'var(--ocra)' }} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
@@ -313,7 +331,9 @@ export function Statistiche() {
                   contentStyle={{ borderRadius: 10, border: `1px solid ${COLORI.griglia}`, fontSize: 13 }}
                   cursor={{ fill: 'rgba(194,32,38,0.06)' }}
                 />
-                <Legend wrapperStyle={{ fontSize: 12.5 }} />
+                <Legend wrapperStyle={{ fontSize: 12.5 }}
+                formatter={(v) => <span style={{ color: 'var(--inchiostro)' }}>{v}</span>}
+              />
                 <Bar dataKey="fatti" name="Gol fatti" fill={COLORI.verde} radius={[4, 4, 0, 0]} maxBarSize={22} />
                 <Bar dataKey="subiti" name="Gol subiti" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={22} />
               </BarChart>
@@ -384,7 +404,7 @@ export function Statistiche() {
           tab === 'albo'
             ? "Record e campioni di tutte le stagioni"
             : giocate.length
-              ? `${plurale(giocate.length, 'partita giocata', 'partite giocate')} nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`
+              ? `${plurale(giocate.length, 'partita giocata', 'partite giocate')}${diCuiAmichevoli} nella stagione ${attiva}${nomeCompetizione ? ` · ${nomeCompetizione}` : ''}`
               : undefined
         }
         azioni={

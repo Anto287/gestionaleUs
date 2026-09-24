@@ -80,9 +80,9 @@ export function Campo({
                 title={`Chi gioca ${s.role}?`}
                 content={
                   <div className="campo-pop">
-                    <div style={{ color: '#75695a', marginBottom: 8, fontSize: 12 }}>{ruoloLabel}</div>
+                    <div style={{ color: 'var(--testo-2)', marginBottom: 8, fontSize: 12 }}>{ruoloLabel}</div>
                     {candidati.length === 0 ? (
-                      <div style={{ color: '#75695a' }}>Nessuno in panchina per questo ruolo.</div>
+                      <div style={{ color: 'var(--testo-2)' }}>Nessuno in panchina per questo ruolo.</div>
                     ) : (
                       <div className="campo-pop-lista">
                         {candidati.map((c) => {
@@ -125,11 +125,11 @@ export function Campo({
                 <div className="campo-pop">
                   <div style={{ marginBottom: 6 }}>
                     <Tag color="default">{s.role}</Tag>
-                    <span style={{ color: '#75695a', fontSize: 12 }}>{ruoloLabel}</span>
+                    <span style={{ color: 'var(--testo-2)', fontSize: 12 }}>{ruoloLabel}</span>
                   </div>
                   <Rate disabled value={g?.bravura ?? 0} style={{ fontSize: 15 }} />
                   {et && (
-                    <div style={{ marginTop: 6, fontSize: 12, color: a.fit === 'emergenza' ? '#b1352f' : '#9a6b1e' }}>
+                    <div style={{ marginTop: 6, fontSize: 12, color: a.fit === 'emergenza' ? 'var(--rosso-testo)' : 'var(--ocra)' }}>
                       Fuori ruolo ({et}) — ruolo naturale {g?.ruoloPreferito ?? '—'}
                     </div>
                   )}

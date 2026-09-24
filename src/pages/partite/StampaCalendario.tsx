@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  App,
   Button,
   Checkbox,
   Col,
@@ -14,13 +15,12 @@ import {
   Space,
   Switch,
   Typography,
-  message,
 } from 'antd'
 import { FilePdfOutlined, PictureOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { FiltroCampo } from '../../components/FiltriDrawer'
 import { formatData, isoDa, oggiIso } from '../../lib/format'
-import type { Partita, Torneo } from '../../types'
+import type { Allenamento, Appuntamento, Partita, Torneo } from '../../types'
 import {
   blocchiCalendario,
   esportaCalendarioPdf,
@@ -137,13 +137,21 @@ export function StampaCalendario({
   partite,
   tornei,
   stagione,
+  allenamenti,
+  appuntamenti,
 }: {
   open: boolean
   onClose: () => void
   partite: Partita[]
   tornei: Torneo[]
   stagione: string
+  /** dal Calendario: si possono mettere nel foglio anche gli allenamenti */
+  allenamenti?: Allenamento[]
+  /** dal Calendario: gli impegni a mano, stampati come partite in programma */
+  appuntamenti?: Appuntamento[]
 }) {
+  const { message } = App.useApp()
+  const daCalendario = !!allenamenti
   const screens = Grid.useBreakpoint()
   const [preset, setPreset] = useState<Preset>('stagione')
   const [scelto, setScelto] = useState<[string, string] | null>(null)
@@ -156,16 +164,44 @@ export function StampaCalendario({
   const [colonne, setColonne] = useState<Colonna[]>(['ora', 'competizione'])
   const [evidenziaCasa, setEvidenziaCasa] = useState(true)
   const [mesePerPagina, setMesePerPagina] = useState(true)
-  const [titolo, setTitolo] = useState('Calendario partite')
+  const [conAllenamenti, setConAllenamenti] = useState(true)
+  const [titolo, setTitolo] = useState(daCalendario ? 'Calendario impegni' : 'Calendario partite')
   const [nota, setNota] = useState('')
   const [esportando, setEsportando] = useState<'pdf' | 'png' | null>(null)
 
   const [da, a] = intervallo(preset, stagione, scelto, conGiocate)
   const nomeTorneo = (id?: string) => tornei.find((t) => t.id === id)?.nome
 
+  // gli impegni a mano del calendario diventano partite in programma; se uno
+  // ha stessa data e avversario di una partita è la stessa gara: resta la partita
+  const tutte = useMemo(() => {
+    const chiave = (data: string, avv: string) => `${data}|${avv.trim().toLowerCase().replace(/\s+/g, ' ')}`
+    const gia = new Set(partite.map((p) => chiave(p.data, p.avversario)))
+    return [
+      ...partite,
+      ...(appuntamenti ?? []).filter((ap) => !gia.has(chiave(ap.data, ap.avversario))).map(
+        (ap): Partita => ({
+          id: `ap-${ap.id}`,
+          data: ap.data,
+          ora: ap.ora,
+          avversario: ap.avversario,
+          inCasa: ap.inCasa,
+          giocata: false,
+          golFatti: 0,
+          golSubiti: 0,
+          note: ap.luogo,
+          marcatori: [],
+          assist: [],
+          ammoniti: [],
+          espulsi: [],
+        }),
+      ),
+    ]
+  }, [partite, appuntamenti])
+
   const selezionate = useMemo(
     () =>
-      partite.filter((p) => {
+      tutte.filter((p) => {
         if (p.data < da || p.data > a) return false
         if (!conGiocate && p.giocata !== false) return false
         if (torneiF.length && !torneiF.includes(p.torneoId ?? '')) return false
@@ -175,8 +211,15 @@ export function StampaCalendario({
         if (dove === 'trasferta' && p.inCasa) return false
         return true
       }),
-    [partite, da, a, conGiocate, torneiF, tipo, dove],
+    [tutte, da, a, conGiocate, torneiF, tipo, dove],
   )
+
+  const seduteSel = useMemo(() => {
+    if (!allenamenti || !conAllenamenti) return undefined
+    const oggi = oggiIso()
+    // senza le "già giocate" restano fuori anche le sedute passate
+    return allenamenti.filter((s) => s.data >= da && s.data <= a && (conGiocate || s.data >= oggi))
+  }, [allenamenti, conAllenamenti, da, a, conGiocate])
 
   const sottotitolo = [
     `Stagione ${stagione}`,
@@ -196,6 +239,7 @@ export function StampaCalendario({
       titolo,
       sottotitolo,
       partite: selezionate,
+      allenamenti: seduteSel,
       da,
       a,
       impaginazione,
@@ -207,7 +251,7 @@ export function StampaCalendario({
       nomeTorneo,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [titolo, sottotitolo, selezionate, da, a, impaginazione, orizzontale, colonneEff.join(), evidenziaCasa, mesePerPagina, nota, tornei],
+    [titolo, sottotitolo, selezionate, seduteSel, da, a, impaginazione, orizzontale, colonneEff.join(), evidenziaCasa, mesePerPagina, nota, tornei],
   )
 
   function cambiaImpaginazione(v: Impaginazione) {
@@ -231,7 +275,7 @@ export function StampaCalendario({
 
   return (
     <Modal
-      title="Stampa calendario partite"
+      title={daCalendario ? 'Stampa calendario' : 'Stampa calendario partite'}
       open={open}
       onCancel={onClose}
       width={screens.lg ? 1100 : undefined}
@@ -280,9 +324,16 @@ export function StampaCalendario({
 
           <div style={{ marginTop: 12 }}>
             <Checkbox checked={conGiocate} onChange={(e) => setConGiocate(e.target.checked)}>
-              Includi anche le partite già giocate
+              {daCalendario ? 'Includi anche partite giocate e allenamenti passati' : 'Includi anche le partite già giocate'}
             </Checkbox>
           </div>
+          {daCalendario && (
+            <div style={{ marginTop: 6 }}>
+              <Checkbox checked={conAllenamenti} onChange={(e) => setConAllenamenti(e.target.checked)}>
+                Includi gli allenamenti
+              </Checkbox>
+            </div>
+          )}
 
           {tornei.length > 0 && (
             <div style={{ marginTop: 12 }}>
@@ -405,6 +456,7 @@ export function StampaCalendario({
             <Text strong>Anteprima</Text>
             <Text type="secondary">
               {selezionate.length === 1 ? '1 partita' : `${selezionate.length} partite`}
+              {seduteSel && ` · ${seduteSel.length === 1 ? '1 allenamento' : `${seduteSel.length} allenamenti`}`}
             </Text>
           </div>
           <div className="calendario-anteprima-scroll">

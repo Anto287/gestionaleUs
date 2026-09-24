@@ -22,7 +22,7 @@ export function EventoEditor({
 }) {
   const nome = (id: string) => {
     const g = rosa.find((x) => x.id === id)
-    return g ? `${g.cognome} ${g.nome}` : '—'
+    return g ? `${g.cognome} ${g.nome}` : 'Ex tesserato'
   }
   const disponibili = rosa.filter(
     (g) => isGiocatore(g) && !value.some((v) => v.giocatoreId === g.id),

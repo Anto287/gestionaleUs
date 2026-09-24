@@ -117,10 +117,22 @@ export function pulisciCacheDati(): void {
   for (const k of keysWithPrefix(CACHE_DATI)) removeValue(k)
 }
 
+/**
+ * Toglie dal browser tutto quello che resta di una stagione eliminata: le
+ * copie locali delle raccolte e, senza Drive, le raccolte stesse.
+ */
+export function pulisciCacheStagione(season: string): void {
+  if (!season) return
+  for (const k of keysWithPrefix(cacheKey('', season))) removeValue(k)
+  for (const k of keysWithPrefix(lsKey('', season))) removeValue(k)
+}
+
 // --- lettura ---
 
 export async function list<T>(collection: string, season: string): Promise<T[]> {
   if (!DRIVE_URL) return loadCollection<T>(lsKey(collection, season))
+  // prima le scritture già partite: sennò si rilegge la versione vecchia
+  await attendiScritture()
   // lettura via POST: la chiave resta nel corpo, fuori dall'URL
   const data = await post({ action: 'list', collection, season: seasonKey(season) })
   return (data.items ?? []) as T[]
@@ -146,6 +158,8 @@ export async function listAll(
   richieste: Richiesta[],
 ): Promise<Record<string, unknown[]> | null> {
   if (!DRIVE_URL) return null
+  // prima le scritture già partite: sennò si rilegge la versione vecchia
+  await attendiScritture()
   const data = await callDrive({
     action: 'listAll',
     richieste: richieste.map((r) => ({ collection: r.collection, season: seasonKey(r.season) })),
@@ -166,6 +180,17 @@ function inCoda<T>(fn: () => Promise<T>): Promise<T> {
   const run = coda.then(fn, fn)
   coda = run.catch(() => undefined)
   return run as Promise<T>
+}
+
+/**
+ * Si risolve quando le scritture in coda adesso sono finite (bene o male).
+ * Da NON chiamare dentro una funzione messa in coda: aspetterebbe se stessa.
+ */
+export function attendiScritture(): Promise<void> {
+  return coda.then(
+    () => undefined,
+    () => undefined,
+  )
 }
 
 /**
@@ -290,6 +315,8 @@ export function setSeasonsConfig(stagioni: string[], attiva: string): Promise<vo
   }
   return inCoda(async () => {
     await post({ action: 'setSeasons', stagioni, attiva })
+    // allinea anche l'elenco tenuto nel browser per la prossima apertura
+    saveValue(SEASONS_CFG_KEY, JSON.stringify({ stagioni, attiva }))
   })
 }
 
@@ -359,6 +386,12 @@ export function uploadGrafica(nome: string, dataBase64: string): Promise<DocMeta
   })
 }
 
+/** Byte veri di un file in base64 (i caratteri "=" finali sono solo riempimento). */
+function byteDaBase64(b64: string): number {
+  const riempimento = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0
+  return Math.floor((b64.length * 3) / 4) - riempimento
+}
+
 export function uploadDoc(
   season: string,
   nome: string,
@@ -372,7 +405,7 @@ export function uploadDoc(
       id: crypto.randomUUID(),
       nome,
       tipo,
-      dimensione: Math.round(dataBase64.length * 0.75),
+      dimensione: byteDaBase64(dataBase64),
       caricatoIl: oggiIso(),
       dataUrl: `data:${tipo};base64,${dataBase64}`,
     }
@@ -497,7 +530,7 @@ export function archivioUpload(
       id: crypto.randomUUID(),
       nome,
       tipo,
-      dimensione: Math.round(dataBase64.length * 0.75),
+      dimensione: byteDaBase64(dataBase64),
       caricatoIl: oggiIso(),
       dataUrl: `data:${tipo};base64,${dataBase64}`,
     }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, Empty, Segmented, Space, Tag, Typography } from 'antd'
 import { ThunderboltOutlined, ClearOutlined, InstagramOutlined } from '@ant-design/icons'
@@ -6,6 +6,8 @@ import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { coloreRuolo } from '../ruoli'
 import { isGiocatore } from '../lib/categoria'
+import { seduteSvolte } from '../lib/allenamenti'
+import { statoCertificato } from '../lib/certificato'
 import {
   MODULI,
   generaFormazione,
@@ -30,10 +32,11 @@ export function Formazione() {
 
   const modulo = MODULI.find((m) => m.id === moduloId) ?? MODULI[0]
 
-  // presenze cumulative agli allenamenti (spinta minore nella scelta)
+  // presenze cumulative agli allenamenti (spinta minore nella scelta);
+  // le sedute future create dal calendario non contano
   const presenze = useMemo(() => {
     const c: Record<string, number> = {}
-    for (const a of allenamenti.items) {
+    for (const a of seduteSvolte(allenamenti.items)) {
       for (const [id, presente] of Object.entries(a.presenze)) {
         if (presente) c[id] = (c[id] ?? 0) + 1
       }
@@ -52,6 +55,17 @@ export function Formazione() {
   const infortunati = useMemo(
     () => giocatori.items.filter((g) => isGiocatore(g) && !!g.tessera && g.infortunato),
     [giocatori.items],
+  )
+  // chi non ha ancora la tessera non si può schierare: meglio dirlo che farlo sparire
+  const senzaTessera = useMemo(
+    () => giocatori.items.filter((g) => isGiocatore(g) && !g.tessera?.trim()),
+    [giocatori.items],
+  )
+
+  // certificato mancante o scaduto: si possono schierare lo stesso, ma lo si segnala
+  const certificatoCritico = useMemo(
+    () => new Set(tesserati.filter((g) => statoCertificato(g).critico).map((g) => g.id)),
+    [tesserati],
   )
 
   const byId = useMemo(() => new Map(tesserati.map((g) => [g.id, g])), [tesserati])
@@ -76,6 +90,14 @@ export function Formazione() {
       .map((g) => g.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titolari, disponibili, presenze])
+
+  // chi viene tolto dai disponibili esce anche dai titolari (e dalla grafica IG)
+  useEffect(() => {
+    const ok = new Set(disponibili.map((g) => g.id))
+    setTitolari((t) =>
+      t && t.some((a) => a && !ok.has(a.giocatoreId)) ? t.map((a) => (a && !ok.has(a.giocatoreId) ? null : a)) : t,
+    )
+  }, [disponibili])
 
   function toggle(id: string) {
     setSelezione((s) => {
@@ -226,6 +248,11 @@ export function Formazione() {
                 onClick={() => toggle(g.id)}
               >
                 {g.cognome} {g.nome[0] ? g.nome[0] + '.' : ''}
+                {certificatoCritico.has(g.id) && (
+                  <span title={`Certificato: ${statoCertificato(g).label}`} style={{ marginLeft: 2 }}>
+                    ⚠️
+                  </span>
+                )}
                 {g.ruoloPreferito && (
                   <span style={{ opacity: 0.75, fontSize: 12, marginLeft: 2 }}>· {g.ruoloPreferito}</span>
                 )}
@@ -238,6 +265,25 @@ export function Formazione() {
             <Text type="secondary" style={{ fontSize: 12.5 }}>
               🚑 Esclusi perché infortunati:{' '}
               {infortunati.map((g) => `${g.cognome}${g.rientroInfortunio ? ` (rientro ${g.rientroInfortunio.split('-').reverse().join('/')})` : ''}`).join(', ')}
+            </Text>
+          </div>
+        )}
+        {certificatoCritico.size > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <Text type="secondary" style={{ fontSize: 12.5 }}>
+              ⚠️ Certificato da regolarizzare:{' '}
+              {tesserati
+                .filter((g) => certificatoCritico.has(g.id))
+                .map((g) => `${g.cognome.trim()} ${g.nome.trim().charAt(0)}. (${statoCertificato(g).label.toLowerCase()})`)
+                .join(', ')}
+            </Text>
+          </div>
+        )}
+        {senzaTessera.length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <Text type="secondary" style={{ fontSize: 12.5 }}>
+              🪪 Non in elenco perché senza numero di tessera:{' '}
+              {senzaTessera.map((g) => `${g.cognome.trim()} ${g.nome.trim().charAt(0)}.`).join(', ')}
             </Text>
           </div>
         )}

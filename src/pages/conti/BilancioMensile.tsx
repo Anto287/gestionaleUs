@@ -68,7 +68,15 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
       />
       <Tooltip
         formatter={(v, name) => [formatEuro(Number(v)), name]}
-        contentStyle={{ borderRadius: 10, border: `1px solid ${COLORI.griglia}`, fontSize: 13 }}
+        contentStyle={{
+          borderRadius: 10,
+          border: `1px solid ${COLORI.griglia}`,
+          fontSize: 13,
+          // seguono il tema (chiaro/scuro)
+          background: 'var(--cartoncino)',
+          color: 'var(--inchiostro)',
+        }}
+        labelStyle={{ color: 'var(--inchiostro)' }}
         cursor={{ fill: 'rgba(36,29,22,0.04)' }}
       />
     </>
@@ -91,7 +99,10 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
           ) : (
             <BarChart data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
               {assi}
-              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
+                // il pallino resta del colore della serie, il testo segue il tema
+                formatter={(v) => <span style={{ color: 'var(--inchiostro)' }}>{v}</span>}
+              />
               <Bar dataKey="entrate" name="Entrate" fill={COLORI.verde} radius={[4, 4, 0, 0]} maxBarSize={28} />
               <Bar dataKey="uscite" name="Uscite" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>

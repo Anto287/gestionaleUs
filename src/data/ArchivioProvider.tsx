@@ -14,6 +14,7 @@ import {
   agganciaArchivio,
   chiaveFile,
   chiaveTesserato,
+  nascitaIso,
   type Aggancio,
   type Cartella,
   type FileArchivio,
@@ -155,7 +156,7 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
   }, [tentativo])
 
   const tesserati = useMemo<Tesserato[]>(
-    () => giocatori.map((g) => ({ id: g.id, nome: g.nome, cognome: g.cognome, nascita: g.nascita })),
+    () => giocatori.map((g) => ({ id: g.id, nome: g.nome, cognome: g.cognome, nascita: nascitaIso(g.nascita) })),
     [giocatori],
   )
 

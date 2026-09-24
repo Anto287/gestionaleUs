@@ -643,7 +643,7 @@ export function Editor({
     const piedeEl = scena.elementi.find(
       (e): e is ElTesto => e.tipo === 'testo' && e.chiave === 'piede',
     )
-    salvaPrefs(input.kind, {
+    const ok = salvaPrefs(input.kind, {
       tema: scena.tema,
       accento: scena.accento,
       piede: piedeEl?.testo,
@@ -653,6 +653,10 @@ export function Editor({
       fascia: scena.fascia,
       cornice: scena.cornice,
     })
+    if (!ok) {
+      message.warning('Stile non salvato: lo spazio del browser è pieno (prova con una foto di sfondo più leggera)')
+      return
+    }
     message.success(`Stile salvato per «${nomeKind}»`)
   }
   function azzeraDefault() {

@@ -60,7 +60,15 @@ export function AffluenzaChart({
       />
       <Tooltip
         formatter={(v) => [`${v} / ${scala}`, 'Presenti']}
-        contentStyle={{ borderRadius: 10, border: `1px solid ${COLORI.griglia}`, fontSize: 13 }}
+        // colori dal tema: di serie è sfondo bianco, e in tema scuro il testo chiaro spariva
+        contentStyle={{
+          borderRadius: 10,
+          border: `1px solid ${COLORI.griglia}`,
+          fontSize: 13,
+          background: 'var(--cartoncino)',
+          color: 'var(--inchiostro)',
+        }}
+        labelStyle={{ color: 'var(--inchiostro)' }}
         cursor={{ fill: 'rgba(194,32,38,0.06)' }}
       />
       {media > 0 && (

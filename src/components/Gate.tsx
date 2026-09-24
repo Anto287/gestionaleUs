@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Card, Form, Input, Typography, Alert } from 'antd'
 import { config } from '../config'
 import { useAuth } from '../auth/AuthContext'
+import { seasonsConfigCache } from '../services/driveStore'
 
 const { Title, Text } = Typography
 
@@ -60,7 +61,8 @@ export function Gate() {
         </Form>
       </Card>
       <Text type="secondary" className="gate-foot">
-        Stagione {config.season}
+        {/* il Gate sta fuori dal SeasonProvider: si usa l'ultima stagione attiva nota */}
+        Stagione {seasonsConfigCache()?.attiva || config.season}
       </Text>
     </div>
   )

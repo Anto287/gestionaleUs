@@ -46,7 +46,7 @@ function isGoogleFile(d: Documento) {
 }
 
 function iconaDoc(d: Documento) {
-  const style = { fontSize: 22, color: '#c22026' }
+  const style = { fontSize: 22, color: 'var(--rosso)' }
   if (d.tipo === 'application/vnd.google-apps.spreadsheet') return <TableOutlined style={style} />
   if (d.tipo === 'application/vnd.google-apps.document') return <FileTextOutlined style={style} />
   return <FileOutlined style={style} />
@@ -65,7 +65,9 @@ export function Documenti() {
   const { message } = AntApp.useApp()
   const screens = Grid.useBreakpoint()
   const isMobile = !screens.sm
-  const [caricando, setCaricando] = useState(false)
+  // caricamenti in corso: con più file insieme il primo che finisce non spegne gli altri
+  const [inCorso, setInCorso] = useState(0)
+  const caricando = inCorso > 0
   const [q, setQ] = useState('')
   // creazione: tipo scelto dal menu, nome chiesto nel modale
   const [tipoNuovo, setTipoNuovo] = useState<TipoNuovo | null>(null)
@@ -84,9 +86,14 @@ export function Documenti() {
   )
 
   async function carica(file: File) {
-    setCaricando(true)
-    await uploadDoc(file)
-    setCaricando(false)
+    setInCorso((n) => n + 1)
+    try {
+      // gli errori li segnala già uploadDoc: qui solo la conferma
+      const meta = await uploadDoc(file)
+      if (meta) message.success(`"${meta.nome}" caricato.`)
+    } finally {
+      setInCorso((n) => n - 1)
+    }
   }
 
   async function crea() {
@@ -111,7 +118,10 @@ export function Documenti() {
       const a = document.createElement('a')
       a.href = d.dataUrl
       a.download = d.nome
+      // alcuni browser scaricano solo se il link è nella pagina
+      document.body.appendChild(a)
       a.click()
+      a.remove()
     }
   }
 

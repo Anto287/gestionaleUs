@@ -139,7 +139,7 @@ export function CopiaLista({
                   value={entroGiorni}
                   onChange={setEntroGiorni}
                   placeholder="Scade entro…"
-                  addonAfter="gg"
+                  suffix="gg"
                   style={{ width: 170 }}
                 />
               )}

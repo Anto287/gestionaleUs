@@ -56,19 +56,25 @@ export function PartitaDettaglio() {
   )
   const nomeDi = (gid: string) => {
     const g = rosa.find((x) => x.id === gid)
-    return g ? `${g.cognome} ${g.nome}` : 'Un ex tesserato'
+    return g ? `${g.cognome} ${g.nome}` : 'Ex tesserato'
   }
   // i dirigenti puri non giocano: si propongono solo i giocatori, ma chi è già
   // segnato (es. riclassificato dirigente in seguito) resta visibile col suo nome.
   // `esclusi` toglie chi è già nell'altro ruolo (titolare <-> subentrato).
-  const opzioniGiocatori = (selezionati: string[], esclusi: string[] = []) =>
-    rosa
+  // Gli id di tesserati eliminati restano come "Ex tesserato" (non come UUID),
+  // così si possono ancora togliere.
+  const opzioniGiocatori = (selezionati: string[], esclusi: string[] = []) => [
+    ...rosa
       .filter(
         (g) =>
           (isGiocatore(g) || selezionati.includes(g.id)) &&
           (!esclusi.includes(g.id) || selezionati.includes(g.id)),
       )
-      .map((g) => ({ value: g.id, label: `${g.cognome} ${g.nome}` }))
+      .map((g) => ({ value: g.id, label: `${g.cognome} ${g.nome}` })),
+    ...selezionati
+      .filter((sid) => !rosa.some((g) => g.id === sid))
+      .map((sid) => ({ value: sid, label: 'Ex tesserato' })),
+  ]
 
   if (!p) {
     return (
@@ -99,6 +105,8 @@ export function PartitaDettaglio() {
   const problemi = problemiPartita(p, nomeDi)
 
   function apriModifica() {
+    // via i valori (e gli errori) di un'apertura precedente
+    form.resetFields()
     form.setFieldsValue({ ...p!, amichevole: !!p!.amichevole, giocata: p!.giocata !== false })
     setModale(true)
   }
@@ -396,12 +404,18 @@ export function PartitaDettaglio() {
               ]}
             />
           </Form.Item>
-          {tornei.items.length > 0 && (
+          {(tornei.items.length > 0 || !!p.torneoId) && (
             <Form.Item label="Competizione (facoltativa)" name="torneoId">
               <Select
                 allowClear
                 placeholder="es. Campionato, Coppa…"
-                options={tornei.items.map((t) => ({ value: t.id, label: t.nome }))}
+                options={[
+                  ...tornei.items.map((t) => ({ value: t.id, label: t.nome })),
+                  // competizione cancellata: niente UUID nel campo
+                  ...(p.torneoId && !tornei.items.some((t) => t.id === p.torneoId)
+                    ? [{ value: p.torneoId, label: 'Torneo eliminato' }]
+                    : []),
+                ]}
               />
             </Form.Item>
           )}

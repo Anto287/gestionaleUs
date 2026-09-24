@@ -121,10 +121,10 @@ export function PdfExporter({
               }`.trim()
               return `<tr style="height: 28px;">
               <td style="border: 1px solid #000; padding: 5px; text-align: center;">${mansNum}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${cognomeNome}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${raw?.DataNascita || ''}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${raw?.Tessera || ''}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${raw?.DataRilascio || ''}</td>
+              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(cognomeNome)}</td>
+              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(raw?.DataNascita)}</td>
+              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(raw?.Tessera)}</td>
+              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(raw?.DataRilascio)}</td>
             </tr>`
             })
             .join('')}

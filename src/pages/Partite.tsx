@@ -26,7 +26,7 @@ import { useAggancioLista } from '../hooks/useAggancioLista'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData, oggiIso } from '../lib/format'
+import { formatData, oggiIso, plurale } from '../lib/format'
 import { REGEX_ORA } from '../lib/partita'
 import type { Partita, Torneo } from '../types'
 import { useSeason } from '../season/SeasonContext'
@@ -82,7 +82,10 @@ export function Partite() {
       .map((k) => ({ value: k, label: labelMese(k) }))
   }, [partite])
 
-  const nFiltri = [dove, esitoF, meseF, portaF, statoF, torneoF, tipoF].filter(Boolean).length
+  // un torneo eliminato nel frattempo non deve restare come filtro (mostrerebbe l'id)
+  const torneoFiltro = torneoF && tornei.items.some((t) => t.id === torneoF) ? torneoF : undefined
+
+  const nFiltri = [dove, esitoF, meseF, portaF, statoF, torneoFiltro, tipoF].filter(Boolean).length
   function azzeraFiltri() {
     setDove(undefined)
     setEsitoF(undefined)
@@ -110,12 +113,12 @@ export function Partite() {
         if (portaF === 'inviolata' && p.golSubiti !== 0) return false
         if (portaF === 'subito' && p.golSubiti === 0) return false
         if (meseF && p.data.slice(0, 7) !== meseF) return false
-        if (torneoF && p.torneoId !== torneoF) return false
+        if (torneoFiltro && p.torneoId !== torneoFiltro) return false
         if (tipoF === 'ufficiali' && p.amichevole) return false
         if (tipoF === 'amichevoli' && !p.amichevole) return false
         return true
       }),
-    [partite, q, dove, esitoF, meseF, portaF, statoF, torneoF, tipoF],
+    [partite, q, dove, esitoF, meseF, portaF, statoF, torneoFiltro, tipoF],
   )
 
   function apriNuova() {
@@ -233,7 +236,7 @@ export function Partite() {
     <>
       <PageHeader
         titolo="Partite"
-        sottotitolo={`${items.length} partite · tocca per marcatori e cartellini`}
+        sottotitolo={`${plurale(items.length, 'partita', 'partite')} · tocca per marcatori e cartellini`}
         azioni={
           items.length > 0 && (
             <Space wrap>
@@ -325,7 +328,7 @@ export function Partite() {
                   <Select
                     allowClear
                     placeholder="Tutte"
-                    value={torneoF}
+                    value={torneoFiltro}
                     onChange={setTorneoF}
                     style={{ width: '100%' }}
                     options={tornei.items.map((t) => ({ value: t.id, label: t.nome }))}
@@ -361,6 +364,7 @@ export function Partite() {
           </div>
           {isMobile ? (
             <div className="lista-mobile">
+              {filtrate.length === 0 && <Empty description="Nessuna partita con questi filtri" />}
               {filtrate.map((p) => {
                 const programma = inProgramma(p)
                 const e = esito(p)
@@ -447,7 +451,13 @@ export function Partite() {
                 rules={[{ required: true, message: 'Scegli la data' }]}
                 {...propsCampoData}
               >
-                <DataPicker />
+                <DataPicker
+                  // una data futura è di solito una partita in programma: l'interruttore
+                  // si spegne da solo, ma si può riaccendere a mano
+                  onChange={(d) => {
+                    if (d && d.format('YYYY-MM-DD') > oggiIso()) form.setFieldValue('giocata', false)
+                  }}
+                />
               </Form.Item>
             </Col>
             <Col span={10}>

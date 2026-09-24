@@ -10,7 +10,7 @@ import {
 import { useArchivio } from '../../data/ArchivioProvider'
 import { AnteprimaFile } from './AnteprimaFile'
 import { CaricaFile, type AperturaCarica } from './CaricaFile'
-import type { FileArchivio } from '../../lib/archivio'
+import { nascitaIso, type FileArchivio } from '../../lib/archivio'
 import type { Giocatore } from '../../types'
 
 const { Text } = Typography
@@ -87,7 +87,7 @@ export function ArchivioTesserato({ giocatore }: { giocatore: Giocatore }) {
   // lo script del Drive non conosce ancora l'archivio: sezione nascosta
   if (stato === 'assente') return null
 
-  const ambiguo = omonimo(giocatore) && !giocatore.nascita
+  const ambiguo = omonimo(giocatore) && !nascitaIso(giocatore.nascita)
 
   return (
     <Card

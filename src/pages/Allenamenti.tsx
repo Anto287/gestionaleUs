@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   App as AntApp,
   Button,
@@ -16,6 +17,7 @@ import {
   Segmented,
   Select,
   Space,
+  Tag,
   Statistic,
   Typography,
 } from 'antd'
@@ -38,6 +40,7 @@ import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData, oggiIso, plurale } from '../lib/format'
+import { seduteSvolte } from '../lib/allenamenti'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { isGiocatore } from '../lib/categoria'
 import { coloreAffluenza } from '../lib/chart'
@@ -72,7 +75,9 @@ export function Allenamenti() {
   const { message } = AntApp.useApp()
   const [modaleNuova, setModaleNuova] = useState(false)
   const [modaleRicorrenti, setModaleRicorrenti] = useState(false)
-  const [apertaId, setApertaId] = useState<string | null>(null)
+  // dal Calendario si arriva con ?seduta=<id>: si apre subito quella seduta
+  const [searchParams] = useSearchParams()
+  const [apertaId, setApertaId] = useState<string | null>(() => searchParams.get('seduta'))
   const [esportando, setEsportando] = useState(false)
   const [tipoChart, setTipoChart] = useState<TipoAffluenza>('barre')
   const [periodoChart, setPeriodoChart] = useState<PeriodoChart>('tutto')
@@ -90,6 +95,9 @@ export function Allenamenti() {
   )
 
   const sedute = useMemo(() => [...items].sort((a, b) => b.data.localeCompare(a.data)), [items])
+  // statistiche solo sulle sedute già svolte: quelle future (create in anticipo
+  // dal calendario) restano in elenco ma non abbassano medie e percentuali
+  const svolte = useMemo(() => seduteSvolte(sedute), [sedute])
 
   // al massimo una seduta al giorno: le date già occupate non si possono riusare
   const dateOccupate = useMemo(() => new Set(items.map((s) => s.data)), [items])
@@ -97,16 +105,16 @@ export function Allenamenti() {
   const presenti = (s: Allenamento) => rosa.filter((g) => s.presenze[g.id]).length
   const percSeduta = (s: Allenamento) => (rosa.length ? Math.round((presenti(s) / rosa.length) * 100) : 0)
 
-  const media = sedute.length ? sedute.reduce((tot, s) => tot + presenti(s), 0) / sedute.length : 0
+  const media = svolte.length ? svolte.reduce((tot, s) => tot + presenti(s), 0) / svolte.length : 0
   const mediaPerc = rosa.length ? Math.round((media / rosa.length) * 100) : 0
 
   // il grafico può restringersi a una finestra recente (le tessere in alto no)
   const seduteChart = useMemo(() => {
     const mesi = mesiPeriodo(periodoChart)
-    if (!mesi || sedute.length === 0) return sedute
-    const cutoff = dayjs(sedute[0].data).subtract(mesi, 'month').format('YYYY-MM-DD')
-    return sedute.filter((s) => s.data >= cutoff)
-  }, [sedute, periodoChart])
+    if (!mesi || svolte.length === 0) return svolte
+    const cutoff = dayjs(svolte[0].data).subtract(mesi, 'month').format('YYYY-MM-DD')
+    return svolte.filter((s) => s.data >= cutoff)
+  }, [svolte, periodoChart])
 
   const mediaChart = seduteChart.length
     ? seduteChart.reduce((tot, s) => tot + presenti(s), 0) / seduteChart.length
@@ -123,16 +131,16 @@ export function Allenamenti() {
     () =>
       rosa
         .map((g) => {
-          const p = sedute.filter((s) => s.presenze[g.id]).length
+          const p = svolte.filter((s) => s.presenze[g.id]).length
           return {
             id: g.id,
             nome: `${g.cognome} ${g.nome}`,
             presenze: p,
-            perc: sedute.length ? Math.round((p / sedute.length) * 100) : 0,
+            perc: svolte.length ? Math.round((p / svolte.length) * 100) : 0,
           }
         })
         .sort((a, b) => b.presenze - a.presenze || a.nome.localeCompare(b.nome)),
-    [rosa, sedute],
+    [rosa, svolte],
   )
 
   const sessioneAperta = apertaId ? items.find((s) => s.id === apertaId) : null
@@ -195,15 +203,19 @@ export function Allenamenti() {
     update(s.id, { presenze: { ...s.presenze, [giocatoreId]: !s.presenze[giocatoreId] } })
   }
   function segnaTutti(s: Allenamento, presente: boolean) {
-    update(s.id, {
-      presenze: presente ? Object.fromEntries(rosa.map((g) => [g.id, true])) : {},
-    })
+    // si tocca solo la rosa attuale: le presenze di dirigenti/ex restano com'erano
+    const presenze = { ...s.presenze }
+    for (const g of rosa) {
+      if (presente) presenze[g.id] = true
+      else delete presenze[g.id]
+    }
+    update(s.id, { presenze })
   }
 
   async function esporta() {
     setEsportando(true)
     try {
-      await esportaClassificaPdf(classifica, attiva, sedute.length)
+      await esportaClassificaPdf(classifica, attiva, svolte.length)
     } finally {
       setEsportando(false)
     }
@@ -223,7 +235,9 @@ export function Allenamenti() {
       <PageHeader
         titolo="Allenamenti"
         sottotitolo={
-          sedute.length ? `${plurale(sedute.length, 'seduta registrata', 'sedute registrate')}` : 'Nessuna seduta ancora'
+          sedute.length
+            ? `${plurale(svolte.length, 'seduta svolta', 'sedute svolte')}${sedute.length > svolte.length ? ` · ${sedute.length - svolte.length} in programma` : ''}`
+            : 'Nessuna seduta ancora'
         }
         azioni={
           <Space wrap>
@@ -257,7 +271,7 @@ export function Allenamenti() {
         <Col xs={12} sm={8}>
           <Card className="stat-card">
             <CalendarOutlined className="stat-icon" aria-hidden />
-            <Statistic title="Sedute" value={sedute.length} />
+            <Statistic title="Sedute" value={svolte.length} />
           </Card>
         </Col>
         <Col xs={12} sm={8}>
@@ -276,7 +290,7 @@ export function Allenamenti() {
 
       {/* Grafico e classifica affiancati sui grandi schermi; la classifica scorre
           dentro la sua card così la pagina non si allunga con tanti giocatori */}
-      {sedute.length > 0 && (
+      {svolte.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col xs={24} lg={14}>
             <Card
@@ -317,7 +331,7 @@ export function Allenamenti() {
                 </Button>
               }
             >
-              <ClassificaPresenze righe={classifica} totale={sedute.length} />
+              <ClassificaPresenze righe={classifica} totale={svolte.length} />
             </Card>
           </Col>
         </Row>
@@ -338,18 +352,24 @@ export function Allenamenti() {
                 <List.Item
                   onClick={() => apriSeduta(s.id)}
                   style={{ cursor: 'pointer', padding: '14px 24px' }}
-                  extra={<RightOutlined style={{ color: '#c9bfad' }} />}
+                  extra={<RightOutlined style={{ color: 'var(--testo-2)' }} />}
                 >
                   <List.Item.Meta title={formatData(s.data)} description={s.note || undefined} />
-                  <Space size={12} align="center">
-                    <div className="mini-bar" title={`${perc}%`}>
-                      <i style={{ width: `${perc}%`, background: coloreAffluenza(perc) }} />
-                    </div>
-                    <Text style={{ minWidth: 52, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <b>{p}</b>
-                      <Text type="secondary">/{rosa.length}</Text>
-                    </Text>
-                  </Space>
+                  {s.data > oggiIso() && p === 0 ? (
+                    <Tag color="gold" style={{ marginInlineEnd: 0 }}>
+                      In programma
+                    </Tag>
+                  ) : (
+                    <Space size={12} align="center">
+                      <div className="mini-bar" title={`${perc}%`}>
+                        <i style={{ width: `${perc}%`, background: coloreAffluenza(perc) }} />
+                      </div>
+                      <Text style={{ minWidth: 52, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <b>{p}</b>
+                        <Text type="secondary">/{rosa.length}</Text>
+                      </Text>
+                    </Space>
+                  )}
                 </List.Item>
               )
             }}
@@ -496,7 +516,7 @@ export function Allenamenti() {
                 percent={percSeduta(sessioneAperta)}
                 showInfo={false}
                 strokeColor={coloreAffluenza(percSeduta(sessioneAperta))}
-                trailColor="#eee4d3"
+                trailColor="var(--linea)"
               />
               <Space style={{ marginTop: 10 }}>
                 <Button size="small" onClick={() => segnaTutti(sessioneAperta, true)}>

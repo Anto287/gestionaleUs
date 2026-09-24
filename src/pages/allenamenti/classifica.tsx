@@ -84,6 +84,14 @@ export function ClassificaPresenze({ righe, totale }: { righe: RigaClassifica[];
   )
 }
 
+/** Il nome va dentro l'HTML del foglio: & o < lo romperebbero. */
+function esc(s?: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 /** Esporta la classifica presenze in PDF (jspdf/html2canvas caricati al momento). */
 export async function esportaClassificaPdf(
   righe: RigaClassifica[],
@@ -120,7 +128,7 @@ export async function esportaClassificaPdf(
           .map(
             (r, i) => `<tr>
               <td style="border:1px solid #000;padding:6px;text-align:center;">${i + 1}</td>
-              <td style="border:1px solid #000;padding:6px;">${r.nome}</td>
+              <td style="border:1px solid #000;padding:6px;">${esc(r.nome)}</td>
               <td style="border:1px solid #000;padding:6px;text-align:center;">${r.presenze} / ${totaleSedute}</td>
               <td style="border:1px solid #000;padding:6px;text-align:center;">${r.perc}%</td>
             </tr>`,

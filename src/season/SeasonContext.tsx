@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { Button, Result, Space } from 'antd'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { App as AntApp, Button, Result, Space } from 'antd'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { config } from '../config'
 import * as store from '../services/driveStore'
@@ -16,6 +16,8 @@ interface SeasonValue {
 
 const SeasonContext = createContext<SeasonValue | null>(null)
 
+type Cfg = { stagioni: string[]; attiva: string }
+
 function ordina(stagioni: string[]): string[] {
   return [...stagioni].sort((a, b) => a.localeCompare(b, 'it', { numeric: true }))
 }
@@ -31,7 +33,8 @@ function ordina(stagioni: string[]): string[] {
  */
 export function SeasonProvider({ children }: { children: ReactNode }) {
   const { esci } = useAuth()
-  const [cfg, setCfg] = useState<{ stagioni: string[]; attiva: string } | null>(() => {
+  const { message } = AntApp.useApp()
+  const [cfg, setCfg] = useState<Cfg | null>(() => {
     const c = store.seasonsConfigCache()
     return c ? { stagioni: ordina(c.stagioni), attiva: c.attiva || c.stagioni[0] } : null
   })
@@ -80,36 +83,112 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
     }
   }, [tentativo])
 
-  const cambia = useCallback((s: string) => {
-    setCfg((prev) => {
-      if (!prev || !prev.stagioni.includes(s) || s === prev.attiva) return prev
-      store.setSeasonsConfig(prev.stagioni, s).catch(() => undefined)
-      return { ...prev, attiva: s }
-    })
-  }, [])
+  // stato corrente letto fuori dagli updater (in StrictMode girano due volte)
+  const cfgRef = useRef(cfg)
+  useEffect(() => {
+    cfgRef.current = cfg
+  }, [cfg])
+  const coda = useRef<Promise<void>>(Promise.resolve())
+  const inAttesa = useRef(0)
 
-  const crea = useCallback((stagione: string) => {
-    const nome = stagione.trim()
-    let ok = false
-    setCfg((prev) => {
-      if (!prev || !nome || prev.stagioni.includes(nome)) return prev
-      ok = true
-      const stagioni = ordina([...prev.stagioni, nome])
-      store.setSeasonsConfig(stagioni, nome).catch(() => undefined)
-      return { stagioni, attiva: nome }
-    })
-    return ok
-  }, [])
+  /**
+   * Salva sul Drive una modifica all'elenco: prima rilegge l'elenco fresco
+   * (un altro dispositivo può averlo cambiato) e applica lì solo la
+   * differenza; se la rilettura non riesce si usa quello in memoria.
+   */
+  const salva = useCallback(
+    (modifica: (c: Cfg) => Cfg | null, locale: Cfg) => {
+      inAttesa.current++
+      coda.current = coda.current.then(async () => {
+        try {
+          let base = locale
+          try {
+            const fresco = await store.seasonsConfig()
+            if (fresco?.stagioni.length) base = { stagioni: fresco.stagioni, attiva: fresco.attiva }
+          } catch {
+            /* rilettura fallita: si scrive l'elenco in memoria */
+          }
+          const nuovo = modifica(base)
+          if (!nuovo) {
+            // niente da scrivere (es. stagione già tolta altrove): ci si allinea al Drive
+            if (inAttesa.current === 1) {
+              const stagioni = ordina(base.stagioni)
+              const ripiego = stagioni.includes(base.attiva) ? base.attiva : stagioni[stagioni.length - 1]
+              setCfg((prev) =>
+                prev ? { stagioni, attiva: stagioni.includes(prev.attiva) ? prev.attiva : ripiego } : prev,
+              )
+            }
+            return
+          }
+          const stagioni = ordina(nuovo.stagioni)
+          await store.setSeasonsConfig(stagioni, nuovo.attiva)
+          // riallinea l'elenco a quello salvato (se non ci sono altre modifiche in coda)
+          if (inAttesa.current === 1) {
+            setCfg((prev) =>
+              prev
+                ? { stagioni, attiva: stagioni.includes(prev.attiva) ? prev.attiva : nuovo.attiva }
+                : prev,
+            )
+          }
+        } catch (e) {
+          message.error('Elenco stagioni non salvato sul Drive: ' + String((e as Error)?.message || e))
+        } finally {
+          inAttesa.current--
+        }
+      })
+    },
+    [message],
+  )
 
-  const elimina = useCallback((s: string) => {
-    setCfg((prev) => {
-      if (!prev || prev.stagioni.length <= 1 || !prev.stagioni.includes(s)) return prev
-      const stagioni = prev.stagioni.filter((x) => x !== s)
-      const attiva = prev.attiva === s ? stagioni[0] : prev.attiva
-      store.setSeasonsConfig(stagioni, attiva).catch(() => undefined)
-      return { stagioni, attiva }
-    })
-  }, [])
+  const cambia = useCallback(
+    (s: string) => {
+      const prev = cfgRef.current
+      if (!prev || !prev.stagioni.includes(s) || s === prev.attiva) return
+      const locale = { ...prev, attiva: s }
+      cfgRef.current = locale
+      setCfg(locale)
+      salva((c) => (c.stagioni.includes(s) ? { ...c, attiva: s } : null), locale)
+    },
+    [salva],
+  )
+
+  const crea = useCallback(
+    (stagione: string) => {
+      const nome = stagione.trim()
+      const prev = cfgRef.current
+      if (!prev || !nome || prev.stagioni.includes(nome)) return false
+      const locale = { stagioni: ordina([...prev.stagioni, nome]), attiva: nome }
+      cfgRef.current = locale
+      setCfg(locale)
+      salva(
+        (c) => ({ stagioni: c.stagioni.includes(nome) ? c.stagioni : [...c.stagioni, nome], attiva: nome }),
+        locale,
+      )
+      return true
+    },
+    [salva],
+  )
+
+  const elimina = useCallback(
+    (s: string) => {
+      const prev = cfgRef.current
+      if (!prev || prev.stagioni.length <= 1 || !prev.stagioni.includes(s)) return
+      // se sparisce quella attiva si passa alla più recente rimasta (l'elenco è in ordine crescente)
+      const togli = (c: Cfg) => {
+        const stagioni = ordina(c.stagioni.filter((x) => x !== s))
+        if (!stagioni.length) return null
+        const attiva = c.attiva === s || !stagioni.includes(c.attiva) ? stagioni[stagioni.length - 1] : c.attiva
+        return { stagioni, attiva }
+      }
+      const locale = togli(prev)
+      if (!locale) return
+      cfgRef.current = locale
+      setCfg(locale)
+      store.pulisciCacheStagione(s)
+      salva(togli, locale)
+    },
+    [salva],
+  )
 
   if (stato === 'loading') return <SeasonSplash />
   if (stato === 'error' || !cfg)

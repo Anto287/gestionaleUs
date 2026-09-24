@@ -224,9 +224,17 @@ export function schedaDi(aggancio: Aggancio | null, id: string): SchedaArchivio 
   return aggancio?.per[id] ?? VUOTA
 }
 
+/**
+ * La data di nascita del tesserato in ISO: in rosa è testo libero
+ * ("12/05/1999", "12-05-1999" o già "1999-05-12"). Vuota se non si legge.
+ */
+export function nascitaIso(testo?: string): string | undefined {
+  return testo ? estraiNascita(testo.trim()).nascita : undefined
+}
+
 /** '1999-05-12' → '12-05-1999' (come si scrive nei nomi dei file). */
-export function nascitaNelNome(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+export function nascitaNelNome(data: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(nascitaIso(data) ?? '')
   return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
 }
 

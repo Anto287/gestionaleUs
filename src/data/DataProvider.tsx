@@ -13,6 +13,7 @@ import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
 import * as store from '../services/driveStore'
 import { preparaCaricamento } from '../lib/immagine'
+import { useChiudiUndoAlloSmontaggio } from '../hooks/useEliminaUndo'
 
 type Store = Record<string, Array<{ id: string }>>
 
@@ -84,6 +85,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [erroreSync, setErroreSync] = useState<string | null>(null)
   const [aggiornando, setAggiornando] = useState(true)
   const [tentativo, setTentativo] = useState(0)
+  // cambiando stagione il provider si smonta: niente «Annulla» verso quello vecchio
+  useChiudiUndoAlloSmontaggio()
 
   const dataRef = useRef<Store>(copia.data)
   useEffect(() => {
@@ -188,56 +191,66 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const getItems = useCallback(<T,>(c: string): T[] => (data[c] ?? []) as T[], [data])
 
+  // applica una modifica a una raccolta: allo stato e SUBITO anche a dataRef,
+  // così due chiamate di fila nello stesso gestore vedono l'una l'effetto dell'altra
+  const cambia = useCallback(
+    (c: string, f: (items: Array<{ id: string }>) => Array<{ id: string }>) => {
+      dataRef.current = { ...dataRef.current, [c]: f(dataRef.current[c] ?? []) }
+      setData((s) => ({ ...s, [c]: f(s[c] ?? []) }))
+    },
+    [],
+  )
+
   const add = useCallback(
     <T,>(c: string, item: Omit<T, 'id'>): string => {
       const id = crypto.randomUUID()
       const record = { ...item, id } as { id: string }
       segnaModifica(c)
-      setData((s) => ({ ...s, [c]: [...(s[c] ?? []), record] }))
+      cambia(c, (items) => [...items, record])
       store.put(c, seasonDi(c, attiva), record).catch(fallita)
       return id
     },
-    [attiva, fallita, segnaModifica],
+    [attiva, fallita, segnaModifica, cambia],
   )
 
   const update = useCallback(
     <T,>(c: string, id: string, patch: Partial<T>) => {
-      const current = dataRef.current[c] ?? []
-      const next = current.map((i) => (i.id === id ? { ...i, ...patch } : i))
-      const aggiornato = next.find((i) => i.id === id)
+      const applica = (items: Array<{ id: string }>) =>
+        items.map((i) => (i.id === id ? { ...i, ...patch } : i))
       segnaModifica(c)
-      setData((s) => ({ ...s, [c]: next }))
+      cambia(c, applica)
+      const aggiornato = (dataRef.current[c] ?? []).find((i) => i.id === id)
       if (aggiornato) store.put(c, seasonDi(c, attiva), aggiornato).catch(fallita)
     },
-    [attiva, fallita, segnaModifica],
+    [attiva, fallita, segnaModifica, cambia],
   )
 
   const remove = useCallback(
     (c: string, id: string) => {
       segnaModifica(c)
-      setData((s) => ({ ...s, [c]: (s[c] ?? []).filter((i) => i.id !== id) }))
+      cambia(c, (items) => items.filter((i) => i.id !== id))
       store.remove(c, seasonDi(c, attiva), id).catch(fallita)
     },
-    [attiva, fallita, segnaModifica],
+    [attiva, fallita, segnaModifica, cambia],
   )
 
   const restore = useCallback(
     (c: string, item: { id: string }) => {
       // il put del Drive fa upsert per id, quindi basta riaggiungerlo com'era
       segnaModifica(c)
-      setData((s) => (s[c] ?? []).some((i) => i.id === item.id) ? s : { ...s, [c]: [...(s[c] ?? []), item] })
+      cambia(c, (items) => (items.some((i) => i.id === item.id) ? items : [...items, item]))
       store.put(c, seasonDi(c, attiva), item).catch(fallita)
     },
-    [attiva, fallita, segnaModifica],
+    [attiva, fallita, segnaModifica, cambia],
   )
 
   const replaceAll = useCallback(
     <T extends { id: string }>(c: string, items: T[]) => {
       segnaModifica(c)
-      setData((s) => ({ ...s, [c]: items }))
+      cambia(c, () => items)
       store.replaceAll(c, seasonDi(c, attiva), items).catch(fallita)
     },
-    [attiva, fallita, segnaModifica],
+    [attiva, fallita, segnaModifica, cambia],
   )
 
   /**
@@ -261,24 +274,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const nome = nomeBase ? nomeBase + pronto.estensione : file.name
         const meta = await store.uploadDoc(attiva, nome, pronto.tipo, pronto.dataBase64)
         segnaModifica('documenti')
-        setData((s) => ({ ...s, documenti: [...(s.documenti ?? []), meta] }))
+        cambia('documenti', (items) => [...items, meta])
         return meta
       } catch (e) {
         fallita(e)
         return undefined
       }
     },
-    [attiva, fallita, segnaModifica],
+    [attiva, fallita, segnaModifica, cambia],
   )
 
   const createDoc = useCallback(
     async (nome: string, tipo: 'documento' | 'foglio') => {
       const meta = await store.createDoc(attiva, nome, tipo)
       segnaModifica('documenti')
-      setData((s) => ({ ...s, documenti: [...(s.documenti ?? []), meta] }))
+      cambia('documenti', (items) => [...items, meta])
       return meta
     },
-    [attiva, segnaModifica],
+    [attiva, segnaModifica, cambia],
   )
 
   const renameDoc = useCallback(
@@ -324,7 +337,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         <Alert
           type="warning"
           showIcon
-          message="Sto lavorando sull'ultima copia salvata sul telefono: il Drive non ha risposto."
+          message="Sto lavorando sull'ultima copia salvata su questo dispositivo: il Drive non ha risposto."
           action={
             <Button size="small" onClick={() => setTentativo((t) => t + 1)}>
               Riprova
