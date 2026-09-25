@@ -79,6 +79,8 @@ export interface RiepilogoQuote {
  */
 export function riepilogoQuote(
   tesserati: Pick<Giocatore, 'categoria' | 'quotaPagata' | 'quotaImporto' | 'versamentiQuota' | 'quotaEsente'>[],
+  /** id dei movimenti ancora nei Conti: un versamento vecchio il cui movimento è sparito torna nel raccolto */
+  idMovimenti?: Set<string>,
 ): RiepilogoQuote {
   const giocatori = tesserati.filter(isGiocatore)
   const esenti = giocatori.filter((g) => g.quotaEsente).length
@@ -95,7 +97,7 @@ export function riepilogoQuote(
   // dirigente); quelli vecchi col movimento sono già nei Conti e restano a parte
   for (const g of tesserati) {
     for (const v of g.versamentiQuota ?? []) {
-      if (v.movimentoId) giaNeiConti += v.importo || 0
+      if (v.movimentoId && (!idMovimenti || idMovimenti.has(v.movimentoId))) giaNeiConti += v.importo || 0
       else raccolto += v.importo || 0
     }
   }

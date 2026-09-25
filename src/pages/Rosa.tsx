@@ -45,7 +45,7 @@ import { riepilogoQuote, statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
 import { seduteSvolte } from '../lib/allenamenti'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, ripulisciTesserato, LABEL_CATEGORIA } from '../lib/categoria'
-import type { Allenamento, Giocatore, Partita } from '../types'
+import type { Allenamento, Giocatore, Movimento, Partita } from '../types'
 import { formatData, formatEuro, iniziali, plurale } from '../lib/format'
 
 type Bozza = Pick<
@@ -121,6 +121,7 @@ export function Rosa() {
   const eliminaConUndo = useEliminaUndo()
   const allenamenti = useCollection<Allenamento>('allenamenti')
   const partite = useCollection<Partita>('partite')
+  const conti = useCollection<Movimento>('conti')
   const navigate = useNavigate()
   const screens = Grid.useBreakpoint()
   // la foto dell'archivio sul Drive, quando c'è, fa da avatar
@@ -225,7 +226,31 @@ export function Rosa() {
 
   // le quote non passano dai Conti: qui si vede la cifra che a fine anno
   // chi le raccoglie registrerà come unica entrata
-  const quote = useMemo(() => riepilogoQuote(items), [items])
+  const idMovimenti = useMemo(() => new Set(conti.items.map((m) => m.id)), [conti.items])
+  const quote = useMemo(() => riepilogoQuote(items, idMovimenti), [items, idMovimenti])
+
+  /**
+   * I versamenti di prima del 2026-09-16 avevano il movimento gemello nei Conti:
+   * lo toglie e stacca il collegamento, così tutto torna nel raccolto e a fine
+   * anno si registra un'unica entrata.
+   */
+  function riportaNelRaccolto() {
+    let n = 0
+    for (const g of items) {
+      const vecchi = (g.versamentiQuota ?? []).filter((v) => v.movimentoId)
+      if (!vecchi.length) continue
+      for (const v of vecchi) {
+        if (idMovimenti.has(v.movimentoId!)) {
+          conti.remove(v.movimentoId!)
+          n++
+        }
+      }
+      update(g.id, {
+        versamentiQuota: (g.versamentiQuota ?? []).map((v) => (v.movimentoId ? { ...v, movimentoId: undefined } : v)),
+      })
+    }
+    message.success(`Quote riportate nel raccolto${n ? `, ${plurale(n, 'movimento tolto', 'movimenti tolti')} dai Conti` : ''}.`)
+  }
 
   async function copiaTotaleQuote() {
     try {
@@ -524,7 +549,20 @@ export function Rosa() {
                 {quote.soloInterruttore > 0 &&
                   ` Il raccolto esclude i pagati segnati solo con l'interruttore (${quote.soloInterruttore}).`}
                 {quote.giaNeiConti > 0 &&
-                  ` ${formatEuro(quote.giaNeiConti)} già registrati nei Conti dai versamenti vecchi.`}
+                  ` ${formatEuro(quote.giaNeiConti)} dei versamenti vecchi sono ancora come movimenti nei Conti.`}
+                {quote.giaNeiConti > 0 && (
+                  <Popconfirm
+                    title="Riportare queste quote nel raccolto?"
+                    description={`Toglie dai Conti i vecchi movimenti automatici delle quote (${formatEuro(quote.giaNeiConti)}).`}
+                    okText="Riporta"
+                    cancelText="Annulla"
+                    onConfirm={riportaNelRaccolto}
+                  >
+                    <Button type="link" size="small">
+                      Riporta nel raccolto
+                    </Button>
+                  </Popconfirm>
+                )}
               </div>
             </Card>
           )}
