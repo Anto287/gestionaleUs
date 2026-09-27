@@ -18,15 +18,28 @@ type Row = RigaConvocato
 
 const labelKey1 = 'Nome'
 const labelKey2 = 'Cognome'
-const CHECKBOX_KEYS = ['C', 'VC', 'Allen', 'VAllen', 'DirAcc'] as const
+/** i ruoli previsti dalla distinta UISP: capitano/vice fra i giocatori, il resto in fondo al foglio */
+const CHECKBOX_KEYS = ['C', 'VC', 'Allen', 'DirAcc', 'DirUff', 'AssArb'] as const
 const CHECKBOX_LABELS: Record<string, string> = {
   C: 'C.',
   VC: 'V.C.',
   Allen: 'Allen.',
-  VAllen: 'V.Allen.',
   DirAcc: 'Dir. Acc',
+  DirUff: 'Dir. uff. gara',
+  AssArb: 'Ass. arbitro',
+  Defib: 'Defibrill.',
+  VAllen: 'V.Allen.',
 }
-const SPECIAL_CHECKBOXES = ['Allen', 'VAllen', 'DirAcc']
+/**
+ * VAllen (non previsto dal modello UISP) e Defib (ora nella testata: può farlo
+ * chiunque, anche fuori rosa) restano solo per leggere le distinte salvate prima
+ */
+const RUOLI_VECCHI = ['VAllen', 'Defib']
+const SPECIAL_CHECKBOXES = ['Allen', 'DirAcc', 'DirUff', 'AssArb', ...RUOLI_VECCHI]
+/** tutti i ruoli, compresi quelli non più proposti: per azzerarli e trovarli */
+const TUTTI_I_RUOLI = [...CHECKBOX_KEYS, ...RUOLI_VECCHI]
+/** giocatori numerati che entrano nella distinta UISP */
+const MAX_GIOCATORI = 20
 
 /** I ruoli di panchina (Allen./V.Allen./Dir. Acc) spettano ai dirigenti; numero, C. e V.C. ai giocatori. */
 function ammessoPerRuolo(raw: Row, role: string | null): boolean {
@@ -95,7 +108,7 @@ export function SelectorList({
     setSelectedCheckbox((cur) => {
       if (cur && !ammessoPerRuolo(selectedRaw, cur)) cur = null
       if (cur === null && !ammessoPerRuolo(selectedRaw, null))
-        cur = SPECIAL_CHECKBOXES.find((k) => !list.some((it) => it[k])) ?? null
+        cur = SPECIAL_CHECKBOXES.find((k) => !RUOLI_VECCHI.includes(k) && !list.some((it) => it[k])) ?? null
       return cur
     })
   }, [selectedRaw, list])
@@ -112,6 +125,8 @@ export function SelectorList({
   function hasSpecialCheckbox(item: Convocato) {
     return SPECIAL_CHECKBOXES.some((key) => item[key])
   }
+
+  const nGiocatori = list.filter((it) => !hasSpecialCheckbox(it)).length
 
   const lastUsedNumber = useMemo(() => {
     const numberedItems = list.filter((it) => !hasSpecialCheckbox(it))
@@ -146,10 +161,10 @@ export function SelectorList({
 
   function addSelected() {
     if (!selectedKey) return message.warning('Seleziona un giocatore dalla lista')
-    if (list.length >= 23) return message.error('Hai raggiunto il limite massimo di 23')
-
     const selectedOption = options.find((o) => o.key === selectedKey)!
     const isSpecial = selectedCheckbox ? SPECIAL_CHECKBOXES.includes(selectedCheckbox) : false
+    if (!isSpecial && nGiocatori >= MAX_GIOCATORI)
+      return message.error(`La distinta UISP ha posto per ${MAX_GIOCATORI} giocatori`)
 
     if (!ammessoPerRuolo(selectedOption.raw, selectedCheckbox))
       return message.error(
@@ -157,7 +172,7 @@ export function SelectorList({
           ? `${CHECKBOX_LABELS[selectedCheckbox]} è riservato ai ${
               SPECIAL_CHECKBOXES.includes(selectedCheckbox) ? 'dirigenti' : 'giocatori'
             }`
-          : `${selectedOption.label} è un dirigente: scegli Allen., V.Allen. o Dir. Acc`,
+          : `${selectedOption.label} è un dirigente: scegli un ruolo (Allen., Dir. Acc, Ass. arbitro…)`,
       )
     if (!isSpecial && isNumberTaken(amount)) return message.error(`Il numero ${amount} è già assegnato`)
     if (selectedCheckbox && isRoleTaken(selectedCheckbox))
@@ -169,7 +184,7 @@ export function SelectorList({
       raw: selectedOption.raw,
       amount: isSpecial ? null : amount,
     }
-    CHECKBOX_KEYS.forEach((k) => (newItem[k] = false))
+    TUTTI_I_RUOLI.forEach((k) => (newItem[k] = false))
     if (selectedCheckbox) newItem[selectedCheckbox] = true
 
     setList(sortList([...list, newItem]))
@@ -189,12 +204,16 @@ export function SelectorList({
           : `${CHECKBOX_LABELS[key]} è riservato ai giocatori`,
       )
 
+    // togliendo il ruolo di staff la persona torna fra i giocatori numerati: serve un posto libero
+    if (!checked && target && SPECIAL_CHECKBOXES.includes(key) && nGiocatori >= MAX_GIOCATORI)
+      return message.error(`La distinta UISP ha posto per ${MAX_GIOCATORI} giocatori`)
+
     setList((prev) => {
       const updated = prev.map((it) => ({ ...it }))
       const idx = updated.findIndex((it) => it.id === id)
       if (idx === -1) return prev
       const wasSpecial = hasSpecialCheckbox(updated[idx])
-      if (checked) CHECKBOX_KEYS.forEach((k) => (updated[idx][k] = k === key))
+      if (checked) TUTTI_I_RUOLI.forEach((k) => (updated[idx][k] = k === key))
       else updated[idx][key] = false
       const isNowSpecial = hasSpecialCheckbox(updated[idx])
       if (wasSpecial && !isNowSpecial) {
@@ -214,7 +233,7 @@ export function SelectorList({
       if (!aSpecial && !bSpecial) return (a.amount as number) - (b.amount as number)
       if (!aSpecial && bSpecial) return -1
       if (aSpecial && !bSpecial) return 1
-      const orderMap: Record<string, number> = { Allen: 1, VAllen: 2, DirAcc: 3 }
+      const orderMap: Record<string, number> = { Allen: 1, DirAcc: 2, DirUff: 3, AssArb: 4, Defib: 5, VAllen: 6 }
       const aOrder = SPECIAL_CHECKBOXES.find((k) => a[k]) || ''
       const bOrder = SPECIAL_CHECKBOXES.find((k) => b[k]) || ''
       return (orderMap[aOrder] || 999) - (orderMap[bOrder] || 999)
@@ -284,9 +303,12 @@ export function SelectorList({
                 type="primary"
                 onClick={addSelected}
                 block
-                disabled={list.length >= 23}
+                disabled={
+                  nGiocatori >= MAX_GIOCATORI &&
+                  !(selectedCheckbox && SPECIAL_CHECKBOXES.includes(selectedCheckbox))
+                }
               >
-                Aggiungi {list.length >= 23 ? '(Max 23)' : ''}
+                Aggiungi
               </Button>
             </Col>
           </Row>
@@ -338,7 +360,7 @@ export function SelectorList({
         style={{ maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden' }}
         renderItem={(item) => {
           const isSpecial = hasSpecialCheckbox(item)
-          const activeRole = CHECKBOX_KEYS.find((k) => item[k])
+          const activeRole = TUTTI_I_RUOLI.find((k) => item[k])
           return (
             <List.Item style={{ padding: 12 }}>
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -422,20 +444,13 @@ export function SelectorList({
         <Row gutter={[16, 8]}>
           <Col xs={24} sm={8}>
             <div style={{ fontSize: 13 }}>
-              Totale: <b>{list.length}/23</b>
+              Giocatori: <b>{nGiocatori}/{MAX_GIOCATORI}</b>
             </div>
           </Col>
-          {list.filter((it) => !hasSpecialCheckbox(it)).length > 0 && (
-            <Col xs={12} sm={8}>
-              <div style={{ fontSize: 13 }}>
-                Numerati: <b>{list.filter((it) => !hasSpecialCheckbox(it)).length}</b>
-              </div>
-            </Col>
-          )}
           {list.filter((it) => hasSpecialCheckbox(it)).length > 0 && (
             <Col xs={12} sm={8}>
               <div style={{ fontSize: 13 }}>
-                Ruoli speciali: <b>{list.filter((it) => hasSpecialCheckbox(it)).length}</b>
+                Staff: <b>{list.filter((it) => hasSpecialCheckbox(it)).length}</b>
               </div>
             </Col>
           )}

@@ -30,6 +30,16 @@ function spezza(testo: string): string {
     .join('')
 }
 
+/**
+ * Scrive solo se il valore cambia davvero. Riscrivere lo stesso testo conta
+ * comunque come modifica per il MutationObserver, che richiama `sistema` e
+ * così via all'infinito: con un testo di un solo carattere (es. il numerino
+ * "7" sui moduli della Formazione) `spezza` non cambia niente e l'app si piantava.
+ */
+function cambiaSeDiverso(prima: string, dopo: string, scrivi: (v: string) => void) {
+  if (dopo !== prima) scrivi(dopo)
+}
+
 function escluso(el: Element): boolean {
   return el.closest('.gate-card') !== null || (el as HTMLInputElement).type === 'password'
 }
@@ -44,7 +54,7 @@ function sistemaCampo(el: HTMLInputElement | HTMLTextAreaElement) {
     el.setAttribute('data-form-type', 'other')
   }
   const ph = el.getAttribute('placeholder')
-  if (ph && !ph.includes(INVISIBILE)) el.setAttribute('placeholder', spezza(ph))
+  if (ph) cambiaSeDiverso(ph, spezza(ph), (v) => el.setAttribute('placeholder', v))
 
   const id = el.id
   if (id && !id.startsWith('campo-')) {
@@ -65,11 +75,11 @@ function sistemaEtichetta(l: HTMLLabelElement) {
   const nuovo = per ? idNuovi.get(per) : undefined
   if (nuovo) l.setAttribute('for', nuovo)
   const titolo = l.getAttribute('title')
-  if (titolo && !titolo.includes(INVISIBILE)) l.setAttribute('title', spezza(titolo))
+  if (titolo) cambiaSeDiverso(titolo, spezza(titolo), (v) => l.setAttribute('title', v))
   const walker = document.createTreeWalker(l, NodeFilter.SHOW_TEXT)
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const t = n.nodeValue ?? ''
-    if (t.trim() && !t.includes(INVISIBILE)) n.nodeValue = spezza(t)
+    if (t.trim()) cambiaSeDiverso(t, spezza(t), (v) => (n.nodeValue = v))
   }
 }
 

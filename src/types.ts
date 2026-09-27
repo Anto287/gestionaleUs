@@ -31,6 +31,8 @@ export interface Giocatore {
   nascita?: string
   tessera?: string
   dataRilascio?: string
+  /** numero del documento d'identità (es. carta d'identità), stampato in distinta */
+  documento?: string
   /** fine validità del documento d'identità ('YYYY-MM-DD'): il documento vero sta nell'archivio */
   scadenzaDocumento?: string
   /** certificato medico (non riguarda chi è solo dirigente) */
@@ -212,6 +214,9 @@ export interface TestataDistinta {
   avversario?: string
   /** campo di gioco */
   campo?: string
+  /** addetto al defibrillatore: può essere chiunque, anche fuori dalla rosa */
+  defibrillatore?: string
+  tesseraDefibrillatore?: string
 }
 
 /** Un articolo del magazzino del bar. Possono esserci più articoli con lo stesso nome. */

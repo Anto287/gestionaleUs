@@ -61,6 +61,7 @@ type Bozza = Pick<
   | 'nascita'
   | 'tessera'
   | 'dataRilascio'
+  | 'documento'
   | 'scadenzaDocumento'
   | 'certificatoMedico'
   | 'scadenzaCertificato'
@@ -476,6 +477,7 @@ export function Rosa() {
           Nascita: g.nascita ?? '',
           Tessera: g.tessera ?? '',
           'Rilascio tessera': g.dataRilascio ?? '',
+          'N. documento': g.documento ?? '',
           'Scadenza documento': g.scadenzaDocumento ?? '',
           Certificato: isGiocatore(g) ? statoCertificato(g).label : '',
           'Scadenza certificato': g.scadenzaCertificato ?? '',
@@ -835,6 +837,13 @@ export function Rosa() {
           </Form.Item>
           <Form.Item label="Data rilascio tessera" name="dataRilascio">
             <Input placeholder="es. 01/09/2026" autoComplete="off" />
+          </Form.Item>
+          <Form.Item
+            label="N. documento d'identità"
+            name="documento"
+            tooltip="Numero della carta d'identità (o del documento usato in distinta): finisce da solo nella distinta"
+          >
+            <Input placeholder="es. CA12345AB" autoComplete="off" />
           </Form.Item>
           <Form.Item
             label="Scadenza documento d'identità"

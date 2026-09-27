@@ -60,6 +60,7 @@ export function Distinte() {
         DataNascita: g.nascita ?? '',
         Tessera: g.tessera ?? '',
         DataRilascio: g.dataRilascio ?? '',
+        Documento: g.documento ?? '',
         // etichetta mostrata nel selettore (la stampa usa i campi qui sopra)
         Etichetta: omonimi
           ? `${nomeCompleto} (${g.nascita ? formatData(g.nascita, true) : 'senza data di nascita'})`
@@ -80,10 +81,22 @@ export function Distinte() {
         if (c.critico) a.push(`Certificato ${c.label.toLowerCase()}`)
       }
       if (!g.tessera?.trim()) a.push('Senza tessera')
+      if (!g.documento?.trim()) a.push('Senza documento')
       if (a.length) m[g.id] = a
     }
     return m
   }, [items])
+
+  // suggerimenti per l'addetto al defibrillatore: tutta la rosa, giocatori e dirigenti
+  const persone = useMemo(
+    () =>
+      items
+        .map((g) => ({ nome: `${g.cognome} ${g.nome}`.trim(), tessera: g.tessera }))
+        // gli omonimi una volta sola (la tessera si corregge a mano)
+        .filter((p, i, tutti) => tutti.findIndex((x) => x.nome === p.nome) === i)
+        .sort((a, b) => a.nome.localeCompare(b.nome)),
+    [items],
+  )
 
   const salvate = useMemo(
     () => [...distinte.items].sort((a, b) => (b.creata ?? '').localeCompare(a.creata ?? '')),
@@ -187,6 +200,7 @@ export function Distinte() {
               key={resetKey}
               tornei={tornei.items}
               divise={divise.items}
+              persone={persone}
               initialTestata={initTestata}
               onChange={setTestata}
             />

@@ -15,13 +15,155 @@ function esc(s?: string): string {
     .replace(/>/g, '&gt;')
 }
 
-/** Valore in grassetto se presente, altrimenti la riga vuota (underscore) da compilare a mano. */
-function campo(valore: string | undefined, rigaVuota: string): string {
-  return valore ? `<b>${esc(valore)}</b>` : rigaVuota
+/** righe per i giocatori nel modello UISP */
+const RIGHE_GIOCATORI = 20
+const ALTEZZA_RIGA = 27
+/** stile comune delle celle del foglio */
+const td = 'border:1px solid #000;padding:2px 3px;overflow:hidden;white-space:nowrap;'
+/** ruoli di staff: vanno in fondo al foglio, non fra i giocatori (VAllen = distinte salvate prima) */
+const RUOLI_STAFF = ['Allen', 'VAllen', 'DirAcc', 'DirUff', 'AssArb', 'Defib']
+
+/** "COGNOME Nome", senza i JR/SR aggiunti per distinguere gli omonimi */
+function cognomeNome(raw: Record<string, string>): string {
+  const pulito = (v?: string) => (v ?? '').replace(/\s+(JR|SR)$/i, '').trim()
+  return `${pulito(raw.Cognome)} ${pulito(raw.Nome)}`.trim()
+}
+
+/** la data di nascita può essere ISO (dal selettore) o già scritta gg/mm/aaaa */
+function dataNascita(v?: string): string {
+  if (!v) return ''
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatData(v, true) : v
+}
+
+/** L'HTML del foglio (misurato su 210mm di larghezza), sul modello "DISTINTA A 20 GIOCATORI UISP". */
+function htmlDistinta(list: Convocato[], testata: TestataDistinta): string {
+  const gironeTorneo = [testata.torneo, testata.girone].filter(Boolean).join(' — ')
+  const dataGara = testata.dataGara ? formatData(testata.dataGara, true) : undefined
+
+  const giocatori = list.filter((it) => !RUOLI_STAFF.some((k) => it[k]))
+  const staff = (k: string) => list.find((it) => it[k])
+
+  // la distinta UISP ha 20 righe: le vuote restano da compilare a penna
+  const righe = Array.from({ length: Math.max(RIGHE_GIOCATORI, giocatori.length) }, (_, i) => {
+    const g = giocatori[i]
+    const raw = (g?.raw ?? {}) as Record<string, string>
+    const capVice = g?.C ? 'C' : g?.VC ? 'VC' : ''
+    return `<tr style="height:${ALTEZZA_RIGA}px;">
+      <td style="${td}text-align:center;">${i + 1}</td>
+      <td style="${td}text-align:center;">${g?.amount ?? ''}</td>
+      <td style="${td}text-align:center;">${esc(dataNascita(raw.DataNascita))}</td>
+      <td style="${td}padding-left:6px;">${g ? esc(cognomeNome(raw)) : ''}</td>
+      <td style="${td}text-align:center;font-size:11px;">${capVice}</td>
+      <td style="${td}text-align:center;">${esc(raw.Tessera)}</td>
+      <td style="${td}text-align:center;">${esc(raw.Documento)}</td>
+    </tr>`
+  }).join('')
+
+  const assistente = staff('AssArb')
+  const rawAss = (assistente?.raw ?? {}) as Record<string, string>
+
+  /** riga di staff in fondo al foglio: nome e, se c'è, la tessera */
+  function rigaStaff(etichetta: string, k: string, conTessera = true) {
+    const p = staff(k)
+    const raw = (p?.raw ?? {}) as Record<string, string>
+    return `<tr style="height:30px;">
+      <td style="${td}padding-left:6px;">${etichetta}</td>
+      <td style="${td}padding-left:6px;">${p ? `<b>${esc(cognomeNome(raw))}</b>` : ''}</td>
+      <td style="${td}text-align:center;font-size:9px;">${conTessera ? 'Tessera:' : ''}</td>
+      <td style="${td}text-align:center;">${esc(raw.Tessera)}</td>
+    </tr>`
+  }
+
+  // dalla testata (chiunque, anche fuori rosa); le distinte vecchie lo avevano fra i convocati
+  function rigaDefibrillatore() {
+    const vecchio = staff('Defib')?.raw as Record<string, string> | undefined
+    const nome = testata.defibrillatore ?? (vecchio ? cognomeNome(vecchio) : '')
+    const tessera = testata.defibrillatore ? testata.tesseraDefibrillatore : vecchio?.Tessera
+    return `<tr style="height:30px;">
+      <td style="${td}padding-left:6px;">Addetto al defibrillatore:</td>
+      <td style="${td}padding-left:6px;">${nome ? `<b>${esc(nome)}</b>` : ''}</td>
+      <td style="${td}text-align:center;font-size:9px;">Tessera:</td>
+      <td style="${td}text-align:center;">${esc(tessera)}</td>
+    </tr>`
+  }
+
+  const colori = [
+    testata.coloreMaglia && `maglia ${esc(testata.coloreMaglia)}`,
+    testata.colorePantaloncini && `pant. ${esc(testata.colorePantaloncini)}`,
+    testata.coloreCalzettoni && `calz. ${esc(testata.coloreCalzettoni)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const gara = testata.avversario ? `U.S. Riolunato — ${esc(testata.avversario)}` : ''
+  const quando = [dataGara, testata.oraGara && `ore ${esc(testata.oraGara)}`].filter(Boolean).join(' · ')
+
+  return `
+    <div style="text-align:center;font-size:20px;font-weight:bold;color:#0000cc;margin-bottom:8px;">UISP MODENA SDA CALCIO</div>
+    <div style="display:flex;align-items:center;gap:14px;min-height:76px;margin-bottom:8px;font-size:12px;">
+      <img src="${import.meta.env.BASE_URL}logo.png" alt="" style="height:70px;width:auto;" />
+      <div style="flex:1;line-height:1.55;">
+        <div style="font-size:15px;font-weight:bold;">U.S. RIOLUNATO</div>
+        ${gironeTorneo ? `<div>Girone/torneo: <b>${esc(gironeTorneo)}</b></div>` : ''}
+        ${colori ? `<div>Colori: <b>${colori}</b></div>` : ''}
+        ${testata.orarioRitrovo ? `<div>Ritrovo / note: <b>${esc(testata.orarioRitrovo)}</b></div>` : ''}
+      </div>
+    </div>
+    <table style="border-collapse:collapse;width:100%;font-size:14px;table-layout:fixed;">
+      <colgroup>
+        <col style="width:3.5%" /><col style="width:3.7%" /><col style="width:13.3%" /><col style="width:31.3%" />
+        <col style="width:4.3%" /><col style="width:16.7%" /><col style="width:27.2%" />
+      </colgroup>
+      <tr style="height:44px;">
+        <td colspan="5" style="${td}text-align:center;">Distinta dei giocatori partecipanti alla gara:</td>
+        <td colspan="2" style="${td}text-align:center;"><b>${gara}</b></td>
+      </tr>
+      <tr style="height:24px;">
+        <td colspan="3" style="${td}text-align:center;">Da disputare il:</td>
+        <td style="${td}text-align:center;"><b>${esc(quando)}</b></td>
+        <td style="${td}text-align:center;">A:</td>
+        <td colspan="2" style="${td}text-align:center;"><b>${esc(testata.campo)}</b></td>
+      </tr>
+      <tr style="height:22px;">
+        <td rowspan="2" style="${td}text-align:center;font-size:7px;line-height:1.2;white-space:normal;">N. del ruolo</td>
+        <td rowspan="2" style="${td}text-align:center;font-size:7px;line-height:1.2;white-space:normal;">N. maglia</td>
+        <td rowspan="2" style="${td}text-align:center;font-size:11px;">Data di nascita</td>
+        <td rowspan="2" style="${td}text-align:center;">Cognome e nome</td>
+        <td style="${td}text-align:center;font-size:9px;">CAP</td>
+        <td colspan="2" style="${td}text-align:center;font-size:12px;">Documenti di identificazione</td>
+      </tr>
+      <tr style="height:22px;">
+        <td style="${td}text-align:center;font-size:9px;">VICE</td>
+        <td style="${td}text-align:center;font-size:12px;">N. TESSERA UISP</td>
+        <td style="${td}text-align:center;font-size:12px;">N. DOCUMENTO IDENTITA'</td>
+      </tr>
+      ${righe}
+      <tr style="height:${ALTEZZA_RIGA}px;">
+        <td colspan="3" style="${td}text-align:center;font-size:11px;">Assistente dell'arbitro</td>
+        <td style="${td}padding-left:6px;">${assistente ? esc(cognomeNome(rawAss)) : ''}</td>
+        <td style="${td}"></td>
+        <td style="${td}text-align:center;">${esc(rawAss.Tessera)}</td>
+        <td style="${td}text-align:center;">${esc(rawAss.Documento)}</td>
+      </tr>
+    </table>
+    <table style="border-collapse:collapse;width:100%;font-size:13px;table-layout:fixed;margin-top:10px;">
+      <colgroup>
+        <col style="width:56.1%" /><col style="width:16.7%" /><col style="width:11.6%" /><col style="width:15.6%" />
+      </colgroup>
+      ${rigaStaff('Dirigente accompagnatore ufficiale della Squadra Sig.', 'DirAcc')}
+      ${rigaStaff('Dirigente addetto ufficiali di gara Sig.', 'DirUff', false)}
+      ${rigaStaff('Allenatore Sig.', 'Allen')}
+      ${rigaDefibrillatore()}
+    </table>
+    <div style="display:flex;margin-top:18px;font-size:11px;text-align:center;">
+      <div style="flex:1;"><div style="margin-bottom:34px;">V° L'ARBITRO</div><div style="border-top:1px solid #000;width:220px;margin:0 auto;"></div></div>
+      <div style="flex:1;"><div style="margin-bottom:34px;">IL DIRIGENTE ACCOMPAGNATORE UFFICIALE</div><div style="border-top:1px solid #000;width:220px;margin:0 auto;"></div></div>
+    </div>
+  `
 }
 
 /**
- * Genera la distinta di gara ufficiale in PDF (dal repo generatore-distinte).
+ * Genera la distinta di gara in PDF sul modello UISP a 20 giocatori
+ * (tessera UISP e documento d'identità presi dalla rosa).
  */
 export function PdfExporter({
   list = [],
@@ -43,100 +185,19 @@ export function PdfExporter({
   async function handlePrint() {
     if (!list.length) return message.warning('La lista è vuota: aggiungi i convocati prima di stampare')
 
-    const gironeTorneo = [testata.torneo, testata.girone].filter(Boolean).join(' — ')
-    const dataGara = testata.dataGara ? formatData(testata.dataGara, true) : undefined
-
-    function getMansNum(item: Convocato) {
-      if (item.Allen) return 'Allen.'
-      if (item.VAllen) return 'V.Allen.'
-      if (item.DirAcc) return 'Dir. Acc'
-      let result = item.amount ? item.amount.toString() : ''
-      if (item.C) result += ' C.'
-      if (item.VC) result += ' V.C.'
-      return result
-    }
-
-    function generateEmptyRows(count: number) {
-      if (count <= 0) return ''
-      let rows = ''
-      for (let i = 0; i < count; i++) {
-        rows += `<tr style="height: 28px;">
-          <td style="border: 1px solid #000; padding: 5px; text-align: center;">&nbsp;</td>
-          <td style="border: 1px solid #000; padding: 5px; text-align: center;">&nbsp;</td>
-          <td style="border: 1px solid #000; padding: 5px; text-align: center;">&nbsp;</td>
-          <td style="border: 1px solid #000; padding: 5px; text-align: center;">&nbsp;</td>
-          <td style="border: 1px solid #000; padding: 5px; text-align: center;">&nbsp;</td>
-        </tr>`
-      }
-      return rows
-    }
-
     const tableHtml = document.createElement('div')
-    tableHtml.style.padding = '40px'
+    tableHtml.style.padding = '26px 30px'
     tableHtml.style.background = '#fff'
     tableHtml.style.position = 'absolute'
     tableHtml.style.left = '-9999px'
     tableHtml.style.top = '0'
     tableHtml.style.width = '210mm'
-    tableHtml.style.fontFamily = 'Arial, sans-serif'
+    tableHtml.style.fontFamily = "'Century Schoolbook', 'New Century Schoolbook', 'Times New Roman', serif"
     // colore esplicito: senza, il foglio eredita l'inchiostro del tema attivo
     // (in tema scuro è panna e sulla carta bianca il testo sparisce)
     tableHtml.style.color = '#000'
 
-    tableHtml.innerHTML = `
-      <div style="position: relative; text-align: center; margin-bottom: 25px;">
-        <img src="${import.meta.env.BASE_URL}logo.png" alt="" style="position: absolute; top: 0; right: 0; height: 70px; width: auto;" />
-        <h2 style="font-size: 22px; font-weight: bold; margin: 0 0 20px 0;">DISTINTA GARA</h2>
-        <div style="font-weight: bold; margin-bottom: 15px; font-size: 13px;">SQUADRA: U.S. RIOLUNATO</div>
-        <div style="margin-bottom: 12px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <span>COLORI: MAGLIE ${campo(testata.coloreMaglia, '_______________________')}</span>
-          <span>PANT. ${campo(testata.colorePantaloncini, '_______________________')}</span>
-          <span>CALZ. ${campo(testata.coloreCalzettoni, '_______________________')}</span>
-        </div>
-        <div style="margin-bottom: 12px; font-size: 12px;">
-          <span style="font-size: 10px;">GIRONE/TORNEO:</span> ${campo(gironeTorneo, '________________________')} Tesserati partecipanti alla gara del ${campo(dataGara, '____________')}
-        </div>
-        <div style="margin-bottom: 20px; font-size: 12px;">
-          ore ${campo(testata.oraGara, '_______')} orario pres.note ${campo(testata.orarioRitrovo, '________')} Contro ${campo(testata.avversario, '_____________________________')}
-          Campo ${campo(testata.campo, '____________________________')}
-        </div>
-      </div>
-      <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width:100%; font-size:12px;">
-        <thead>
-          <tr style="background: #d9d9d9; border: 1px solid #000;">
-            <th style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">Mans/Num.</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">Cognome e Nome</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">Data nascita</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">Tessera</th>
-            <th style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">Data rilascio</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${list
-            .map((item) => {
-              const mansNum = getMansNum(item)
-              const raw = item.raw as Record<string, string>
-              const cognomeNome = `${raw?.Cognome ? raw.Cognome.replace(/\s+(JR|SR)$/i, '').trim() : ''} ${
-                raw?.Nome ? raw.Nome.replace(/\s+(JR|SR)$/i, '').trim() : ''
-              }`.trim()
-              return `<tr style="height: 28px;">
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${mansNum}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(cognomeNome)}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(raw?.DataNascita)}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(raw?.Tessera)}</td>
-              <td style="border: 1px solid #000; padding: 5px; text-align: center;">${esc(raw?.DataRilascio)}</td>
-            </tr>`
-            })
-            .join('')}
-          ${generateEmptyRows(23 - list.length)}
-        </tbody>
-      </table>
-      <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start; padding: 0 20px; font-size: 13px; font-weight: bold;">
-        <div style="text-align: center;"><div style="margin-bottom: 40px;">L'ARBITRO</div><div style="border-top: 1px solid #000; width: 180px; margin: 0 auto;"></div></div>
-        <div style="text-align: center;"><div style="margin-bottom: 40px;">IL CAPITANO</div><div style="border-top: 1px solid #000; width: 180px; margin: 0 auto;"></div></div>
-        <div style="text-align: center;"><div style="margin-bottom: 40px;">IL DIRIGENTE ACCOMPAGNATORE</div><div style="border-top: 1px solid #000; width: 180px; margin: 0 auto;"></div></div>
-      </div>
-    `
+    tableHtml.innerHTML = htmlDistinta(list, testata)
 
     document.body.appendChild(tableHtml)
 

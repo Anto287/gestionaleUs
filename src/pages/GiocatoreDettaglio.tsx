@@ -389,6 +389,7 @@ export function GiocatoreDettaglio() {
               <Descriptions.Item label="Rilascio tessera">
                 {g.dataRilascio ? formatData(g.dataRilascio, true) : '—'}
               </Descriptions.Item>
+              <Descriptions.Item label="N. documento">{g.documento || '—'}</Descriptions.Item>
               <Descriptions.Item label="Scadenza documento">
                 {g.scadenzaDocumento ? (
                   <Space size={4}>
@@ -605,6 +606,13 @@ export function GiocatoreDettaglio() {
           </Form.Item>
           <Form.Item label="Data rilascio tessera" name="dataRilascio">
             <Input placeholder="es. 01/09/2026" />
+          </Form.Item>
+          <Form.Item
+            label="N. documento d'identità"
+            name="documento"
+            tooltip="Numero della carta d'identità (o del documento usato in distinta): finisce da solo nella distinta"
+          >
+            <Input placeholder="es. CA12345AB" />
           </Form.Item>
           <Form.Item
             label="Scadenza documento d'identità"

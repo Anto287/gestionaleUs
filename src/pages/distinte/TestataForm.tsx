@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Col, DatePicker, Form, Input, Row, Select, TimePicker } from 'antd'
+import { AutoComplete, Col, DatePicker, Form, Input, Row, Select, TimePicker } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import type { Divisa, TestataDistinta, Torneo } from '../../types'
 
@@ -28,6 +28,14 @@ interface Valori {
   avversario?: string
   campo?: string
   orarioRitrovo?: string
+  defibrillatore?: string
+  tesseraDefibrillatore?: string
+}
+
+/** Una persona della rosa proposta come addetto al defibrillatore. */
+export interface PersonaRosa {
+  nome: string
+  tessera?: string
 }
 
 /**
@@ -39,11 +47,14 @@ interface Valori {
 export function TestataForm({
   tornei,
   divise,
+  persone,
   onChange,
   initialTestata,
 }: {
   tornei: Torneo[]
   divise: Divisa[]
+  /** suggerimenti per l'addetto al defibrillatore (si può scrivere anche un nome fuori rosa) */
+  persone: PersonaRosa[]
   onChange: (t: TestataDistinta) => void
   initialTestata?: TestataDistinta
 }) {
@@ -59,6 +70,8 @@ export function TestataForm({
     avversario: initialTestata?.avversario,
     campo: initialTestata?.campo,
     orarioRitrovo: initialTestata?.orarioRitrovo,
+    defibrillatore: initialTestata?.defibrillatore,
+    tesseraDefibrillatore: initialTestata?.tesseraDefibrillatore,
     dataGara: initialTestata?.dataGara ? dayjs(initialTestata.dataGara) : undefined,
     oraGara: parseOra(initialTestata?.oraGara),
   }
@@ -76,7 +89,16 @@ export function TestataForm({
       orarioRitrovo: pulisci(v.orarioRitrovo),
       avversario: pulisci(v.avversario),
       campo: pulisci(v.campo),
+      defibrillatore: pulisci(v.defibrillatore),
+      tesseraDefibrillatore: pulisci(v.tesseraDefibrillatore),
     })
+  }
+
+  // scelto qualcuno della rosa, la tessera si compila da sola (resta modificabile)
+  function onDefibrillatoreSelect(nome: string) {
+    const p = persone.find((x) => x.nome === nome)
+    form.setFieldsValue({ tesseraDefibrillatore: p?.tessera })
+    emit()
   }
 
   // scelto un torneo, il girone si compila da solo (resta modificabile)
@@ -180,6 +202,29 @@ export function TestataForm({
         <Col xs={24} sm={12}>
           <Form.Item label="Orario ritrovo / note" name="orarioRitrovo">
             <Input placeholder="es. ritrovo ore 14:00" />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="Addetto al defibrillatore"
+            name="defibrillatore"
+            tooltip="Chiunque, anche chi non è in squadra: scegli dalla rosa o scrivi il nome"
+          >
+            <AutoComplete
+              allowClear
+              onSelect={onDefibrillatoreSelect}
+              placeholder="Cognome e nome"
+              options={persone.map((p) => ({ value: p.nome }))}
+              filterOption={(input, opt) => String(opt?.value ?? '').toLowerCase().includes(input.toLowerCase())}
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Form.Item label="Tessera addetto defibrillatore" name="tesseraDefibrillatore">
+            <Input placeholder="se ce l'ha" />
           </Form.Item>
         </Col>
       </Row>
