@@ -146,8 +146,9 @@ export function Rosa() {
   const [certF, setCertF] = useState<string | undefined>()
   const [quotaF, setQuotaF] = useState<string | undefined>()
   const [tesseraF, setTesseraF] = useState<string | undefined>()
+  const [datiF, setDatiF] = useState<string | undefined>()
 
-  const nFiltri = [repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF].filter(Boolean).length
+  const nFiltri = [repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF].filter(Boolean).length
   function azzeraFiltri() {
     setRepartoF(undefined)
     setRuoloF(undefined)
@@ -155,6 +156,22 @@ export function Rosa() {
     setCertF(undefined)
     setQuotaF(undefined)
     setTesseraF(undefined)
+    setDatiF(undefined)
+  }
+
+  /** Campi anagrafici della distinta ancora vuoti (nascita, documento, tessera…). */
+  function datiMancanti(g: Giocatore): string[] {
+    return (
+      [
+        ['nascita', 'data di nascita'],
+        ['documento', 'n. documento'],
+        ['tessera', 'n. tessera'],
+        ['scadenzaDocumento', 'scadenza documento'],
+        ['dataRilascio', 'rilascio tessera'],
+      ] as const
+    )
+      .filter(([k]) => !g[k]?.trim())
+      .map(([, etichetta]) => etichetta)
   }
 
   /** Può giocare nel reparto? Conta il ruolo preferito e quelli adattati. */
@@ -219,10 +236,12 @@ export function Rosa() {
         if (quotaF === 'esente' && !g.quotaEsente) return false
         if (tesseraF === 'si' && !g.tessera) return false
         if (tesseraF === 'no' && g.tessera) return false
+        if (datiF === 'incompleti' && !datiMancanti(g).length) return false
+        if (datiF === 'completi' && datiMancanti(g).length) return false
         return true
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ordinati, q, repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF],
+    [ordinati, q, repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF],
   )
 
   // le quote non passano dai Conti: qui si vede la cifra che a fine anno
@@ -657,6 +676,19 @@ export function Rosa() {
                   options={[
                     { value: 'si', label: 'Con tessera' },
                     { value: 'no', label: 'Senza tessera' },
+                  ]}
+                  style={{ width: '100%' }}
+                />
+              </FiltroCampo>
+              <FiltroCampo label="Dati anagrafici">
+                <Select
+                  allowClear
+                  placeholder="Qualsiasi"
+                  value={datiF}
+                  onChange={setDatiF}
+                  options={[
+                    { value: 'incompleti', label: 'Con dati mancanti' },
+                    { value: 'completi', label: 'Dati completi' },
                   ]}
                   style={{ width: '100%' }}
                 />
