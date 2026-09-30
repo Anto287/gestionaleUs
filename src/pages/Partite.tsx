@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -64,14 +65,14 @@ export function Partite() {
   const { attiva } = useSeason()
   const [form] = Form.useForm()
   const giocataForm = Form.useWatch('giocata', form)
-  const [q, setQ] = useState('')
-  const [dove, setDove] = useState<string | undefined>()
-  const [esitoF, setEsitoF] = useState<string | undefined>()
-  const [meseF, setMeseF] = useState<string | undefined>()
-  const [portaF, setPortaF] = useState<string | undefined>()
-  const [statoF, setStatoF] = useState<string | undefined>()
-  const [torneoF, setTorneoF] = useState<string | undefined>()
-  const [tipoF, setTipoF] = useState<string | undefined>()
+  const [q, setQ] = useFiltro('partite.q', '')
+  const [dove, setDove] = useFiltro<string | undefined>('partite.dove', undefined)
+  const [esitoF, setEsitoF] = useFiltro<string | undefined>('partite.esitoF', undefined)
+  const [meseF, setMeseF] = useFiltro<string | undefined>('partite.meseF', undefined)
+  const [portaF, setPortaF] = useFiltro<string | undefined>('partite.portaF', undefined)
+  const [statoF, setStatoF] = useFiltro<string | undefined>('partite.statoF', undefined)
+  const [torneoF, setTorneoF] = useFiltro<string | undefined>('partite.torneoF', undefined)
+  const [tipoF, setTipoF] = useFiltro<string | undefined>('partite.tipoF', undefined)
 
   const partite = useMemo(() => [...items].sort((a, b) => b.data.localeCompare(a.data)), [items])
 

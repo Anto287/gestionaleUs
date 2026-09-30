@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import { useSearchParams } from 'react-router-dom'
 import {
   App as AntApp,
@@ -81,7 +82,7 @@ export function Allenamenti() {
   const [esportando, setEsportando] = useState(false)
   const [tipoChart, setTipoChart] = useState<TipoAffluenza>('barre')
   const [periodoChart, setPeriodoChart] = useState<PeriodoChart>('tutto')
-  const [ricerca, setRicerca] = useState('')
+  const [ricerca, setRicerca] = useFiltro('allenamenti.ricerca', '')
   const [form] = Form.useForm()
   const [formR] = Form.useForm()
 

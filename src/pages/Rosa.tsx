@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -139,14 +140,14 @@ export function Rosa() {
   const campiDirigente = categoriaForm === 'dirigente' || categoriaForm === 'entrambi'
   const infortunatoForm = Form.useWatch('infortunato', form)
   const esenteForm = Form.useWatch('quotaEsente', form)
-  const [q, setQ] = useState('')
-  const [repartoF, setRepartoF] = useState<Area | undefined>()
-  const [ruoloF, setRuoloF] = useState<string | undefined>()
-  const [categoriaF, setCategoriaF] = useState<string | undefined>()
-  const [certF, setCertF] = useState<string | undefined>()
-  const [quotaF, setQuotaF] = useState<string | undefined>()
-  const [tesseraF, setTesseraF] = useState<string | undefined>()
-  const [datiF, setDatiF] = useState<string | undefined>()
+  const [q, setQ] = useFiltro('rosa.q', '')
+  const [repartoF, setRepartoF] = useFiltro<Area | undefined>('rosa.repartoF', undefined)
+  const [ruoloF, setRuoloF] = useFiltro<string | undefined>('rosa.ruoloF', undefined)
+  const [categoriaF, setCategoriaF] = useFiltro<string | undefined>('rosa.categoriaF', undefined)
+  const [certF, setCertF] = useFiltro<string | undefined>('rosa.certF', undefined)
+  const [quotaF, setQuotaF] = useFiltro<string | undefined>('rosa.quotaF', undefined)
+  const [tesseraF, setTesseraF] = useFiltro<string | undefined>('rosa.tesseraF', undefined)
+  const [datiF, setDatiF] = useFiltro<string | undefined>('rosa.datiF', undefined)
 
   const nFiltri = [repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF].filter(Boolean).length
   function azzeraFiltri() {

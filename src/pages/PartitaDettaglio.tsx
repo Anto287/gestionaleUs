@@ -19,16 +19,18 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, AimOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
 import { isGiocatore } from '../lib/categoria'
-import { MAX_TITOLARI, REGEX_ORA, problemiPartita, sommaEventi } from '../lib/partita'
+import { REGEX_ORA, problemiPartita, sommaEventi } from '../lib/partita'
 import { COLORI } from '../lib/chart'
 import { EventoEditor } from './partite/EventoEditor'
-import type { EventoGol, Giocatore, Partita, Torneo } from '../types'
+import { FormazioneCampo } from './partite/FormazioneCampo'
+import { schedaDi } from '../lib/avversari'
+import type { Avversario, EventoGol, Giocatore, Partita, Torneo } from '../types'
 
 const { Text } = Typography
 
@@ -39,6 +41,7 @@ export function PartitaDettaglio() {
   const { items, update } = partiteColl
   const giocatori = useCollection<Giocatore>('giocatori')
   const tornei = useCollection<Torneo>('tornei')
+  const avversari = useCollection<Avversario>('avversari')
   const eliminaConUndo = useEliminaUndo()
   const { message } = AntApp.useApp()
   const [modale, setModale] = useState(false)
@@ -53,6 +56,14 @@ export function PartitaDettaglio() {
         `${a.cognome}${a.nome}`.localeCompare(`${b.cognome}${b.nome}`),
       ),
     [giocatori.items],
+  )
+  // si parte dal modulo dell'ultima partita di cui è stata segnata la formazione
+  const moduloSuggerito = useMemo(
+    () =>
+      [...items]
+        .filter((x) => x.formazione && x.id !== id)
+        .sort((a, b) => b.data.localeCompare(a.data))[0]?.formazione?.modulo,
+    [items, id],
   )
   const nomeDi = (gid: string) => {
     const g = rosa.find((x) => x.id === gid)
@@ -101,8 +112,15 @@ export function PartitaDettaglio() {
       (p.ammoniti?.length ?? 0) +
       (p.espulsi?.length ?? 0) >
     0
-  const haFormazione = titolari.length + subentrati.length > 0
+  const haFormazione = titolari.length + subentrati.length > 0 || !!p.formazione
   const problemi = problemiPartita(p, nomeDi)
+
+  /** Apre la scheda della squadra avversaria (e la crea se non c'è ancora). */
+  function apriScheda() {
+    const scheda = schedaDi(avversari.items, p!.avversario)
+    const sid = scheda?.id ?? avversari.add({ nome: p!.avversario.trim(), giocatori: [] })
+    navigate(`/avversari/${sid}`)
+  }
 
   function apriModifica() {
     // via i valori (e gli errori) di un'apertura precedente
@@ -186,6 +204,9 @@ export function PartitaDettaglio() {
             {p.amichevole ? ' · Amichevole' : ''}
           </Text>
           <Space>
+            <Button icon={<AimOutlined />} onClick={apriScheda}>
+              Scheda avversario
+            </Button>
             <Button icon={<EditOutlined />} onClick={apriModifica}>
               Modifica
             </Button>
@@ -253,55 +274,14 @@ export function PartitaDettaglio() {
 
       <Row gutter={[16, 16]}>
         {!programma && (
-          <>
-            <Col xs={24} md={12}>
-              <Card
-                title={`Titolari (${titolari.length}/${MAX_TITOLARI})`}
-                size="small"
-                extra={
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    chi è sceso in campo dal 1'
-                  </Text>
-                }
-              >
-                <Select
-                  mode="multiple"
-                  style={{ width: '100%' }}
-                  placeholder="Giocatori titolari"
-                  showSearch
-                  optionFilterProp="label"
-                  maxTagCount="responsive"
-                  maxCount={MAX_TITOLARI}
-                  value={titolari}
-                  options={opzioniGiocatori(titolari, subentrati)}
-                  onChange={(v) => update(p.id, { titolari: v })}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} md={12}>
-              <Card
-                title={`Subentrati${subentrati.length ? ` (${subentrati.length})` : ''}`}
-                size="small"
-                extra={
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    entrati dalla panchina
-                  </Text>
-                }
-              >
-                <Select
-                  mode="multiple"
-                  style={{ width: '100%' }}
-                  placeholder="Giocatori subentrati"
-                  showSearch
-                  optionFilterProp="label"
-                  maxTagCount="responsive"
-                  value={subentrati}
-                  options={opzioniGiocatori(subentrati, titolari)}
-                  onChange={(v) => update(p.id, { subentrati: v })}
-                />
-              </Card>
-            </Col>
-          </>
+          <Col span={24}>
+            <FormazioneCampo
+              p={p}
+              rosa={rosa}
+              moduloSuggerito={moduloSuggerito}
+              onChange={(patch) => update(p.id, patch)}
+            />
+          </Col>
         )}
         {mostraEventi ? (
           <>

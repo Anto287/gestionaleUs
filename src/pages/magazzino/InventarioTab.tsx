@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import {
   Button,
@@ -89,11 +90,11 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
   const [form] = Form.useForm()
   const dettatura = useDettatura((testo) => aggiornaRapida(testo))
 
-  const [q, setQ] = useState('')
-  const [cat, setCat] = useState<string | undefined>()
-  const [entroGiorni, setEntroGiorni] = useState<number | null>(null)
-  const [soloEsauriti, setSoloEsauriti] = useState(false)
-  const [soloSottoScorta, setSoloSottoScorta] = useState(false)
+  const [q, setQ] = useFiltro(`inventario.${collezione}.q`, '')
+  const [cat, setCat] = useFiltro<string | undefined>(`inventario.${collezione}.cat`, undefined)
+  const [entroGiorni, setEntroGiorni] = useFiltro<number | null>(`inventario.${collezione}.entroGiorni`, null)
+  const [soloEsauriti, setSoloEsauriti] = useFiltro(`inventario.${collezione}.soloEsauriti`, false)
+  const [soloSottoScorta, setSoloSottoScorta] = useFiltro(`inventario.${collezione}.soloSottoScorta`, false)
 
   function coloreCategoria(c?: string): string {
     const i = categorie?.indexOf(c ?? '') ?? -1
@@ -310,7 +311,7 @@ export function InventarioTab({ config }: { config: ConfigInventario }) {
 
   /** Scarica la lista visibile (con i filtri applicati) in un foglio Excel. */
   function esporta() {
-    esportaExcel(`${collezione}.xlsx`, [
+    esportaExcel(`inventario.${collezione}.xlsx`, [
       {
         nome: plurale[0].toUpperCase() + plurale.slice(1),
         righe: filtrati.map((a) => ({

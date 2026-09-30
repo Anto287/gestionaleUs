@@ -42,6 +42,20 @@ export const AREA_COLOR: Record<Area, string> = {
   Attacco: 'red',
 }
 
+/** Colori pieni dei reparti, per i dischi dei giocatori sul campo. */
+export const AREA_HEX: Record<Area, string> = {
+  Portiere: '#d99a00',
+  Difesa: '#2b6cb0',
+  Centrocampo: '#0e7490',
+  Attacco: '#c22026',
+}
+
+/** Colore pieno del reparto di un codice ruolo (grigio se sconosciuto). */
+export function areaHex(code?: string): string {
+  const a = code ? RUOLO_BY_CODE[code]?.area : undefined
+  return a ? AREA_HEX[a] : '#6b6b6b'
+}
+
 /** Colore antd del tag per un codice ruolo. */
 export function coloreRuolo(code?: string): string | undefined {
   if (!code) return undefined

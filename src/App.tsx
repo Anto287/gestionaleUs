@@ -22,6 +22,10 @@ const Partite = lazy(() => import('./pages/Partite').then((m) => ({ default: m.P
 const PartitaDettaglio = lazy(() =>
   import('./pages/PartitaDettaglio').then((m) => ({ default: m.PartitaDettaglio })),
 )
+const Avversari = lazy(() => import('./pages/Avversari').then((m) => ({ default: m.Avversari })))
+const AvversarioDettaglio = lazy(() =>
+  import('./pages/AvversarioDettaglio').then((m) => ({ default: m.AvversarioDettaglio })),
+)
 const Formazione = lazy(() => import('./pages/Formazione').then((m) => ({ default: m.Formazione })))
 const Piazzati = lazy(() => import('./pages/Piazzati').then((m) => ({ default: m.Piazzati })))
 const Calendario = lazy(() => import('./pages/Calendario').then((m) => ({ default: m.Calendario })))
@@ -50,6 +54,8 @@ function App() {
           <Route path="/allenamenti" element={<Allenamenti />} />
           <Route path="/partite" element={<Partite />} />
           <Route path="/partite/:id" element={<PartitaDettaglio />} />
+          <Route path="/avversari" element={<Avversari />} />
+          <Route path="/avversari/:id" element={<AvversarioDettaglio />} />
           <Route path="/formazione" element={<Formazione />} />
           <Route path="/piazzati" element={<Piazzati />} />
           <Route path="/calendario" element={<Calendario />} />

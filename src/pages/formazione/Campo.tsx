@@ -1,5 +1,5 @@
 import { Button, Popover, Rate, Tag } from 'antd'
-import { RUOLO_BY_CODE, type Area } from '../../ruoli'
+import { RUOLO_BY_CODE, areaHex } from '../../ruoli'
 import {
   candidatiPerSlot,
   etichettaFit,
@@ -7,18 +7,7 @@ import {
   type Modulo,
 } from '../../lib/formazione'
 import type { Giocatore } from '../../types'
-
-const AREA_HEX: Record<Area, string> = {
-  Portiere: '#d99a00',
-  Difesa: '#2b6cb0',
-  Centrocampo: '#3f7a52',
-  Attacco: '#c22026',
-}
-
-function areaHex(role: string): string {
-  const a = RUOLO_BY_CODE[role]?.area
-  return a ? AREA_HEX[a] : '#6b6b6b'
-}
+import { ErbaCampo, posizioneSlot } from '../../components/ErbaCampo'
 
 function cognomeBreve(g?: Giocatore): string {
   if (!g) return ''
@@ -43,31 +32,12 @@ export function Campo({
 }) {
   return (
     <div className="campo">
-      <svg className="campo-erba" viewBox="0 0 100 150" preserveAspectRatio="none" aria-hidden>
-        <rect x="0" y="0" width="100" height="150" fill="#2f8f4e" />
-        {/* fasce d'erba alternate */}
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <rect key={i} x="0" y={i * 25} width="100" height="12.5" fill="#2b8549" opacity="0.55" />
-        ))}
-        <g stroke="#ffffff" strokeWidth="0.5" fill="none" opacity="0.8">
-          <rect x="3" y="3" width="94" height="144" />
-          <line x1="3" y1="75" x2="97" y2="75" />
-          <circle cx="50" cy="75" r="11" />
-          <circle cx="50" cy="75" r="0.8" fill="#fff" />
-          {/* area in basso (porta nostra) */}
-          <rect x="22" y="123" width="56" height="24" />
-          <rect x="37" y="139" width="26" height="8" />
-          {/* area in alto */}
-          <rect x="22" y="3" width="56" height="24" />
-          <rect x="37" y="3" width="26" height="8" />
-        </g>
-      </svg>
+      <ErbaCampo />
 
       <div className="campo-slots">
         {modulo.slots.map((s, i) => {
           const a = formazione.titolari[i]
-          const left = `${5 + s.x * 90}%`
-          const top = `${5 + (1 - s.y) * 90}%`
+          const { left, top } = posizioneSlot(s)
           const colore = areaHex(s.role)
           const ruoloLabel = RUOLO_BY_CODE[s.role]?.label ?? s.role
 

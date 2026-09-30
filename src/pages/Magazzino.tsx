@@ -7,6 +7,7 @@ import {
   SkinOutlined,
 } from '@ant-design/icons'
 import { PageHeader } from '../components/PageHeader'
+import { useFiltro } from '../hooks/useFiltro'
 import { InventarioTab, type ConfigInventario } from './magazzino/InventarioTab'
 import { DivisaManager } from './magazzino/DivisaManager'
 
@@ -178,6 +179,7 @@ const BORSA_MEDICA: ConfigInventario = {
 
 export function Magazzino() {
   const screens = Grid.useBreakpoint()
+  const [tab, setTab] = useFiltro('magazzino.tab', 'bar')
   const tabs = [
     { key: 'bar', label: 'Bar', icon: <CoffeeOutlined />, children: <InventarioTab config={BAR} /> },
     {
@@ -207,7 +209,7 @@ export function Magazzino() {
         titolo="Magazzino"
         sottotitolo="Bar, materiale allenamento, manutenzione campo, borsa medica e tute da gara"
       />
-      <Tabs defaultActiveKey="bar" items={tabs} size={screens.sm ? 'large' : 'middle'} />
+      <Tabs activeKey={tab} onChange={setTab} items={tabs} size={screens.sm ? 'large' : 'middle'} />
     </>
   )
 }

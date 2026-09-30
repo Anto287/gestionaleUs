@@ -42,6 +42,7 @@ export default defineConfig(({ command }) => ({
           '**/assets/pdf-*.js',
           '**/assets/xlsx-*.js',
           '**/assets/Social-*.js',
+          '**/assets/pptxgen*.js',
         ],
         // l'app carica jspdf/konva su richiesta: alza il limite dei file precache
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,

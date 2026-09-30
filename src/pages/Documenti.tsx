@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import {
   App as AntApp,
   Button,
@@ -68,7 +69,7 @@ export function Documenti() {
   // caricamenti in corso: con più file insieme il primo che finisce non spegne gli altri
   const [inCorso, setInCorso] = useState(0)
   const caricando = inCorso > 0
-  const [q, setQ] = useState('')
+  const [q, setQ] = useFiltro('documenti.q', '')
   // creazione: tipo scelto dal menu, nome chiesto nel modale
   const [tipoNuovo, setTipoNuovo] = useState<TipoNuovo | null>(null)
   const [nomeNuovo, setNomeNuovo] = useState('')

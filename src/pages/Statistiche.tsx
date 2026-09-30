@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import { App, Button, Card, Col, Empty, Row, Select, Space, Statistic, Tabs, Tag, Typography } from 'antd'
 import {
   Bar,
@@ -46,8 +47,8 @@ export function Statistiche() {
   const { attiva } = useSeason()
   const [esportando, setEsportando] = useState(false)
   // 'tutte' oppure l'id di un torneo: tutte le statistiche si restringono
-  const [competizione, setCompetizione] = useState<string>('tutte')
-  const [tab, setTab] = useState<'stagione' | 'albo'>('stagione')
+  const [competizione, setCompetizione] = useFiltro<string>('statistiche.competizione', 'tutte')
+  const [tab, setTab] = useFiltro<'stagione' | 'albo'>('statistiche.tab', 'stagione')
 
   const giocate = useMemo(
     () =>

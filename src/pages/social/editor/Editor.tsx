@@ -9,6 +9,7 @@ import {
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  ExportOutlined,
   EditOutlined,
   FontSizeOutlined,
   PictureOutlined,
@@ -39,6 +40,7 @@ import {
 import { PannelloDesign, PannelloElemento, nomeTipo, type Allineamento, type MossaLivello } from './Pannelli'
 import { comprimiImmagine } from '../../../lib/posterSettings'
 import { leggiPrefs, salvaPrefs, azzeraPrefs } from '../../../lib/graficaPrefs'
+import { esportaCanva } from './esportaCanva'
 
 /** Ombra morbida comune (attiva solo con el.ombra). */
 const OMBRA_PROPS = {
@@ -185,6 +187,7 @@ export function Editor({
   const [selId, setSelId] = useState<string | null>(null)
   const [pronto, setPronto] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [perCanva, setPerCanva] = useState(false)
   const [drawer, setDrawer] = useState<'el' | 'design' | null>(null)
   const [guide, setGuide] = useState<{ v?: number; h?: number }>({})
 
@@ -626,6 +629,35 @@ export function Editor({
     setSelId(null)
   }
 
+  /** PowerPoint a elementi separati: su Canva ogni pezzo resta spostabile. */
+  async function scaricaPerCanva() {
+    trRef.current?.nodes([])
+    setPerCanva(true)
+    try {
+      const stops = veloStops()
+      const velo: [number, string][] = []
+      for (let i = 0; i < stops.length; i += 2) velo.push([stops[i] as number, stops[i + 1] as string])
+      await esportaCanva({
+        scena,
+        W,
+        H,
+        fotoBox,
+        veloStops: velo,
+        altezzaTesto: (el) =>
+          nodiRef.current.get(el.id)?.height() ??
+          el.testo.split('\n').length * el.fontSize * (el.interlinea ?? 1),
+        nomeFile: nomeFile.replace(/\.png$/i, '') + '.pptx',
+      })
+      message.success('File pronto: su Canva trascinalo nella home (o Crea un design → Importa file)')
+    } catch (err) {
+      console.error(err)
+      message.error('Non sono riuscito a creare il file per Canva')
+    } finally {
+      setPerCanva(false)
+      setSelId(null)
+    }
+  }
+
   async function salvaDrive() {
     if (!onSalvaDrive) return
     const url = esporta()
@@ -1004,6 +1036,11 @@ export function Editor({
             <Button icon={<DownloadOutlined />} onClick={scarica} disabled={!pronto} block>
               Scarica PNG
             </Button>
+            <Tooltip title="File PowerPoint da importare su Canva: testi, forme e immagini restano elementi separati e modificabili">
+              <Button icon={<ExportOutlined />} onClick={scaricaPerCanva} loading={perCanva} disabled={!pronto} block>
+                Per Canva
+              </Button>
+            </Tooltip>
             {onSalvaDrive && (
               <Button
                 type="primary"

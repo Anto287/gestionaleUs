@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import { useNavigate } from 'react-router-dom'
 import { Alert, Avatar, Button, Empty, Input, Segmented, Space, Tag, Tooltip, Typography } from 'antd'
 import {
@@ -35,8 +36,8 @@ export function Archivio() {
     useArchivio()
   const { items: rosa } = useCollection<Giocatore>('giocatori')
   const navigate = useNavigate()
-  const [vista, setVista] = useState<'rosa' | 'orfani'>('rosa')
-  const [q, setQ] = useState('')
+  const [vista, setVista] = useFiltro<'rosa' | 'orfani'>('archivio.vista', 'rosa')
+  const [q, setQ] = useFiltro('archivio.q', '')
   const [anteprima, setAnteprima] = useState<FileArchivio | null>(null)
   const [carica, setCarica] = useState<AperturaCarica | null>(null)
 

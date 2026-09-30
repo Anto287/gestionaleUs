@@ -127,7 +127,59 @@ export interface Partita {
   titolari?: string[]
   /** id giocatori subentrati dalla panchina */
   subentrati?: string[]
+  /**
+   * Come si è giocato: modulo, chi occupava ogni posto e i cambi. Quando c'è,
+   * titolari e subentrati si ricavano da qui (restano salvati per le statistiche).
+   */
+  formazione?: FormazionePartita
   note?: string
+}
+
+/** Un cambio: chi esce, chi entra e (se lo si sa) al minuto. */
+export interface Cambio {
+  esce: string
+  entra: string
+  minuto?: number
+}
+
+export interface FormazionePartita {
+  /** id del modulo (vedi MODULI in lib/formazione) */
+  modulo: string
+  /** per ogni posto del modulo l'id del titolare, o null se non segnato */
+  posti: (string | null)[]
+  cambi: Cambio[]
+}
+
+/** Un giocatore di una squadra avversaria, per come l'abbiamo visto giocare. */
+export interface GiocatoreAvversario {
+  id: string
+  nome: string
+  numero?: number
+  /** codice ruolo stile FIFA, come per i nostri */
+  ruolo?: string
+  /** posto nel modulo abituale della squadra (indice dello slot) */
+  posto?: number
+  /** es. mancino, veloce, forte di testa */
+  caratteristiche?: string[]
+  /** da tenere d'occhio */
+  pericoloso?: boolean
+  note?: string
+}
+
+/**
+ * Scheda di una squadra affrontata. Vale per tutte le stagioni (raccolta
+ * globale): si aggancia alle partite per nome dell'avversario.
+ */
+export interface Avversario {
+  id: string
+  nome: string
+  /** modulo abituale (id di MODULI) */
+  modulo?: string
+  /** come giocano: impostazione, pressing, palle lunghe… */
+  stile?: string
+  puntiForza?: string
+  puntiDeboli?: string
+  giocatori: GiocatoreAvversario[]
 }
 
 /** Una seduta di allenamento, con le presenze dei giocatori. */

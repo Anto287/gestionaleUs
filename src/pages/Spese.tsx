@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import {
   App as AntApp,
@@ -113,11 +114,11 @@ export function Spese() {
   const [daSaldare, setDaSaldare] = useState<SpesaCondivisa | null>(null)
   const [anteprima, setAnteprima] = useState<Documento | null>(null)
 
-  const [q, setQ] = useState('')
-  const [societaF, setSocietaF] = useState<string | undefined>()
-  const [statoF, setStatoF] = useState<string | undefined>()
-  const [anticipoF, setAnticipoF] = useState<string | undefined>()
-  const [annoF, setAnnoF] = useState<string | undefined>()
+  const [q, setQ] = useFiltro('spese.q', '')
+  const [societaF, setSocietaF] = useFiltro<string | undefined>('spese.societaF', undefined)
+  const [statoF, setStatoF] = useFiltro<string | undefined>('spese.statoF', undefined)
+  const [anticipoF, setAnticipoF] = useFiltro<string | undefined>('spese.anticipoF', undefined)
+  const [annoF, setAnnoF] = useFiltro<string | undefined>('spese.annoF', undefined)
 
   const societa = useMemo(
     () => [...new Set(items.map((s) => s.societa?.trim()).filter(Boolean))].sort() as string[],

@@ -2135,3 +2135,323 @@ body {
 .cal-lista li.cal-evento:hover {
   background: var(--linea);
 }
+
+/* ---------- Formazione della partita (campo con eventi e cambi) ---------- */
+
+.pt-griglia {
+  display: grid;
+  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 767px) {
+  .pt-griglia {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pt-campo {
+  margin: 0;
+}
+
+.pt-token {
+  width: 76px;
+}
+
+.pt-disc-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* palloni, assist e cartellini sopra il disco */
+.pt-icone {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 1;
+}
+.pt-disc-wrap > .pt-icone {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 3px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+.pt-gol {
+  display: inline-flex;
+  align-items: center;
+}
+.pt-gol b,
+.pt-assist b {
+  font-size: 9px;
+  margin-left: 1px;
+  color: #241d16;
+}
+.pt-assist {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 6px;
+  background: #2b6cb0;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+}
+.pt-assist b {
+  color: #fff;
+}
+.pt-cartellino {
+  display: inline-block;
+  width: 8px;
+  height: 11px;
+  border-radius: 1.5px;
+  vertical-align: -1px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.35);
+}
+.pt-cartellino.giallo {
+  background: #f5c518;
+}
+.pt-cartellino.rosso {
+  background: #d9262c;
+}
+
+/* uscito: freccia rossa col minuto in basso a destra del disco */
+.pt-uscito {
+  position: absolute;
+  right: -12px;
+  bottom: -4px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: #d9262c;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* chi è entrato al suo posto, sotto il nome */
+.pt-entrato {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 96px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: rgba(10, 30, 16, 0.72);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pt-entrato .pt-icone {
+  margin-left: 2px;
+}
+
+.pt-freccia {
+  font-size: 9px;
+}
+.pt-freccia.entra {
+  color: #3fbf6a;
+}
+.pt-freccia.esce {
+  color: #d9262c;
+}
+
+.pt-lato {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pt-cambi {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pt-cambi li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+  background: var(--cartoncino);
+}
+.pt-cambi-min {
+  min-width: 30px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--testo-2);
+}
+.pt-cambi-chi {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+.pt-cambi-chi .pt-icone {
+  margin-left: 6px;
+}
+.pt-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pt-nuovo-cambio {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.pt-nuovo-cambio > :last-child {
+  grid-column: 1 / -1;
+}
+
+.pt-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--testo-2);
+}
+.pt-legenda > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pt-editor-eventi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pt-modale-cambio {
+  padding: 10px;
+  border: 1px solid var(--linea);
+  border-radius: 10px;
+}
+.pt-modale-cambio-testa {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* ---------- Avversari ---------- */
+
+.avv-card-testa {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.avv-card-nome {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.avv-card-stile {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.avv-testa {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.avv-pericolo {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #d9262c;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 11px;
+  text-align: center;
+}
+
+.avv-partite {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.avv-partite li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--linea);
+  cursor: pointer;
+}
+.avv-partite li:last-child {
+  border-bottom: none;
+}
+
+.avv-giocatori {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.avv-giocatore {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--cartoncino);
+  cursor: pointer;
+}
+.avv-disc {
+  flex: none;
+}
+.avv-giocatore-corpo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.avv-giocatore-nome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.avv-giocatore-tag .ant-tag {
+  margin-inline-end: 4px;
+  margin-bottom: 2px;
+}

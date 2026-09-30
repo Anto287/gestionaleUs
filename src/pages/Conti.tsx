@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import {
   App as AntApp,
@@ -110,16 +111,16 @@ export function Conti() {
     }
   }
 
-  const [q, setQ] = useState('')
-  const [tipo, setTipo] = useState<string | undefined>()
-  const [stato, setStato] = useState<string | undefined>()
-  const [annoF, setAnnoF] = useState<string | undefined>()
-  const [meseF, setMeseF] = useState<string | undefined>()
-  const [categoriaF, setCategoriaF] = useState<string | undefined>()
-  const [controparteF, setControparteF] = useState<string | undefined>()
+  const [q, setQ] = useFiltro('conti.q', '')
+  const [tipo, setTipo] = useFiltro<string | undefined>('conti.tipo', undefined)
+  const [stato, setStato] = useFiltro<string | undefined>('conti.stato', undefined)
+  const [annoF, setAnnoF] = useFiltro<string | undefined>('conti.annoF', undefined)
+  const [meseF, setMeseF] = useFiltro<string | undefined>('conti.meseF', undefined)
+  const [categoriaF, setCategoriaF] = useFiltro<string | undefined>('conti.categoriaF', undefined)
+  const [controparteF, setControparteF] = useFiltro<string | undefined>('conti.controparteF', undefined)
   // filtro importo: soglia + verso (≥ dalla soglia in su, ≤ dalla soglia in giù)
-  const [importoF, setImportoF] = useState<number | null>(null)
-  const [importoOp, setImportoOp] = useState<'maggiore' | 'minore'>('maggiore')
+  const [importoF, setImportoF] = useFiltro<number | null>('conti.importoF', null)
+  const [importoOp, setImportoOp] = useFiltro<'maggiore' | 'minore'>('conti.importoOp', 'maggiore')
   const [tipoBilancio, setTipoBilancio] = useState<TipoBilancio>('barre')
   const [periodoBilancio, setPeriodoBilancio] = useState<PeriodoChart>('tutto')
   const [tipoCategorie, setTipoCategorie] = useState<'uscita' | 'entrata'>('uscita')
