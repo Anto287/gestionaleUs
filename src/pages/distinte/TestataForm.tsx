@@ -94,10 +94,8 @@ export function TestataForm({
     })
   }
 
-  // scelto qualcuno della rosa, la tessera si compila da sola (resta modificabile)
-  function onDefibrillatoreSelect(nome: string) {
-    const p = persone.find((x) => x.nome === nome)
-    form.setFieldsValue({ tesseraDefibrillatore: p?.tessera })
+  // sul foglio va solo il nome (niente tessera): basta avvisare del cambio
+  function onDefibrillatoreSelect() {
     emit()
   }
 
@@ -211,7 +209,7 @@ export function TestataForm({
           <Form.Item
             label="Addetto al defibrillatore"
             name="defibrillatore"
-            tooltip="Chiunque, anche chi non è in squadra: scegli dalla rosa o scrivi il nome"
+            tooltip="Chiunque, anche chi non è in squadra: scegli dalla rosa o scrivi il nome. Vuoto = si scrive a penna"
           >
             <AutoComplete
               allowClear
@@ -220,11 +218,6 @@ export function TestataForm({
               options={persone.map((p) => ({ value: p.nome }))}
               filterOption={(input, opt) => String(opt?.value ?? '').toLowerCase().includes(input.toLowerCase())}
             />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item label="Tessera addetto defibrillatore" name="tesseraDefibrillatore">
-            <Input placeholder="se ce l'ha" />
           </Form.Item>
         </Col>
       </Row>

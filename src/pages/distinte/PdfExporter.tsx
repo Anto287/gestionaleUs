@@ -40,7 +40,21 @@ function htmlDistinta(list: Convocato[], testata: TestataDistinta): string {
   const gironeTorneo = [testata.torneo, testata.girone].filter(Boolean).join(' — ')
   const dataGara = testata.dataGara ? formatData(testata.dataGara, true) : undefined
 
-  const giocatori = list.filter((it) => !RUOLI_STAFF.some((k) => it[k]))
+  // in ordine alfabetico, prima il cognome e poi il nome; il N. del ruolo segue l'ordine (1–20)
+  const pulito = (v?: string) => (v ?? '').replace(/\s+(JR|SR)$/i, '').trim()
+  const chiave = (it: Convocato) => {
+    const raw = (it.raw ?? {}) as Record<string, string>
+    return [pulito(raw.Cognome), pulito(raw.Nome)] as const
+  }
+  const giocatori = list
+    .filter((it) => !RUOLI_STAFF.some((k) => it[k]))
+    .sort((a, b) => {
+      const [ca, na] = chiave(a)
+      const [cb, nb] = chiave(b)
+      return (
+        ca.localeCompare(cb, 'it', { sensitivity: 'base' }) || na.localeCompare(nb, 'it', { sensitivity: 'base' })
+      )
+    })
   const staff = (k: string) => list.find((it) => it[k])
 
   // la distinta UISP ha 20 righe: le vuote restano da compilare a penna
@@ -63,27 +77,23 @@ function htmlDistinta(list: Convocato[], testata: TestataDistinta): string {
   const rawAss = (assistente?.raw ?? {}) as Record<string, string>
 
   /** riga di staff in fondo al foglio: nome e, se c'è, la tessera */
-  function rigaStaff(etichetta: string, k: string, conTessera = true) {
+  function rigaStaff(etichetta: string, k: string) {
     const p = staff(k)
     const raw = (p?.raw ?? {}) as Record<string, string>
     return `<tr style="height:30px;">
       <td style="${td}padding-left:6px;">${etichetta}</td>
       <td style="${td}padding-left:6px;">${p ? `<b>${esc(cognomeNome(raw))}</b>` : ''}</td>
-      <td style="${td}text-align:center;font-size:9px;">${conTessera ? 'Tessera:' : ''}</td>
+      <td style="${td}text-align:center;font-size:9px;">Tessera:</td>
       <td style="${td}text-align:center;">${esc(raw.Tessera)}</td>
     </tr>`
   }
 
-  // dalla testata (chiunque, anche fuori rosa); le distinte vecchie lo avevano fra i convocati
+  // riga libera: solo il nome (dalla testata, o dalle distinte vecchie fra i convocati), niente tessera
   function rigaDefibrillatore() {
     const vecchio = staff('Defib')?.raw as Record<string, string> | undefined
     const nome = testata.defibrillatore ?? (vecchio ? cognomeNome(vecchio) : '')
-    const tessera = testata.defibrillatore ? testata.tesseraDefibrillatore : vecchio?.Tessera
     return `<tr style="height:30px;">
-      <td style="${td}padding-left:6px;">Addetto al defibrillatore:</td>
-      <td style="${td}padding-left:6px;">${nome ? `<b>${esc(nome)}</b>` : ''}</td>
-      <td style="${td}text-align:center;font-size:9px;">Tessera:</td>
-      <td style="${td}text-align:center;">${esc(tessera)}</td>
+      <td colspan="4" style="${td}padding-left:6px;">Addetto al defibrillatore:${nome ? ` <b>${esc(nome)}</b>` : ''}</td>
     </tr>`
   }
 
@@ -138,11 +148,11 @@ function htmlDistinta(list: Convocato[], testata: TestataDistinta): string {
       </tr>
       ${righe}
       <tr style="height:${ALTEZZA_RIGA}px;">
-        <td colspan="3" style="${td}text-align:center;font-size:11px;">Assistente dell'arbitro</td>
-        <td style="${td}padding-left:6px;">${assistente ? esc(cognomeNome(rawAss)) : ''}</td>
-        <td style="${td}"></td>
-        <td style="${td}text-align:center;">${esc(rawAss.Tessera)}</td>
-        <td style="${td}text-align:center;">${esc(rawAss.Documento)}</td>
+        <td colspan="7" style="${td}padding-left:6px;font-size:12px;">Assistente dell'arbitro:${
+          assistente
+            ? ` <b style="font-size:14px;">${esc(cognomeNome(rawAss))}</b>${rawAss.Tessera ? ` &nbsp;·&nbsp; Tessera: ${esc(rawAss.Tessera)}` : ''}`
+            : ''
+        }</td>
       </tr>
     </table>
     <table style="border-collapse:collapse;width:100%;font-size:13px;table-layout:fixed;margin-top:10px;">
@@ -150,7 +160,7 @@ function htmlDistinta(list: Convocato[], testata: TestataDistinta): string {
         <col style="width:56.1%" /><col style="width:16.7%" /><col style="width:11.6%" /><col style="width:15.6%" />
       </colgroup>
       ${rigaStaff('Dirigente accompagnatore ufficiale della Squadra Sig.', 'DirAcc')}
-      ${rigaStaff('Dirigente addetto ufficiali di gara Sig.', 'DirUff', false)}
+      ${rigaStaff('Dirigente addetto ufficiali di gara Sig.', 'DirUff')}
       ${rigaStaff('Allenatore Sig.', 'Allen')}
       ${rigaDefibrillatore()}
     </table>
