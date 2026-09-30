@@ -1777,7 +1777,12 @@ body {
   .ed-toolbar .ant-btn {
     flex: 0 0 auto;
   }
+  /* sul telefono tre bottoni in fila escono dallo schermo: PNG e Canva
+     affiancati, Salva su Drive sotto a tutta larghezza */
   .ed-export {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
     position: sticky;
     bottom: 8px;
     z-index: 5;
@@ -1785,6 +1790,12 @@ body {
     background: var(--panna, #fbf8f1);
     border-radius: 12px;
     box-shadow: var(--ombra-card);
+  }
+  .ed-export .ant-btn {
+    min-width: 0;
+  }
+  .ed-export .ed-export-drive {
+    grid-column: 1 / -1;
   }
 }
 

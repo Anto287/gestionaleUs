@@ -1044,6 +1044,7 @@ export function Editor({
             {onSalvaDrive && (
               <Button
                 type="primary"
+                className="ed-export-drive"
                 icon={<CloudUploadOutlined />}
                 onClick={salvaDrive}
                 loading={salvando}
