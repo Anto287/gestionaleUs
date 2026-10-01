@@ -152,8 +152,8 @@ const NOMI_KIND: Record<BuildInput['kind'], string> = {
 /** Scena iniziale di un tipo, partendo dallo stile predefinito salvato. */
 function scenaDaPrefs(input: BuildInput): Scena {
   const p = leggiPrefs(input.kind)
-  const tema: Tema = p.tema ?? (input.kind === 'mese' ? 'carta' : 'notte')
-  const accento = p.accento ?? (input.kind === 'mese' ? ROSSO : ORO)
+  const tema: Tema = p.tema ?? 'notte'
+  const accento = p.accento ?? ORO
   const base = buildScene(input, tema, accento)
   base.sfondo = {
     ...base.sfondo,

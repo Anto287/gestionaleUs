@@ -591,55 +591,75 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
 
     fasciaInFondo(W, H, stagioneTxt, input.piede).forEach(push)
   } else {
-    // mese
-    push(testo(76, 96, 'APPUNTAMENTI', 24, 'accento', { fontFamily: BASE, align: 'left', letterSpacing: 3, width: 700 }))
-    push(testo(76, 122, input.meseTxt ?? '', 100, 'titolo', { align: 'left', width: 820 }))
-    push(crest(W - 76 - 130, 78, 130))
-    push(testo(76, 250, 'Le partite del mese', 20, 'sub', { bold: false, fontFamily: BASE, align: 'left', width: 700 }))
+    // Mese: stessa impostazione della formazione (stemma a sinistra, titolo
+    // in serif corsivo a destra, fascia in fondo) con le partite in elenco:
+    // giorno in grande, avversario, campo e ora riga per riga.
+    const H = input.formato.h
+    const sy = (y: number) => Math.round((y / 1350) * H)
+    // "OTTOBRE 2026" -> "Ottobre" nel titolo, l'anno va nell'etichetta
+    const [meseParola = '', anno = ''] = (input.meseTxt ?? '').split(' ')
+    const meseTitolo = meseParola.charAt(0) + meseParola.slice(1).toLowerCase()
+
+    push(crest(60, sy(64), 112))
+    push(
+      testo(W - 60 - 600, sy(70), `APPUNTAMENTI${anno ? ' \u00b7 ' + anno : ''}`, 26, 'accento', {
+        fontFamily: BASE,
+        align: 'right',
+        letterSpacing: 6,
+        width: 600,
+      }),
+    )
+    push(testo(W - 60 - 760, sy(104), meseTitolo, 130, 'titolo', { fontFamily: MANIFESTO, italic: true, align: 'right', width: 760 }))
 
     const fx = input.fixtures ?? []
-    const top = 330
-    const gap = Math.min(150, (input.formato.h - top - 120) / Math.max(1, fx.length))
+    // le righe si stringono quando il mese è pieno (tutto scala con la riga);
+    // con poche partite il blocco sta in mezzo allo spazio, non appeso in alto
+    const inizio = sy(300)
+    const spazio = H - 92 - 40 - inizio
+    const passo = Math.min(sy(180), spazio / Math.max(1, fx.length))
+    const top = inizio + Math.round((spazio - passo * fx.length) / 2)
+    const k = Math.min(1.15, passo / 150)
+    const z = (n: number) => Math.round(n * k)
+
+    if (fx.length === 0) {
+      push(testo(0, sy(620), 'Nessun impegno in questo mese', 44, 'sub', { bold: false, fontFamily: BASE, width: W }))
+    }
     fx.forEach((f, i) => {
-      const y = top + i * gap
-      // medaglione
-      push({
-        id: nid(),
-        tipo: 'rett',
-        x: 76,
-        y,
-        rotation: 0,
-        larghezza: 104,
-        altezza: 104,
-        cornerRadius: 16,
-        ruoloFill: f.inCasa ? undefined : 'tile',
-        fill: f.inCasa ? ROSSO : undefined,
-      })
-      push(testo(76, y + 14, f.dow, 15, 'inverso', { bold: true, fontFamily: BASE, letterSpacing: 1, width: 104 }))
-      push(testo(76, y + 30, f.gg, 46, 'inverso', { width: 104 }))
-      push(testo(76, y + 78, f.mmm, 14, 'inverso', { bold: true, fontFamily: BASE, letterSpacing: 1, width: 104 }))
-      // avversario + dove
-      push(testo(210, y + 16, `vs ${f.avversario.toUpperCase()}`, 46, 'titolo', { align: 'left', width: 600 }))
+      const y = Math.round(top + i * passo)
+      const oy = y + Math.round((passo - z(96)) / 2)
+      if (i > 0) {
+        push({ id: nid(), tipo: 'rett', x: 60, y, rotation: 0, larghezza: W - 120, altezza: 1, cornerRadius: 0, ruoloFill: 'accento', opacita: 0.35 })
+      }
+      // il giorno in serif, color accento; accanto giorno della settimana e mese
+      push(testo(40, oy - z(6), f.gg, z(88), 'accento', { fontFamily: MANIFESTO, align: 'right', width: 130 }))
+      push(testo(188, oy + z(16), f.dow, z(22), 'titolo', { fontFamily: BASE, align: 'left', letterSpacing: 3, width: 100 }))
+      push(testo(188, oy + z(48), f.mmm, z(22), 'sub', { fontFamily: BASE, align: 'left', letterSpacing: 3, width: 100 }))
+      // avversario e, sotto, casa/trasferta con il campo
+      // un nome lungo si rimpicciolisce invece di andare a capo (il Barlow
+      // maiuscolo sta sul mezzo em a lettera)
+      const sfida = `vs ${f.avversario.toUpperCase()}`
+      const largSfida = W - 300 - 60 - 200
+      const corpo = Math.min(z(52), Math.floor(largSfida / (sfida.length * 0.5)))
+      push(testo(300, oy + z(4) + Math.round((z(52) - corpo) / 2), sfida, corpo, 'titolo', { align: 'left', width: largSfida }))
       push(
         testo(
-          210,
-          y + 72,
-          `${f.inCasa ? 'IN CASA' : 'IN TRASFERTA'}${f.luogo ? ' · ' + f.luogo.toUpperCase() : ''}`,
-          17,
+          300,
+          oy + z(64),
+          `${f.inCasa ? 'IN CASA' : 'IN TRASFERTA'}${f.luogo ? ' \u00b7 ' + f.luogo.toUpperCase() : ''}`,
+          z(22),
           'sub',
-          { bold: false, fontFamily: BASE, align: 'left', letterSpacing: 1, width: 600 },
+          { bold: false, fontFamily: BASE, align: 'left', letterSpacing: 2, width: W - 300 - 60 },
         ),
       )
-      // orario
-      push(testo(W - 76 - 240, y + 24, f.ora || '—', 54, 'titolo', { align: 'right', width: 240 }))
+      // l'ora sta sulla riga dell'avversario: sotto, il campo ha tutta la larghezza
+      push(testo(W - 60 - 190, oy + z(2), f.ora || '\u2014', z(54), 'titolo', { bold: false, fontFamily: BASE, align: 'right', width: 190 }))
     })
 
-    push(testo(76, input.formato.h - 92, 'U.S. RIOLUNATO', 22, 'testo', { bold: false, fontFamily: BASE, align: 'left', width: 420 }))
-    push(testo(W - 76 - 420, input.formato.h - 92, input.piede, 22, 'accento', { bold: false, fontFamily: BASE, align: 'right', width: 420, chiave: 'piede' }))
+    fasciaInFondo(W, H, stagioneTxt, input.piede).forEach(push)
   }
 
-  // le tre grafiche della partita vivono di foto: niente fascia in cima né
-  // cornice (ci pensano la banda rossa o la fascia in fondo). Il velo cambia
+  // le grafiche vivono di foto: niente fascia in cima né cornice (ci pensano
+  // la banda rossa o la fascia in fondo). Il velo cambia
   // col mestiere della grafica: il manifesto deve far vedere la squadra, la
   // formazione deve far leggere undici nomi.
   const velo: Record<BuildInput['kind'], number> = {
@@ -648,13 +668,12 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     formazione: 0.46,
     mese: 0.55,
   }
-  const suFoto = input.kind !== 'mese'
   return {
     tema,
     accento,
     sfondo: { x: 0, y: 0, scala: 1, velo: velo[input.kind] },
     elementi: el,
-    fascia: !suFoto,
+    fascia: false,
     cornice: false,
   }
 }

@@ -91,6 +91,11 @@ function labelAppuntamento(a: Appuntamento) {
   return `${formatData(a.data, true)}${a.ora ? ' ' + a.ora : ''} · ${a.avversario} (${a.inCasa ? 'casa' : 'trasf.'})`
 }
 
+/** Una riga del mese si riconosce da data e avversario (come per i doppioni). */
+function chiaveVoce(v: { data: string; avversario: string }) {
+  return `${v.data}|${v.avversario.trim().toLowerCase()}`
+}
+
 type Kind = 'annuncio' | 'risultato' | 'mese' | 'formazione'
 
 export function Social() {
@@ -136,6 +141,9 @@ export function Social() {
   // mese (appuntamenti mono-uso)
   const [meseSel, setMeseSel] = useState<string>()
   const [modaleAppt, setModaleAppt] = useState(false)
+  // ora e luogo ritoccati a mano per la grafica (chiave data|avversario):
+  // valgono anche per le partite in programma, che il luogo non lo hanno
+  const [ritocchi, setRitocchi] = useState<Record<string, { ora?: string; luogo?: string }>>({})
   const [form] = Form.useForm()
 
   const cognomi = useMemo(() => mappaCognomi(giocatori), [giocatori])
@@ -191,21 +199,28 @@ export function Social() {
     [partitaRes, cognomi],
   )
 
+  const vociDelMese = useMemo(
+    () => vociMese.filter((a) => a.data.slice(0, 7) === meseAttivo),
+    [vociMese, meseAttivo],
+  )
   const fixtures: FixtureRiga[] = useMemo(
     () =>
-      vociMese
-        .filter((a) => a.data.slice(0, 7) === meseAttivo)
-        .map((a) => ({
+      vociDelMese.map((a) => {
+        const r = ritocchi[chiaveVoce(a)]
+        return {
           dow: giornoBreve(a.data),
           gg: giornoNum(a.data),
           mmm: meseBreve(a.data),
           avversario: a.avversario,
           inCasa: a.inCasa,
-          ora: a.ora,
-          luogo: a.luogo,
-        })),
-    [vociMese, meseAttivo],
+          ora: (r?.ora ?? a.ora)?.trim() || undefined,
+          luogo: (r?.luogo ?? a.luogo)?.trim() || undefined,
+        }
+      }),
+    [vociDelMese, ritocchi],
   )
+  const ritocca = (chiave: string, campo: 'ora' | 'luogo', valore: string) =>
+    setRitocchi((prev) => ({ ...prev, [chiave]: { ...prev[chiave], [campo]: valore } }))
 
   const piede = leggiPrefs(kind).piede ?? '#FORZARIOLUNATO'
 
@@ -590,11 +605,35 @@ export function Social() {
           ) : (
             <div className="social-vuoto">Nessun appuntamento né partita in programma: aggiungine uno qui sotto.</div>
           )}
+          {vociDelMese.map((v) => {
+            const k = chiaveVoce(v)
+            const r = ritocchi[k]
+            return (
+              <div key={k} className="social-mese-riga">
+                <span className="social-sotto-label">
+                  {giornoBreve(v.data)} {giornoNum(v.data)} · {v.avversario} ({v.inCasa ? 'casa' : 'trasf.'})
+                </span>
+                <div className="social-mese-campi">
+                  <Input
+                    value={r?.ora ?? v.ora ?? ''}
+                    onChange={(e) => ritocca(k, 'ora', e.target.value)}
+                    placeholder="Ora"
+                  />
+                  <Input
+                    value={r?.luogo ?? v.luogo ?? ''}
+                    onChange={(e) => ritocca(k, 'luogo', e.target.value)}
+                    placeholder="Campo / luogo"
+                  />
+                </div>
+              </div>
+            )
+          })}
           <Button icon={<CalendarOutlined />} onClick={apriModaleAppt} block style={{ marginTop: 8 }}>
             Gestisci appuntamenti{appuntamenti.length ? ` (${appuntamenti.length})` : ''}
           </Button>
           <div className="social-suggerimento">
-            Nel mese ci sono anche le partite in programma: quelle si gestiscono in Partite.
+            Ora e campo scritti qui valgono solo per la grafica. Nel mese ci sono anche le
+            partite in programma: quelle si gestiscono in Partite.
           </div>
         </div>
       )}
