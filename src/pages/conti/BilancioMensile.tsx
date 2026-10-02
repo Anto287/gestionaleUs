@@ -53,7 +53,7 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
 
   const datiSaldo = dati.map((d) => ({ mese: d.mese, saldo: d.entrate - d.uscite }))
   const perMese = tipo === 'saldo' ? 56 : 72
-  const minWidth = Math.max(320, dati.length * perMese)
+  const minWidth = Math.max(260, dati.length * perMese)
 
   const assi = (
     <>

@@ -44,7 +44,7 @@ export function AffluenzaChart({
 
   const yMax = Math.max(1, scala, ...dati.map((d) => d.valore))
   const perPunto = tipo === 'linea' ? 46 : 40
-  const minWidth = Math.max(320, dati.length * perPunto)
+  const minWidth = Math.max(260, dati.length * perPunto)
 
   const assi = (
     <>

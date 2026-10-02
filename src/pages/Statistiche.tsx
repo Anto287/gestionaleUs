@@ -307,7 +307,7 @@ export function Statistiche() {
 
       <Card title="Gol fatti e subiti per partita" style={{ marginBottom: 16 }}>
         <div style={{ overflowX: 'auto' }}>
-          <div style={{ minWidth: Math.max(320, datiChart.length * 56), height: 260 }}>
+          <div style={{ minWidth: Math.max(260, datiChart.length * 56), height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={datiChart} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
                 <CartesianGrid vertical={false} stroke={COLORI.griglia} />

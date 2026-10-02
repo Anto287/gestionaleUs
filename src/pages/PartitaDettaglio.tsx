@@ -203,7 +203,7 @@ export function PartitaDettaglio() {
             {nomeTorneo ? ` · ${nomeTorneo}` : ''}
             {p.amichevole ? ' · Amichevole' : ''}
           </Text>
-          <Space>
+          <Space wrap>
             <Button icon={<AimOutlined />} onClick={apriScheda}>
               Scheda avversario
             </Button>

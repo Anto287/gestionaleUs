@@ -28,6 +28,7 @@ import {
 import {
   AimOutlined,
   ArrowLeftOutlined,
+  ScanOutlined,
   CalendarOutlined,
   EditOutlined,
   DeleteOutlined,
@@ -53,6 +54,7 @@ import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIR
 import { statisticheGiocatore } from '../lib/statistiche'
 import { useArchivio } from '../data/ArchivioProvider'
 import { ArchivioTesserato } from '../components/archivio/ArchivioTesserato'
+import { ScansionaDocumento } from './rosa/ScansionaDocumento'
 import { statoQuota } from '../lib/quota'
 import { formatData, formatEuro, iniziali, oggiIso } from '../lib/format'
 import type { Allenamento, Giocatore, Movimento, Partita, VersamentoQuota } from '../types'
@@ -72,6 +74,7 @@ export function GiocatoreDettaglio() {
   const { message } = App.useApp()
   const [modale, setModale] = useState(false)
   const [modaleVersamento, setModaleVersamento] = useState(false)
+  const [scansione, setScansione] = useState(false)
   const [form] = Form.useForm()
   const [formVersamento] = Form.useForm()
   // chi è SOLO dirigente non ha campi da giocatore (ruoli, certificato, quota)
@@ -286,7 +289,10 @@ export function GiocatoreDettaglio() {
               ))}
             </Space>
           </div>
-          <Space>
+          <Space wrap>
+            <Button icon={<ScanOutlined />} onClick={() => setScansione(true)}>
+              Scansiona
+            </Button>
             <Button icon={<EditOutlined />} onClick={apriModifica}>
               Modifica
             </Button>
@@ -667,6 +673,7 @@ export function GiocatoreDettaglio() {
           </Form.Item>
         </Form>
       </Modal>
+      <ScansionaDocumento open={scansione} onClose={() => setScansione(false)} giocatore={g} />
     </>
   )
 }

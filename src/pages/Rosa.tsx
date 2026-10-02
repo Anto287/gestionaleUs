@@ -24,6 +24,7 @@ import {
 } from 'antd'
 import {
   PlusOutlined,
+  ScanOutlined,
   CopyOutlined,
   DeleteOutlined,
   FileExcelOutlined,
@@ -37,6 +38,7 @@ import { useAggancioLista } from '../hooks/useAggancioLista'
 import { useArchivio } from '../data/ArchivioProvider'
 import { CampoEuro } from '../components/CampoEuro'
 import { PageHeader } from '../components/PageHeader'
+import { ScansionaDocumento } from './rosa/ScansionaDocumento'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { coloreRuolo, ordineRuolo, OPZIONI_RUOLI, RUOLO_BY_CODE, type Area } from '../ruoli'
@@ -133,6 +135,7 @@ export function Rosa() {
   const { message } = App.useApp()
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const [modale, setModale] = useState(false)
+  const [scansione, setScansione] = useState(false)
   const [form] = Form.useForm()
   // chi è SOLO dirigente non ha campi da giocatore (ruoli, certificato, quota)
   const categoriaForm = Form.useWatch('categoria', form)
@@ -518,6 +521,9 @@ export function Rosa() {
         azioni={
           items.length > 0 && (
             <Space wrap>
+              <Button icon={<ScanOutlined />} onClick={() => setScansione(true)}>
+                Scansiona documento
+              </Button>
               <Button icon={<FileExcelOutlined />} onClick={esporta}>
                 Esporta Excel
               </Button>
@@ -531,9 +537,14 @@ export function Rosa() {
 
       {items.length === 0 ? (
         <Empty description="Nessun giocatore in rosa">
-          <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
-            Aggiungi il primo
-          </Button>
+          <Space wrap style={{ justifyContent: 'center' }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={apriNuovo}>
+              Aggiungi il primo
+            </Button>
+            <Button icon={<ScanOutlined />} onClick={() => setScansione(true)}>
+              Da un documento
+            </Button>
+          </Space>
         </Empty>
       ) : (
         <>
@@ -931,6 +942,7 @@ export function Rosa() {
           </Form.Item>
         </Form>
       </Modal>
+      <ScansionaDocumento open={scansione} onClose={() => setScansione(false)} />
     </>
   )
 }

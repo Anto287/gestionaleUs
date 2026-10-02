@@ -60,6 +60,18 @@ export default defineConfig(({ command }) => ({
               expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 90 },
             },
           },
+          {
+            // il lettore dei documenti (Tesseract: worker, motore wasm e
+            // dizionario italiano) arriva da jsdelivr al primo «Scansiona»:
+            // tenuto in cache, la volta dopo parte subito e anche offline
+            urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/npm\/(?:tesseract\.js|tesseract\.js-core|@tesseract\.js-data)/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'lettore-documenti',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 180 },
+            },
+          },
         ],
       },
     }),
