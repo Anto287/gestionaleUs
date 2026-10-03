@@ -238,7 +238,7 @@ export interface FormazioneGrafica {
   /** etichetta del modulo, es. "4-4-2" */
   modulo: string
   /** titolari con posizione 0..1 sul campo (y: 0 = difesa, 1 = attacco) */
-  titolari: { nome: string; role: string; x: number; y: number; numero?: number }[]
+  titolari: { giocatoreId?: string; nome: string; role: string; x: number; y: number; numero?: number }[]
   /** cognomi della panchina */
   panchina: string[]
   /** timestamp di generazione (per la chiave della scena) */
@@ -534,7 +534,7 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
 
     if (!f || f.titolari.length === 0) {
       push(
-        testo(0, sy(620), 'Genera prima la formazione\nnella pagina Formazione', 44, 'sub', {
+        testo(0, sy(620), 'Seleziona una partita con titolari\no genera una formazione', 44, 'sub', {
           width: W,
           interlinea: 1.3,
         }),

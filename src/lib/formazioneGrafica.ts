@@ -1,28 +1,38 @@
 import type { Giocatore, Partita } from '../types'
 import type { FormazioneGrafica } from '../pages/social/editor/scene'
-import { moduloDa } from './formazionePartita'
+import { MODULI } from './formazione'
 
-/** Conserva i titolari iniziali, anche quando la partita contiene sostituzioni. */
+/** Riprende l'undici iniziale, senza applicare i cambi avvenuti durante la gara. */
 export function graficaDaPartita(p: Partita, rosa: Giocatore[]): FormazioneGrafica {
-  const modulo = moduloDa(p.formazione?.modulo)
-  const posti = p.formazione?.posti ?? p.titolari ?? []
   const byId = new Map(rosa.map((g) => [g.id, g]))
-  const nome = (id: string) => byId.get(id)?.cognome || byId.get(id)?.nome || 'Ex tesserato'
+  const modulo = MODULI.find((m) => m.id === p.formazione?.modulo)
+  const posti = p.formazione?.posti ?? p.titolari ?? []
+  const titolari = posti.flatMap((id, i) => {
+    if (!id) return []
+    const g = byId.get(id)
+    const slot = modulo?.slots[i]
+    return [{
+      giocatoreId: id,
+      nome: g?.cognome || g?.nome || 'Ex tesserato',
+      role: slot?.role ?? g?.ruoloPreferito ?? '',
+      x: slot?.x ?? 0.5,
+      y: slot?.y ?? 0,
+      numero: g?.numeroMaglia,
+    }]
+  })
   const iniziali = new Set(posti.filter(Boolean))
+  // Le partite registrano i subentrati, non l'intera lista dei convocati.
   const riserve = [...new Set([
-    ...(p.formazione?.cambi.map((c) => c.entra) ?? []),
     ...(p.subentrati ?? []),
+    ...(p.formazione?.cambi.map((c) => c.entra) ?? []),
   ])].filter((id) => !iniziali.has(id))
   return {
-    modulo: p.formazione ? modulo.label : 'Non specificato',
-    titolari: posti.flatMap((id, i) => {
-      if (!id) return []
-      const slot = modulo.slots[i] ?? { role: '', x: 0.5, y: i / Math.max(1, posti.length) }
-      return [{ ...slot, nome: nome(id), numero: byId.get(id)?.numeroMaglia }]
-    }),
+    modulo: modulo?.label ?? p.formazione?.modulo ?? '',
+    titolari,
     panchina: riserve.map((id) => {
-      const numero = byId.get(id)?.numeroMaglia
-      return numero != null ? `${numero} ${nome(id)}` : nome(id)
+      const g = byId.get(id)
+      const nome = g?.cognome || g?.nome || 'Ex tesserato'
+      return g?.numeroMaglia != null ? `${g.numeroMaglia} ${nome}` : nome
     }),
   }
 }

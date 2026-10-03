@@ -44,8 +44,8 @@ import {
 import { useSeason } from '../season/SeasonContext'
 import { useAppuntamenti, type Appuntamento } from '../lib/appuntamenti'
 import { leggiPrefs } from '../lib/graficaPrefs'
-import { preparaLogo } from '../lib/immagine'
 import { graficaDaPartita } from '../lib/formazioneGrafica'
+import { preparaLogo } from '../lib/immagine'
 import { driveAttivo, uploadGrafica } from '../services/driveStore'
 import type { Giocatore, Partita } from '../types'
 import { Editor } from './social/editor/Editor'
@@ -117,14 +117,16 @@ export function Social() {
   const [formatoChiave, setFormatoChiave] = useState<FormatoIG['chiave']>('post')
   const formazioneGenerata = useMemo(() => leggiFormazioneGrafica(), [])
   const [fonteFormazione, setFonteFormazione] = useState<string>()
-  const [numeriMaglia, setNumeriMaglia] = useState<Record<number, number | null>>({})
-  const partiteConFormazione = useMemo(
-    () => partite.filter((p) => (p.formazione?.posti ?? p.titolari ?? []).some(Boolean))
+  const [numeriMaglia, setNumeriMaglia] = useState<Record<string, Record<string, number | null>>>({})
+  const partiteFormazione = useMemo(
+    () => partite.filter((p) => p.formazione?.posti.some(Boolean) || p.titolari?.length)
       .sort((a, b) => b.data.localeCompare(a.data)),
     [partite],
   )
-  const fonteFormazioneEff = fonteFormazione ?? (formazioneGenerata ? 'generata' : partiteConFormazione[0]?.id)
-  const partitaFormazione = partiteConFormazione.find((p) => p.id === fonteFormazioneEff)
+  // Mantiene il passaggio «Grafica IG» dal generatore; altrimenti parte dalla gara più recente.
+  const fonteFormazioneEff = fonteFormazione ?? (formazioneGenerata ? 'generata' : partiteFormazione[0]?.id)
+  const partitaFormazione = partiteFormazione.find((p) => p.id === fonteFormazioneEff)
+  const chiaveNumeri = `${attiva}|${fonteFormazioneEff ?? ''}`
   const formazioneBase = useMemo(
     () => fonteFormazioneEff === 'generata' ? formazioneGenerata
       : partitaFormazione ? graficaDaPartita(partitaFormazione, giocatori) : undefined,
@@ -132,11 +134,12 @@ export function Social() {
   )
   const formazioneGrafica = useMemo(() => formazioneBase && ({
     ...formazioneBase,
-    titolari: formazioneBase.titolari.map((t, i) => ({
-      ...t,
-      numero: Object.hasOwn(numeriMaglia, i) ? numeriMaglia[i] ?? undefined : t.numero,
-    })),
-  }), [formazioneBase, numeriMaglia])
+    titolari: formazioneBase.titolari.map((t, i) => {
+      const numeri = numeriMaglia[chiaveNumeri] ?? {}
+      const id = t.giocatoreId ?? String(i)
+      return Object.hasOwn(numeri, id) ? { ...t, numero: numeri[id] ?? undefined } : t
+    }),
+  }), [formazioneBase, numeriMaglia, chiaveNumeri])
 
   // annuncio (dati inseriti a mano, mono-uso)
   const [avversario, setAvversario] = useState('')
@@ -314,10 +317,10 @@ export function Social() {
       }
       return {
         input: inp,
-        seedKey: `formazione|${formatoChiave}|${fonteFormazioneEff}|${JSON.stringify(formazioneGrafica)}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src ? 'logo' : ''}`,
+        seedKey: `formazione|${formatoChiave}|${fonteFormazioneEff ?? 'vuota'}|${JSON.stringify(formazioneGrafica)}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src ? 'logo' : ''}`,
         nomeFile: partitaFormazione
           ? `riolunato-formazione-${partitaFormazione.data}-${slug(partitaFormazione.avversario)}.png`
-          : `riolunato-formazione-${slug(formazioneGrafica?.modulo ?? 'xi')}.png`,
+          : `riolunato-formazione-${slug(formazioneGrafica?.modulo || 'xi')}.png`,
       }
     }
     const inp: BuildInput = {
@@ -579,57 +582,60 @@ export function Social() {
           <Select
             style={{ width: '100%', marginBottom: 12 }}
             value={fonteFormazioneEff}
-            placeholder="Scegli una partita"
+            placeholder="Seleziona una partita"
             showSearch
             optionFilterProp="label"
-            onChange={(id) => {
+            onChange={(id: string) => {
               setFonteFormazione(id)
-              setNumeriMaglia({})
               setPanchinaTxt(undefined)
             }}
             options={[
               ...(formazioneGenerata ? [{ value: 'generata', label: 'Formazione dal generatore' }] : []),
-              ...partiteConFormazione.map((p) => ({
+              ...partiteFormazione.map((p) => ({
                 value: p.id,
                 label: `${labelAppuntamento(p)}${p.giocata === false ? ' · In programma' : ''}`,
               })),
             ]}
+            notFoundContent="Nessuna partita con titolari registrati"
           />
           <span className="social-label">Undici titolare</span>
           {formazioneGrafica ? (
             <div className="social-vuoto">
-              Modulo <b>{formazioneGrafica.modulo}</b> · {formazioneGrafica.titolari.length} titolari
+              {formazioneGrafica.modulo && <>Modulo <b>{formazioneGrafica.modulo}</b> · </>}{formazioneGrafica.titolari.length} titolari
               {formazioneGrafica.panchina.length ? ` · ${formazioneGrafica.panchina.length} in panchina` : ''}.{' '}
-              {fonteFormazioneEff === 'generata'
-                ? <Link to="/formazione">Rigenera</Link>
-                : <Link to="/partite">Modifica in Partite</Link>} per cambiarlo.
+              {partitaFormazione
+                ? <Link to={`/partite/${partitaFormazione.id}`}>Modifica la formazione della partita</Link>
+                : <><Link to="/formazione">Rigenera</Link> per cambiarlo.</>}
             </div>
           ) : (
             <div className="social-vuoto">
-              Salva i titolari in <Link to="/partite">Partite</Link>, oppure genera l'undici nella pagina <Link to="/formazione">Formazione</Link> e tocca «Grafica IG».
+              Segna i titolari in <Link to="/partite">Partite</Link>, oppure genera l'undici nella pagina{' '}
+              <Link to="/formazione">Formazione</Link> e poi tocca «Grafica IG».
             </div>
           )}
           {formazioneGrafica && (
             <>
-              <span className="social-label" style={{ marginTop: 12 }}>Numeri di maglia</span>
+              <span className="social-label" style={{ display: 'block', marginTop: 12 }}>Numeri di maglia</span>
               {formazioneGrafica.titolari.map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div key={t.giocatoreId ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                   <InputNumber
                     min={1}
                     max={99}
                     precision={0}
                     value={t.numero ?? null}
+                    style={{ width: 80, flexShrink: 0 }}
                     placeholder="N."
                     aria-label={`Numero di maglia di ${t.nome}`}
-                    onChange={(numero) => setNumeriMaglia((prev) => ({ ...prev, [i]: numero }))}
-                    style={{ width: 80, flexShrink: 0 }}
+                    onChange={(numero) => setNumeriMaglia((prima) => ({
+                      ...prima,
+                      [chiaveNumeri]: { ...prima[chiaveNumeri], [t.giocatoreId ?? String(i)]: numero },
+                    }))}
                   />
-                  <span>{t.nome}</span>
+                  <span>{t.nome}{t.role ? ` · ${t.role}` : ''}</span>
                 </div>
               ))}
               <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
-                I numeri partono dalla Rosa. Puoi cambiarli o svuotarli per questa grafica.
-                Le partite riportano in panchina i subentrati registrati; puoi aggiungere gli altri sotto.
+                Precompilati dalla rosa. Puoi cambiarli o svuotarli per questa grafica.
               </div>
             </>
           )}
@@ -655,7 +661,8 @@ export function Social() {
               placeholder={'12 Rossi\n13 Bianchi'}
             />
             <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
-              Uno per riga, col numero davanti se vuoi. Correggerli qui cambia solo la grafica.
+              Uno per riga, col numero davanti se vuoi. Dalla partita arrivano i subentrati:
+              aggiungi qui anche le riserve rimaste in panchina.
             </div>
           </div>
         </>
