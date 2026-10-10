@@ -1,6 +1,7 @@
 import type { Giocatore, Partita } from '../types'
 import type { FormazioneGrafica } from '../pages/social/editor/scene'
 import { MODULI } from './formazione'
+import { nomeGiocatoreBreve } from './format'
 
 /** Riprende l'undici iniziale, senza applicare i cambi avvenuti durante la gara. */
 export function graficaDaPartita(p: Partita, rosa: Giocatore[]): FormazioneGrafica {
@@ -13,7 +14,7 @@ export function graficaDaPartita(p: Partita, rosa: Giocatore[]): FormazioneGrafi
     const slot = modulo?.slots[i]
     return [{
       giocatoreId: id,
-      nome: g?.cognome || g?.nome || 'Ex tesserato',
+      nome: nomeGiocatoreBreve(g, 'Ex tesserato'),
       role: slot?.role ?? g?.ruoloPreferito ?? '',
       x: slot?.x ?? 0.5,
       y: slot?.y ?? 0,
@@ -31,7 +32,7 @@ export function graficaDaPartita(p: Partita, rosa: Giocatore[]): FormazioneGrafi
     titolari,
     panchina: riserve.map((id) => {
       const g = byId.get(id)
-      const nome = g?.cognome || g?.nome || 'Ex tesserato'
+      const nome = nomeGiocatoreBreve(g, 'Ex tesserato')
       return g?.numeroMaglia != null ? `${g.numeroMaglia} ${nome}` : nome
     }),
   }

@@ -38,6 +38,15 @@ export function iniziali(t: { nome: string; cognome: string }): string {
   return `${t.nome[0] ?? ''}${t.cognome[0] ?? ''}`.toUpperCase()
 }
 
+/** Nome per campi e grafiche: "Andrea Contri" → "Contri A.". */
+export function nomeGiocatoreBreve(t?: { nome?: string; cognome?: string }, fallback = '—'): string {
+  if (!t) return fallback
+  const cognome = t.cognome?.trim() ?? ''
+  const nome = t.nome?.trim() ?? ''
+  if (!cognome) return nome || fallback
+  return nome ? `${cognome} ${Array.from(nome)[0].toLocaleUpperCase('it-IT')}.` : cognome
+}
+
 /** Concorda il nome col numero: plurale(1, 'partita', 'partite') → "1 partita". */
 export function plurale(n: number, singolare: string, plurale: string): string {
   return `${n} ${n === 1 ? singolare : plurale}`

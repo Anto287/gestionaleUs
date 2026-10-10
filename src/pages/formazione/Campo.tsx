@@ -8,10 +8,11 @@ import {
 } from '../../lib/formazione'
 import type { Giocatore } from '../../types'
 import { ErbaCampo, posizioneSlot } from '../../components/ErbaCampo'
+import { nomeGiocatoreBreve } from '../../lib/format'
 
 function cognomeBreve(g?: Giocatore): string {
   if (!g) return ''
-  return g.cognome || g.nome || '—'
+  return nomeGiocatoreBreve(g)
 }
 
 /** Campo verticale con i titolari sui loro slot e gli slot vuoti da assegnare. */

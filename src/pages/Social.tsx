@@ -28,7 +28,7 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData, oggiIso } from '../lib/format'
+import { formatData, oggiIso, nomeGiocatoreBreve } from '../lib/format'
 import {
   etichettaGiorno,
   etichettaMese,
@@ -137,9 +137,11 @@ export function Social() {
     titolari: formazioneBase.titolari.map((t, i) => {
       const numeri = numeriMaglia[chiaveNumeri] ?? {}
       const id = t.giocatoreId ?? String(i)
-      return Object.hasOwn(numeri, id) ? { ...t, numero: numeri[id] ?? undefined } : t
+      const g = t.giocatoreId ? giocatori.find((g) => g.id === t.giocatoreId) : undefined
+      const titolare = g ? { ...t, nome: nomeGiocatoreBreve(g) } : t
+      return Object.hasOwn(numeri, id) ? { ...titolare, numero: numeri[id] ?? undefined } : titolare
     }),
-  }), [formazioneBase, numeriMaglia, chiaveNumeri])
+  }), [formazioneBase, numeriMaglia, chiaveNumeri, giocatori])
 
   // annuncio (dati inseriti a mano, mono-uso)
   const [avversario, setAvversario] = useState('')

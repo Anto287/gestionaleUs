@@ -17,6 +17,7 @@ import {
   type Assegnazione,
 } from '../lib/formazione'
 import { Campo } from './formazione/Campo'
+import { nomeGiocatoreBreve } from '../lib/format'
 import type { Allenamento, Giocatore } from '../types'
 
 const { Text } = Typography
@@ -143,7 +144,7 @@ export function Formazione() {
           a
             ? {
                 giocatoreId: a.giocatoreId,
-                nome: byId.get(a.giocatoreId)?.cognome || byId.get(a.giocatoreId)?.nome || '—',
+                nome: nomeGiocatoreBreve(byId.get(a.giocatoreId)),
                 role: modulo.slots[i].role,
                 numero: byId.get(a.giocatoreId)?.numeroMaglia,
                 x: modulo.slots[i].x,
@@ -155,7 +156,7 @@ export function Formazione() {
       // col numero davanti, come si legge una panchina: "7 Rossi  9 Bianchi"
       panchina: panchina.map((id) => {
         const g = byId.get(id)
-        const nome = g?.cognome || g?.nome || '—'
+        const nome = nomeGiocatoreBreve(g)
         return g?.numeroMaglia != null ? `${g.numeroMaglia} ${nome}` : nome
       }),
     }
@@ -346,7 +347,7 @@ export function Formazione() {
                   if (!g) return null
                   return (
                     <span key={id} className="panchina-chip">
-                      <b>{g.cognome}</b>
+                      <b>{nomeGiocatoreBreve(g)}</b>
                       {g.ruoloPreferito && (
                         <Tag color={coloreRuolo(g.ruoloPreferito)} style={{ margin: 0 }}>
                           {g.ruoloPreferito}
