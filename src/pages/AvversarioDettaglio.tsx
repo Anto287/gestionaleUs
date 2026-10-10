@@ -273,8 +273,11 @@ export function AvversarioDettaglio() {
             extra={
               <Select
                 size="small"
-                style={{ width: 104 }}
+                style={{ width: 140 }}
                 placeholder="Modulo"
+                aria-label="Modulo avversario"
+                showSearch
+                optionFilterProp="label"
                 value={a.modulo}
                 options={MODULI.map((m) => ({ value: m.id, label: m.label }))}
                 onChange={(m) => patch({ modulo: m })}

@@ -312,7 +312,10 @@ export function FormazioneCampo({
         <Space size={6}>
           <Select
             size="small"
-            style={{ width: 104 }}
+            aria-label="Modulo della partita"
+            showSearch
+            optionFilterProp="label"
+            style={{ width: 140 }}
             value={modulo.id}
             options={MODULI.map((m) => ({ value: m.id, label: m.label }))}
             onChange={(id) => salva(cambiaModulo(f, moduloDa(id), rosa))}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, Empty, Segmented, Space, Tag, Typography } from 'antd'
+import { Button, Card, Empty, Select, Space, Tag, Typography } from 'antd'
 import { ThunderboltOutlined, ClearOutlined, InstagramOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
@@ -180,14 +180,19 @@ export function Formazione() {
       />
 
       <Card title="Modulo" style={{ marginBottom: 16 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <Segmented
+        <div>
+          <Select
+            aria-label="Modulo"
+            showSearch
+            optionFilterProp="search"
+            style={{ width: '100%', maxWidth: 320 }}
             value={moduloId}
             onChange={(v) => cambiaModulo(v as string)}
             options={MODULI.map((m) => {
               const v = valById.get(m.id)
               return {
                 value: m.id,
+                search: m.label,
                 label: (
                   <span className="modulo-opt">
                     {m.label}

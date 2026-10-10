@@ -22,6 +22,29 @@ export interface Modulo {
   slots: Slot[]
 }
 
+/** Linee da destra a sinistra, dalla difesa all'attacco. Portiere sempre al posto 0. */
+function moduloALinee(id: string, linee: string[][]): Modulo {
+  return {
+    id,
+    label: id,
+    slots: [
+      { role: 'POR', x: 0.5, y: 0.04 },
+      ...linee.flatMap((ruoli, linea) =>
+        ruoli.map((role, posto) => ({
+          role,
+          x: ruoli.length === 1 ? 0.5
+            : ruoli.length === 2 ? 0.62 - posto * 0.24
+            : ruoli.length === 3 && ruoli.every((r) => r === 'DC' || r === 'CC' || r === 'CDC')
+              ? 0.72 - posto * 0.22
+              : 0.9 - (posto * 0.8) / (ruoli.length - 1),
+          y: 0.23 + (linea * 0.65) / (linee.length - 1)
+            + (ruoli.length === 6 ? (role === 'CDC' ? -0.05 : role === 'CC' ? 0.05 : 0) : 0),
+        })),
+      ),
+    ],
+  }
+}
+
 /** I moduli disponibili. Le coordinate sono pensate per un campo verticale. */
 export const MODULI: Modulo[] = [
   {
@@ -109,6 +132,68 @@ export const MODULI: Modulo[] = [
       { role: 'AS', x: 0.2, y: 0.86 },
     ],
   },
+  // I cinque moduli originali mantengono ordine e coordinate: le partite
+  // salvate associano ogni titolare all'indice del suo posto.
+  moduloALinee('4-1-4-1', [
+    ['TD', 'DC', 'DC', 'TS'], ['CDC'], ['ED', 'CC', 'CC', 'ES'], ['ATT'],
+  ]),
+  moduloALinee('4-5-1', [
+    ['TD', 'DC', 'DC', 'TS'], ['ED', 'CC', 'CDC', 'CC', 'ES'], ['ATT'],
+  ]),
+  moduloALinee('4-3-1-2', [
+    ['TD', 'DC', 'DC', 'TS'], ['CC', 'CDC', 'CC'], ['COC'], ['ATT', 'SP'],
+  ]),
+  moduloALinee('4-1-2-1-2', [
+    ['TD', 'DC', 'DC', 'TS'], ['CDC'], ['CC', 'CC'], ['COC'], ['ATT', 'SP'],
+  ]),
+  moduloALinee('4-4-1-1', [
+    ['TD', 'DC', 'DC', 'TS'], ['ED', 'CC', 'CC', 'ES'], ['SP'], ['ATT'],
+  ]),
+  moduloALinee('4-2-2-2', [
+    ['TD', 'DC', 'DC', 'TS'], ['CDC', 'CDC'], ['COC', 'COC'], ['ATT', 'SP'],
+  ]),
+  moduloALinee('4-3-2-1', [
+    ['TD', 'DC', 'DC', 'TS'], ['CC', 'CDC', 'CC'], ['COC', 'COC'], ['ATT'],
+  ]),
+  moduloALinee('4-1-3-2', [
+    ['TD', 'DC', 'DC', 'TS'], ['CDC'], ['ED', 'CC', 'ES'], ['ATT', 'SP'],
+  ]),
+  moduloALinee('4-2-1-3', [
+    ['TD', 'DC', 'DC', 'TS'], ['CDC', 'CDC'], ['COC'], ['AD', 'ATT', 'AS'],
+  ]),
+  moduloALinee('4-2-4', [
+    ['TD', 'DC', 'DC', 'TS'], ['CC', 'CC'], ['AD', 'ATT', 'ATT', 'AS'],
+  ]),
+  moduloALinee('3-4-1-2', [
+    ['DC', 'DC', 'DC'], ['ED', 'CC', 'CC', 'ES'], ['COC'], ['ATT', 'SP'],
+  ]),
+  moduloALinee('3-4-2-1', [
+    ['DC', 'DC', 'DC'], ['ED', 'CC', 'CC', 'ES'], ['COC', 'COC'], ['ATT'],
+  ]),
+  moduloALinee('3-5-1-1', [
+    ['DC', 'DC', 'DC'], ['ED', 'CC', 'CDC', 'CC', 'ES'], ['SP'], ['ATT'],
+  ]),
+  moduloALinee('3-3-1-3', [
+    ['DC', 'DC', 'DC'], ['CC', 'CDC', 'CC'], ['COC'], ['AD', 'ATT', 'AS'],
+  ]),
+  moduloALinee('3-3-3-1', [
+    ['DC', 'DC', 'DC'], ['CC', 'CDC', 'CC'], ['ED', 'COC', 'ES'], ['ATT'],
+  ]),
+  moduloALinee('3-6-1', [
+    ['DC', 'DC', 'DC'], ['ED', 'CC', 'CDC', 'CDC', 'CC', 'ES'], ['ATT'],
+  ]),
+  moduloALinee('5-3-2', [
+    ['TD', 'DC', 'DC', 'DC', 'TS'], ['CC', 'CDC', 'CC'], ['ATT', 'SP'],
+  ]),
+  moduloALinee('5-4-1', [
+    ['TD', 'DC', 'DC', 'DC', 'TS'], ['ED', 'CC', 'CC', 'ES'], ['ATT'],
+  ]),
+  moduloALinee('5-2-3', [
+    ['TD', 'DC', 'DC', 'DC', 'TS'], ['CC', 'CC'], ['AD', 'ATT', 'AS'],
+  ]),
+  moduloALinee('5-2-1-2', [
+    ['TD', 'DC', 'DC', 'DC', 'TS'], ['CDC', 'CDC'], ['COC'], ['ATT', 'SP'],
+  ]),
 ]
 
 /** Quanto un giocatore calza in un ruolo. */
