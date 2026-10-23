@@ -161,7 +161,7 @@ export function Distinte() {
             <Card title="Distinte salvate" style={{ marginBottom: 16 }}>
               <Flex wrap gap={12} align="center">
                 <Select
-                  style={{ minWidth: 280, flex: 1 }}
+                  style={{ minWidth: 0, width: '100%', flex: '1 1 260px' }}
                   allowClear
                   showSearch
                   optionFilterProp="label"
@@ -207,7 +207,7 @@ export function Distinte() {
           </Card>
 
           <Row gutter={[16, 16]}>
-            <Col xs={24} md={16}>
+            <Col xs={24} xl={16}>
               <Card title="Convoca i giocatori">
                 <SelectorList
                   key={resetKey}
@@ -218,7 +218,7 @@ export function Distinte() {
                 />
               </Card>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} xl={8}>
               <Card title="Stampa / Esporta">
                 <PdfExporter
                   list={selezionati}

@@ -144,6 +144,12 @@ raccolte si possono precaricare da console con
 
 ## Sincronizzazione e ricevute dei Conti
 
+- All’avvio si attende la conferma della stagione e il caricamento di tutte le
+  17 tabelle da Drive prima di mostrare menu e comandi, anche con cache locale.
+  Se una tabella manca o contiene una risposta non valida, resta la schermata
+  di caricamento con **Riprova**. Immagini e documenti si caricano quando servono.
+  Gli aggiornamenti successivi avvengono senza bloccare il lavoro.
+
 - Le raccolte vengono rilette all'apertura, al rientro nella scheda/PWA,
   quando torna la connessione e ogni **60 secondi** mentre l'app è visibile.
   «Aggiorna» forza la lettura; lo stato indica l'ultimo aggiornamento completo.
@@ -175,7 +181,11 @@ Il controllo completo dell'interfaccia usa un Drive simulato e non scrive dati
 reali: `npx playwright install chromium`, poi `npm run test:browser`.
 Verifica caricamento ricevute, anteprima/download PDF, cinque larghezze,
 recupero dei salvataggi falliti, rientro in app e aggiornamento periodico.
-Le schermate e i PDF di prova sono temporanei in `/tmp/us-*`.
+`npm run test:layout` controlla 20 schermate in entrambi i temi a 320, 390,
+768, 1024 e 1440 px, oltre a 56 finestre e 44 varianti di schede/editor.
+Verifica sforamenti, etichette dei pulsanti, titoli e dimensioni dell’editor.
+Le schermate e i PDF di prova sono temporanei in `/tmp/us-*`; in CI le
+schermate sono disabilitate, ma restano tutti i controlli geometrici.
 
 
 ## Prestazioni
@@ -189,5 +199,5 @@ Le schermate e i PDF di prova sono temporanei in `/tmp/us-*`.
 - I Conti mostrano 50 righe alla volta (paginazione desktop, Mostra altri su
   mobile). Ricerca, filtri, saldi e PDF continuano a usare tutti i movimenti.
 - Il test prestazionale usa 300 movimenti, controlla il caricamento differito,
-  verifica che i comandi e la riapertura con cache funzionino anche prima della
-  risposta del Drive. Non misura la latenza del backend Google reale.
+  verifica che la riapertura con cache aspetti il Drive e che i successivi
+  aggiornamenti non blocchino i comandi. Non misura la latenza del backend Google reale.

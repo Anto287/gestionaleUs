@@ -19,7 +19,7 @@ import { navItems } from '../nav'
 import { useAuth } from '../auth/AuthContext'
 import { useSeason } from '../season/SeasonContext'
 import { useTema } from '../theme/TemaProvider'
-import { DataProvider } from '../data/DataProvider'
+import { DataProvider, DataFeedback } from '../data/DataProvider'
 import { ArchivioProvider } from '../data/ArchivioProvider'
 import { PalloneSpinner } from './PalloneSpinner'
 
@@ -50,20 +50,25 @@ function Brand() {
 }
 
 export function Layout() {
+  const { attiva } = useSeason()
+  return <DataProvider key={attiva}><LayoutPronto /></DataProvider>
+}
+
+function LayoutPronto() {
   const { esci } = useAuth()
   const { tema, alterna } = useTema()
-  const { attiva } = useSeason()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = Grid.useBreakpoint()
   const [drawer, setDrawer] = useState(false)
 
   const isDesktop = screens.lg
+  const sezione = navItems.find((n) => n.to !== '/' && (location.pathname === n.to || location.pathname.startsWith(n.to + '/'))) ?? navItems[0]
 
   const menu = (
     <Menu
       mode="inline"
-      selectedKeys={[location.pathname]}
+      selectedKeys={[sezione.to]}
       items={navItems.map((item) => ({
         key: item.to,
         icon: createElement(item.icon),
@@ -126,6 +131,7 @@ export function Layout() {
             <Button
               type="text"
               icon={<MenuOutlined />}
+              aria-label="Apri menu"
               onClick={() => setDrawer(true)}
             />
             <img
@@ -134,8 +140,7 @@ export function Layout() {
               alt=""
             />
             <span className="topbar-title">
-              {navItems.find((n) => n.to === location.pathname)?.label ??
-                config.clubName}
+              {sezione.label}
             </span>
             <Button
               type="text"
@@ -151,7 +156,7 @@ export function Layout() {
           </Header>
         )}
         <Content className="app-content">
-          <DataProvider key={attiva}>
+          <DataFeedback />
             <ArchivioProvider
               attivo={
                 location.pathname === '/archivio' ||
@@ -165,7 +170,7 @@ export function Layout() {
                 </Suspense>
               </div>
             </ArchivioProvider>
-          </DataProvider>
+
         </Content>
       </AntLayout>
     </AntLayout>

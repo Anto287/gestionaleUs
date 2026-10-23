@@ -8,7 +8,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Alert, Button, Result, Spin } from 'antd'
+import { Alert, Button, Progress, Result, Spin } from 'antd'
+import { config } from '../config'
 import { ReloadOutlined } from '@ant-design/icons'
 import { SyncGuard } from '../lib/syncGuard'
 import { riusaLista } from '../lib/riusaLista'
@@ -45,6 +46,8 @@ interface DataValue {
 }
 
 const DataContext = createContext<DataValue | null>(null)
+const FeedbackContext = createContext<ReactNode>(null)
+export function DataFeedback() { return <>{useContext(FeedbackContext)}</> }
 // Solo l’archivio ha bisogno del segnale di refresh: i cambi di stato del Drive
 // non devono invalidare tutti i consumatori dei dati nelle pagine.
 const SyncVersionContext = createContext(0)
@@ -70,12 +73,7 @@ function leggiBase64(file: File): Promise<string> {
   })
 }
 
-/**
- * L'ultima copia letta di ogni raccolta. Se ci sono tutte, l'app si apre
- * subito con quelle e la rilettura dal Drive va in sottofondo; se ne manca
- * anche una (prima apertura, o raccolta nuova) si aspetta il Drive come
- * prima, per non mostrare pagine vuote.
- */
+/** La cache serve al confronto dei dati, ma non sblocca mai l’avvio. */
 function copiaLocale(attiva: string): { data: Store; completa: boolean } {
   const data: Store = {}
   let trovate = 0
@@ -94,9 +92,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [copia] = useState(() => copiaLocale(attiva))
   const [data, setData] = useState<Store>(copia.data)
   const [stato, setStato] = useState<'loading' | 'ready' | 'error'>(
-    copia.completa ? 'ready' : 'loading',
+    'loading',
   )
   const [erroreCaricamento, setErroreCaricamento] = useState('')
+  const [lette, setLette] = useState(0)
   const [erroreSync, setErroreSync] = useState<string | null>(null)
   const [aggiornando, setAggiornando] = useState(true)
   const [tentativo, setTentativo] = useState(0)
@@ -147,6 +146,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ultimoAvvio = Date.now()
       const snapshot = guard.current.snapshot()
       setAggiornando(true)
+      setLette(0)
       setStato((st) => (st === 'error' ? 'loading' : st))
       const posa = (c: string, items: { id: string }[]) => {
         if (!annullato && guard.current.canApply(c, snapshot)) {
@@ -175,10 +175,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
               const items =
                 tutte?.[c] ??
                 (await store.list<{ id: string }>(c, seasonDi(c, attiva)))
+              if (!Array.isArray(items)) throw new Error(`Risposta non valida: ${c}`)
               posa(c, items as { id: string }[])
+              if (!annullato) setLette((n) => n + 1)
               return null
             } catch (e) {
-              return e
+              return { collection: c, errore: e }
             }
           }),
         )
@@ -186,13 +188,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const errori = esiti.filter(Boolean)
         setErroreCaricamento(
           errori.length
-            ? 'Alcuni dati non sono stati aggiornati dal Drive.'
+            ? `Non riesco a leggere ${errori.length} ${errori.length === 1 ? 'tabella' : 'tabelle'} su ${COLLECTIONS.length}. Verifica la connessione e riprova.`
             : '',
         )
         if (!errori.length) setUltimoAggiornamento(new Date())
         setVersioneSync((v) => v + 1)
         setStato((st) =>
-          errori.length === COLLECTIONS.length && st !== 'ready'
+          errori.length > 0 && st !== 'ready'
             ? 'error'
             : 'ready',
         )
@@ -452,7 +454,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  if (stato === 'loading') return <DriveSplash />
+  if (stato === 'loading') return <DriveSplash lette={lette} />
   if (stato === 'error')
     return (
       <DriveSplash
@@ -461,9 +463,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       />
     )
 
-  return (
-    <DataContext.Provider value={valore}>
-      <SyncVersionContext.Provider value={versioneSync}>
+  const feedback = (
+    <>
         {erroreSync && (
           <Alert
             type="warning"
@@ -528,11 +529,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
             Aggiorna
           </Button>
         </div>
-        {children}
-        <Aggiornamento attivo={aggiornando && copia.completa} />
-      </SyncVersionContext.Provider>
-    </DataContext.Provider>
+        <Aggiornamento attivo={aggiornando} />
+    </>
   )
+  return <DataContext.Provider value={valore}>
+    <SyncVersionContext.Provider value={versioneSync}>
+      <FeedbackContext.Provider value={feedback}>{children}</FeedbackContext.Provider>
+    </SyncVersionContext.Provider>
+  </DataContext.Provider>
 }
 
 /**
@@ -562,15 +566,17 @@ function Aggiornamento({ attivo }: { attivo: boolean }) {
 function DriveSplash({
   errore,
   onRiprova,
+  lette = 0,
 }: {
+  lette?: number
   errore?: string
   onRiprova?: () => void
 }) {
   if (errore) {
     return (
-      <Result
+      <div className="startup-screen"><div className="startup-card startup-error"><Result
         status="warning"
-        title="Non riesco a leggere i dati dal Drive"
+        title="Sincronizzazione non completata"
         subTitle={errore}
         extra={
           onRiprova && (
@@ -579,13 +585,21 @@ function DriveSplash({
             </Button>
           )
         }
-      />
+      /></div></div>
     )
   }
   return (
-    <div className="drive-splash">
-      <PalloneSpinner />
-      <p className="drive-splash-text">Carico i dati dal Drive…</p>
+    <div className="startup-screen" role="status" aria-live="polite">
+      <div className="startup-card">
+        <img className="startup-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt={config.clubName} />
+        <span className="hero-eyebrow">{config.clubName}</span>
+        <h1>Sincronizzazione iniziale</h1>
+        <p>Carico tutte le tabelle dal Drive prima di aprire il gestionale.</p>
+        <PalloneSpinner />
+        <Progress percent={Math.round(lette / COLLECTIONS.length * 100)} showInfo={false} strokeColor="var(--rosso)" />
+        <span className="startup-progress">{lette} di {COLLECTIONS.length} tabelle verificate</span>
+        <small>Foto e immagini si caricheranno quando servono.</small>
+      </div>
     </div>
   )
 }

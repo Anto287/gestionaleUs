@@ -135,7 +135,8 @@ export async function list<T>(collection: string, season: string): Promise<T[]> 
   await attendiScritture()
   // lettura via POST: la chiave resta nel corpo, fuori dall'URL
   const data = await post({ action: 'list', collection, season: seasonKey(season) })
-  return (data.items ?? []) as T[]
+  if (!Array.isArray(data.items)) throw new Error('Il Drive non ha restituito la tabella richiesta')
+  return data.items as T[]
 }
 
 export interface Richiesta {
@@ -170,7 +171,9 @@ export async function listAll(
     throw new Error(data.error || 'Errore Drive')
   }
   const liste = (data.liste ?? []) as Array<{ collection: string; items?: unknown[] }>
-  return Object.fromEntries(liste.map((l) => [l.collection, l.items ?? []]))
+  const raccolte: Record<string, unknown[]> = {}
+  for (const l of liste) if (Array.isArray(l.items)) raccolte[l.collection] = l.items
+  return raccolte
 }
 
 // --- scrittura (serializzata per evitare corse) ---
