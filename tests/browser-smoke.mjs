@@ -1,20 +1,12 @@
 import { chromium } from 'playwright'
 import fs from 'node:fs/promises'
-import { spawn } from 'node:child_process'
-const server = spawn(
-  'node',
-  ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5174', '--strictPort'],
-  { cwd: new URL('..', import.meta.url).pathname },
-)
-await new Promise((resolve, reject) => {
-  const timeout = setTimeout(() => { server.kill(); reject(new Error('Vite startup timed out')) }, 15_000)
-  server.once('error', reject)
-  server.once('exit', (code) => { clearTimeout(timeout); reject(new Error(`Vite exited: ${code}`)) })
-  server.stdout.on('data', (data) => {
-    if (data.toString().includes('Local:')) { clearTimeout(timeout); resolve() }
-  })
+import { createServer } from 'vite'
+
+const server = await createServer({
+  root: new URL('..', import.meta.url).pathname,
+  server: { host: '127.0.0.1', port: 5174, strictPort: true },
 })
-process.on('exit', () => server.kill())
+await server.listen()
 let browser
 try {
   browser = await chromium.launch({
@@ -286,5 +278,5 @@ try {
   if (errors.length) throw Error(errors.join('\n'))
 } finally {
   await browser?.close()
-  server.kill()
+  await server.close()
 }
