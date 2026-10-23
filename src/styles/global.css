@@ -2905,8 +2905,9 @@ body {
 /* Sui telefoni stretti, etichette e icone delle statistiche hanno spazio proprio. */
 .stat-card .ant-statistic-title { overflow-wrap: anywhere; }
 @media (max-width: 575.98px) {
-  .ant-col-xs-12 .stat-card .ant-card-body { flex-direction: column; padding: 16px; }
-  .ant-col-xs-12 .stat-card .stat-icon { position: static; align-self: flex-end; line-height: 1; margin-bottom: 8px; }
+  .ant-col-xs-12 .stat-card .ant-card-body { flex-direction: column; padding: 44px 16px 16px; }
+  .ant-col-xs-12 .stat-card .stat-icon { position: absolute; top: 16px; right: 16px; line-height: 1; }
   .ant-col-xs-12 .stat-card .ant-statistic-title { padding-right: 0; }
   .page-actions > .ant-space:has(.ant-select) { grid-template-columns: minmax(0, 1fr); }
+  .page-actions .ant-select { width: 100% !important; }
 }

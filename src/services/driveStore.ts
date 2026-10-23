@@ -75,9 +75,9 @@ export interface DocMeta {
 
 // --- copia locale delle raccolte ---
 //
-// Ogni lettura riuscita lascia una copia nel browser: alla riapertura l'app
-// parte da lì (subito, anche con la rete del campo) e intanto rilegge dal
-// Drive in sottofondo. È solo una copia: la verità resta sul Drive.
+// Ogni lettura riuscita lascia una copia nel browser, usata per confrontare
+// gli aggiornamenti e conservare le liste invariate. La cache non sblocca
+// l’avvio: prima di accedere si attendono tutte le tabelle dal Drive.
 
 const CACHE_DATI = '__dati/'
 
