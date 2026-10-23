@@ -29,6 +29,7 @@ try {
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 })
       await page.evaluate(() => window.scrollTo(0, 0))
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
       const issues = await page.evaluate(() => {
         const bad = []
         if (document.documentElement.scrollWidth > innerWidth + 1) bad.push({ type: 'page', width: document.documentElement.scrollWidth })

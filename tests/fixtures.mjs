@@ -12,7 +12,7 @@ export function fixtures() {
     note: 'Dati dimostrativi per verificare la leggibilità della scheda e delle azioni.',
   }))
   const partite = Array.from({ length: 5 }, (_, i) => ({ id: `p${i}`, data: `2026-10-${String(i * 3 + 2).padStart(2, '0')}`,
-    ora: '15:00', avversario: i === 0 ? 'Associazione Sportiva San Damaso e San Paolo' : `Squadra di prova ${i}`,
+    ora: '15:00', avversario: i === 0 ? 'Associazione Sportiva San Damaso e San Paolo' : i === 1 ? 'Unione Sportiva San Giovanni e San Bartolomeo della Montagna' : `Squadra di prova ${i}`,
     inCasa: i % 2 === 0, torneoId: 'torneo', giocata: true, golFatti: i + 1, golSubiti: 1,
     marcatori: [{ giocatoreId: 'g1', quantita: i + 1 }], assist: [{ giocatoreId: 'g3', quantita: 1 }],
     ammoniti: ['g4'], espulsi: [], titolari: giocatori.slice(0, 11).map((g) => g.id), subentrati: ['g11'],

@@ -2911,3 +2911,6 @@ body {
   .page-actions > .ant-space:has(.ant-select) { grid-template-columns: minmax(0, 1fr); }
   .page-actions .ant-select { width: 100% !important; }
 }
+
+.avv-da-creare .ant-btn { max-width: 100%; height: auto; min-height: 32px; white-space: normal; text-align: left; padding-block: 6px; line-height: 1.35; }
+.avv-da-creare .ant-btn > span:not(.ant-btn-icon) { overflow-wrap: anywhere; }
