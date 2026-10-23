@@ -4,40 +4,80 @@ import { useAuth } from './auth/AuthContext'
 import { SeasonProvider } from './season/SeasonContext'
 import { Gate } from './components/Gate'
 import { Layout } from './components/Layout'
-import { Dashboard } from './pages/Dashboard'
+const Dashboard = lazy(() =>
+  import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
+)
 
 /**
- * Solo la Panoramica parte insieme all'app: ogni altra pagina si scarica
- * quando ci si entra (poi il service worker se la tiene). Così all'apertura
+ * Le pagine, inclusa la Panoramica, si scaricano
+ * quando ci si entra (poi il service worker se le tiene). Così al login
  * il telefono non tira giù anche Recharts, Konva, jsPDF e compagnia, che
  * servono in tre pagine su sedici. Il segnaposto durante il caricamento lo
  * mette il Layout, intorno all'Outlet.
  */
-const Rosa = lazy(() => import('./pages/Rosa').then((m) => ({ default: m.Rosa })))
+const Rosa = lazy(() =>
+  import('./pages/Rosa').then((m) => ({ default: m.Rosa })),
+)
 const GiocatoreDettaglio = lazy(() =>
-  import('./pages/GiocatoreDettaglio').then((m) => ({ default: m.GiocatoreDettaglio })),
+  import('./pages/GiocatoreDettaglio').then((m) => ({
+    default: m.GiocatoreDettaglio,
+  })),
 )
-const Allenamenti = lazy(() => import('./pages/Allenamenti').then((m) => ({ default: m.Allenamenti })))
-const Partite = lazy(() => import('./pages/Partite').then((m) => ({ default: m.Partite })))
+const Allenamenti = lazy(() =>
+  import('./pages/Allenamenti').then((m) => ({ default: m.Allenamenti })),
+)
+const Partite = lazy(() =>
+  import('./pages/Partite').then((m) => ({ default: m.Partite })),
+)
 const PartitaDettaglio = lazy(() =>
-  import('./pages/PartitaDettaglio').then((m) => ({ default: m.PartitaDettaglio })),
+  import('./pages/PartitaDettaglio').then((m) => ({
+    default: m.PartitaDettaglio,
+  })),
 )
-const Avversari = lazy(() => import('./pages/Avversari').then((m) => ({ default: m.Avversari })))
+const Avversari = lazy(() =>
+  import('./pages/Avversari').then((m) => ({ default: m.Avversari })),
+)
 const AvversarioDettaglio = lazy(() =>
-  import('./pages/AvversarioDettaglio').then((m) => ({ default: m.AvversarioDettaglio })),
+  import('./pages/AvversarioDettaglio').then((m) => ({
+    default: m.AvversarioDettaglio,
+  })),
 )
-const Formazione = lazy(() => import('./pages/Formazione').then((m) => ({ default: m.Formazione })))
-const Piazzati = lazy(() => import('./pages/Piazzati').then((m) => ({ default: m.Piazzati })))
-const Calendario = lazy(() => import('./pages/Calendario').then((m) => ({ default: m.Calendario })))
-const Statistiche = lazy(() => import('./pages/Statistiche').then((m) => ({ default: m.Statistiche })))
-const Distinte = lazy(() => import('./pages/Distinte').then((m) => ({ default: m.Distinte })))
-const Social = lazy(() => import('./pages/Social').then((m) => ({ default: m.Social })))
-const Magazzino = lazy(() => import('./pages/Magazzino').then((m) => ({ default: m.Magazzino })))
-const Conti = lazy(() => import('./pages/Conti').then((m) => ({ default: m.Conti })))
-const Spese = lazy(() => import('./pages/Spese').then((m) => ({ default: m.Spese })))
-const Documenti = lazy(() => import('./pages/Documenti').then((m) => ({ default: m.Documenti })))
-const Archivio = lazy(() => import('./pages/Archivio').then((m) => ({ default: m.Archivio })))
-const Impostazioni = lazy(() => import('./pages/Impostazioni').then((m) => ({ default: m.Impostazioni })))
+const Formazione = lazy(() =>
+  import('./pages/Formazione').then((m) => ({ default: m.Formazione })),
+)
+const Piazzati = lazy(() =>
+  import('./pages/Piazzati').then((m) => ({ default: m.Piazzati })),
+)
+const Calendario = lazy(() =>
+  import('./pages/Calendario').then((m) => ({ default: m.Calendario })),
+)
+const Statistiche = lazy(() =>
+  import('./pages/Statistiche').then((m) => ({ default: m.Statistiche })),
+)
+const Distinte = lazy(() =>
+  import('./pages/Distinte').then((m) => ({ default: m.Distinte })),
+)
+const Social = lazy(() =>
+  import('./pages/Social').then((m) => ({ default: m.Social })),
+)
+const Magazzino = lazy(() =>
+  import('./pages/Magazzino').then((m) => ({ default: m.Magazzino })),
+)
+const Conti = lazy(() =>
+  import('./pages/Conti').then((m) => ({ default: m.Conti })),
+)
+const Spese = lazy(() =>
+  import('./pages/Spese').then((m) => ({ default: m.Spese })),
+)
+const Documenti = lazy(() =>
+  import('./pages/Documenti').then((m) => ({ default: m.Documenti })),
+)
+const Archivio = lazy(() =>
+  import('./pages/Archivio').then((m) => ({ default: m.Archivio })),
+)
+const Impostazioni = lazy(() =>
+  import('./pages/Impostazioni').then((m) => ({ default: m.Impostazioni })),
+)
 
 function App() {
   const { sbloccato } = useAuth()
