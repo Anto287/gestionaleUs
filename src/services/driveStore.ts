@@ -202,9 +202,12 @@ export function attendiScritture(): Promise<void> {
 async function callDrive(body: Record<string, unknown>) {
   const res = await fetch(DRIVE_URL, {
     method: 'POST',
+    cache: 'no-store',
+    signal: AbortSignal.timeout(45_000),
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body),
   })
+  if (!res.ok) throw new Error(`Drive non disponibile (${res.status})`)
   return res.json()
 }
 

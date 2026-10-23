@@ -2678,3 +2678,93 @@ body {
   background: var(--panna);
   border-radius: 6px;
 }
+
+/* Stato del Drive e strumenti contabili */
+.sync-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  max-width: 1040px;
+  margin: 0 auto 18px;
+  color: var(--testo-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.conti-risultati {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.ricevute {
+  border-top: 1px solid var(--linea);
+  margin-top: 12px;
+  padding-top: 18px;
+}
+.ricevute-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ricevute-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--panna);
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+}
+.ricevute-list li > :first-child {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  height: auto;
+}
+.ricevute-list li > .ant-btn:last-child { flex-shrink: 0; }
+.report-filtri { display: grid; gap: 16px; }
+.report-filtri label { display: grid; gap: 6px; font-weight: 500; }
+.report-filtri .ant-select { width: 100%; font-weight: normal; }
+
+/* Impedisce a tabelle, nomi lunghi e comandi di allargare l'intera pagina. */
+.app-content, .app-container, .page-header > div { min-width: 0; }
+.lista-card-top > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.lista-card-top > :last-child { flex-shrink: 0; }
+.lista-card-title { overflow-wrap: anywhere; }
+.ant-modal .ant-modal-body { overflow-wrap: anywhere; }
+@media (min-width: 576px) and (max-width: 1199.98px) {
+  .page-header { align-items: flex-start; }
+  .page-actions { max-width: 100%; }
+  .ant-card-head-wrapper { flex-wrap: wrap; gap: 10px; padding: 12px 0; }
+  .ant-card-extra { margin-inline-start: 0; }
+}
+@media (max-width: 575.98px) {
+  .sync-status { justify-content: space-between; margin-bottom: 16px; }
+  .page-actions > .ant-space { gap: 8px !important; }
+  .page-actions > .ant-space > .ant-space-item { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .page-actions > .ant-space > .ant-space-item:last-child { flex-basis: 100%; }
+  .page-actions .ant-btn { height: auto; min-height: 40px; white-space: normal; padding-block: 8px; }
+  .ant-card-head-title { white-space: normal; }
+  .ant-modal .ant-modal-footer .ant-space { justify-content: flex-end; }
+  .ricevute > .ant-space { display: flex; }
+  .ricevute > .ant-space > .ant-space-item { flex: 1; }
+  .ricevute > .ant-space .ant-btn { width: 100%; min-height: 40px; }
+}
+.conti-analisi { margin-bottom: 20px; }
+.conti-analisi > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box { padding: 12px; }
+.conti-analisi .ant-card:last-child { margin-bottom: 0 !important; }
+@media (max-width: 575.98px) {
+  .conti-movimento-modal, .conti-report-modal { top: 12px; padding-bottom: 12px; }
+  .conti-movimento-modal .ant-modal-body, .conti-report-modal .ant-modal-body {
+    max-height: calc(100dvh - 200px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+  }
+}

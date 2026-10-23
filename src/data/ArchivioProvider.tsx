@@ -23,12 +23,13 @@ import {
 } from '../lib/archivio'
 import { preparaCaricamento } from '../lib/immagine'
 import { useData } from './DataProvider'
+import { SyncGuard } from '../lib/syncGuard'
 import type { Giocatore } from '../types'
 
 /**
  * Archivio tesserati: le due cartelle del Drive con i documenti
  * (fronte/retro) e le foto. Vivono fuori dal gestionale — non cambiano con
- * la stagione — quindi si leggono una volta sola all'avvio e restano qui.
+ * la stagione — quindi si aggiornano insieme ai dati principali.
  *
  * Il caricamento non blocca niente: se lo script sul Drive non conosce
  * ancora l'archivio (pezzo da incollare, vedi docs/apps-script-archivio.gs)
@@ -51,7 +52,11 @@ interface ArchivioValue {
   chiediMiniature: (ids: (string | undefined)[]) => void
   /** il contenuto completo di un file (anteprima e scarica) */
   contenuto: (id: string) => Promise<store.ContenutoArchivio>
-  carica: (opzioni: { cartella: Cartella; base: string; file: File }) => Promise<FileArchivio>
+  carica: (opzioni: {
+    cartella: Cartella
+    base: string
+    file: File
+  }) => Promise<FileArchivio>
   elimina: (file: FileArchivio) => Promise<void>
   /** in rosa c'è più di un tesserato con questo nome: serve la data di nascita */
   omonimo: (t: { nome: string; cognome: string }) => boolean
@@ -98,7 +103,10 @@ function salvaElenco(elenco: Elenco): void {
 
 function leggiCache(): Record<string, string> {
   try {
-    return JSON.parse(loadValue(CACHE_MINIATURE) ?? '{}') as Record<string, string>
+    return JSON.parse(loadValue(CACHE_MINIATURE) ?? '{}') as Record<
+      string,
+      string
+    >
   } catch {
     return {}
   }
@@ -107,7 +115,9 @@ function leggiCache(): Record<string, string> {
 function salvaCache(miniature: Record<string, string>): void {
   try {
     const leggere = Object.fromEntries(
-      Object.entries(miniature).filter(([, v]) => v.length <= MAX_MINIATURA_CACHE),
+      Object.entries(miniature).filter(
+        ([, v]) => v.length <= MAX_MINIATURA_CACHE,
+      ),
     )
     const testo = JSON.stringify(leggere)
     if (testo.length <= MAX_CACHE) saveValue(CACHE_MINIATURE, testo)
@@ -117,11 +127,14 @@ function salvaCache(miniature: Record<string, string>): void {
 }
 
 export function ArchivioProvider({ children }: { children: ReactNode }) {
-  const { getItems } = useData()
+  const { getItems, versioneSync } = useData()
+  const guard = useRef(new SyncGuard())
   const giocatori = getItems<Giocatore>('giocatori')
 
   const [cache] = useState(leggiElenco)
-  const [documenti, setDocumenti] = useState<FileArchivio[]>(cache?.documenti ?? [])
+  const [documenti, setDocumenti] = useState<FileArchivio[]>(
+    cache?.documenti ?? [],
+  )
   const [foto, setFoto] = useState<FileArchivio[]>(cache?.foto ?? [])
   const [stato, setStato] = useState<Stato>(cache ? 'pronto' : 'carico')
   const [errore, setErrore] = useState('')
@@ -130,6 +143,7 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let vivo = true
+    const snapshot = guard.current.snapshot()
     setErrore('')
     store
       .archivioList()
@@ -139,6 +153,7 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
           setStato('assente') // script del Drive ancora senza il pezzo dell'archivio
           return
         }
+        if (!guard.current.canApply('archivio', snapshot)) return
         setDocumenti(res.documenti)
         setFoto(res.foto)
         setStato('pronto')
@@ -153,15 +168,24 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
     return () => {
       vivo = false
     }
-  }, [tentativo])
+  }, [tentativo, versioneSync])
 
   const tesserati = useMemo<Tesserato[]>(
-    () => giocatori.map((g) => ({ id: g.id, nome: g.nome, cognome: g.cognome, nascita: nascitaIso(g.nascita) })),
+    () =>
+      giocatori.map((g) => ({
+        id: g.id,
+        nome: g.nome,
+        cognome: g.cognome,
+        nascita: nascitaIso(g.nascita),
+      })),
     [giocatori],
   )
 
   const aggancio = useMemo(
-    () => (stato === 'pronto' ? agganciaArchivio(tesserati, documenti, foto) : ARCHIVIO_VUOTO),
+    () =>
+      stato === 'pronto'
+        ? agganciaArchivio(tesserati, documenti, foto)
+        : ARCHIVIO_VUOTO,
     [stato, tesserati, documenti, foto],
   )
 
@@ -184,7 +208,8 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
         if (!thumbs.length) return
         setMiniature((m) => {
           const next = { ...m }
-          for (const t of thumbs) next[t.id] = `data:${t.tipo};base64,${t.dataBase64}`
+          for (const t of thumbs)
+            next[t.id] = `data:${t.tipo};base64,${t.dataBase64}`
           return next
         })
       })
@@ -236,13 +261,30 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const carica = useCallback(
-    async ({ cartella, base, file }: { cartella: Cartella; base: string; file: File }) => {
+    async ({
+      cartella,
+      base,
+      file,
+    }: {
+      cartella: Cartella
+      base: string
+      file: File
+    }) => {
       const pronto = await preparaCaricamento(file)
       const nome = base + pronto.estensione
-      const item = await store.archivioUpload(cartella, nome, pronto.tipo, pronto.dataBase64)
+      guard.current.changed('archivio')
+      const item = await store.archivioUpload(
+        cartella,
+        nome,
+        pronto.tipo,
+        pronto.dataBase64,
+      )
+      guard.current.changed('archivio')
       // lo script ha già cestinato l'omonimo: qui si rifà lo stesso in elenco
       const sostituisci = (arr: FileArchivio[]) => [
-        ...arr.filter((f) => f.id !== item.id && chiaveFile(f.nome) !== chiaveFile(nome)),
+        ...arr.filter(
+          (f) => f.id !== item.id && chiaveFile(f.nome) !== chiaveFile(nome),
+        ),
         item,
       ]
       if (cartella === 'foto') setFoto(sostituisci)
@@ -260,7 +302,9 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
   )
 
   const elimina = useCallback(async (file: FileArchivio) => {
+    guard.current.changed('archivio')
     await store.archivioDelete(file.id)
+    guard.current.changed('archivio')
     setDocumenti((a) => a.filter((f) => f.id !== file.id))
     setFoto((a) => a.filter((f) => f.id !== file.id))
     contenuti.current.delete(file.id)
@@ -289,10 +333,25 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
       omonimo: (t) => aggancio.omonimi.has(chiaveTesserato(t)),
       ricarica: () => setTentativo((n) => n + 1),
     }),
-    [stato, errore, documenti, foto, aggancio, miniature, chiediMiniature, contenuto, carica, elimina],
+    [
+      stato,
+      errore,
+      documenti,
+      foto,
+      aggancio,
+      miniature,
+      chiediMiniature,
+      contenuto,
+      carica,
+      elimina,
+    ],
   )
 
-  return <ArchivioContext.Provider value={valore}>{children}</ArchivioContext.Provider>
+  return (
+    <ArchivioContext.Provider value={valore}>
+      {children}
+    </ArchivioContext.Provider>
+  )
 }
 
 export function useArchivio(): ArchivioValue {

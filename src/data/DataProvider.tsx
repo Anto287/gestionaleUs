@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react'
 import { Alert, Button, Result, Spin } from 'antd'
+import { ReloadOutlined } from '@ant-design/icons'
+import { SyncGuard } from '../lib/syncGuard'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
@@ -27,13 +29,21 @@ interface DataValue {
   /** Sostituisce l'intera raccolta (usato dall'import dei conti). */
   replaceAll: <T extends { id: string }>(collection: string, items: T[]) => void
   /** Carica un file nella cartella Documenti della stagione (vedi sotto). */
-  uploadDoc: (file: File, nomeBase?: string) => Promise<store.DocMeta | undefined>
+  uploadDoc: (
+    file: File,
+    nomeBase?: string,
+  ) => Promise<store.DocMeta | undefined>
   /** Crea un Documento o Foglio Google nella cartella Documenti. */
-  createDoc: (nome: string, tipo: 'documento' | 'foglio') => Promise<store.DocMeta>
+  createDoc: (
+    nome: string,
+    tipo: 'documento' | 'foglio',
+  ) => Promise<store.DocMeta>
   /** Rinomina un documento: il registro subito, e anche il file vero sul Drive. */
   renameDoc: (doc: store.DocMeta, nome: string) => void
   /** true mentre si sta rileggendo dal Drive (l'app intanto usa la copia locale) */
   aggiornando: boolean
+  aggiorna: () => void
+  versioneSync: number
 }
 
 const DataContext = createContext<DataValue | null>(null)
@@ -86,6 +96,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [erroreSync, setErroreSync] = useState<string | null>(null)
   const [aggiornando, setAggiornando] = useState(true)
   const [tentativo, setTentativo] = useState(0)
+  const [versioneSync, setVersioneSync] = useState(0)
+  const [ultimoAggiornamento, setUltimoAggiornamento] = useState<Date | null>(
+    null,
+  )
+  const [online, setOnline] = useState(navigator.onLine)
+  const refreshRef = useRef<() => void>(() => {})
   // cambiando stagione il provider si smonta: niente «Annulla» verso quello vecchio
   useChiudiUndoAlloSmontaggio()
 
@@ -96,77 +112,117 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // raccolte toccate qui dentro mentre si rilegge: la risposta del Drive
   // (partita prima della modifica) non deve ributtarci sopra la versione vecchia
-  const modificate = useRef(new Set<string>())
-  const segnaModifica = useCallback((c: string) => {
-    modificate.current.add(c)
-  }, [])
+  const guard = useRef(new SyncGuard())
+  const segnaModifica = useCallback((c: string) => guard.current.changed(c), [])
 
   // copie locali già salvate, per riscrivere solo quello che cambia
   const salvate = useRef<Store>({ ...copia.data })
 
   useEffect(() => {
     let annullato = false
-    modificate.current = new Set()
-    setAggiornando(true)
-    setErroreCaricamento('')
-    // «Riprova» dopo un errore: si torna allo spinner (con la copia locale
-    // in mano, invece, non si interrompe niente)
-    setStato((st) => (st === 'error' ? 'loading' : st))
-    ;(async () => {
-      // se nel frattempo l'abbiamo modificata qui, la risposta del Drive è già
-      // vecchia e non va posata sopra
-      const posa = (c: string, items: { id: string }[]) => {
-        if (!annullato && !modificate.current.has(c)) setData((s) => ({ ...s, [c]: items }))
-      }
+    let inCorso = false
+    let ultimoAvvio = 0
+    let timer: ReturnType<typeof setTimeout>
 
-      // prima strada: tutte le raccolte in una richiesta sola (script aggiornato)
-      try {
-        const tutte = await store.listAll(
-          COLLECTIONS.map((c) => ({ collection: c, season: seasonDi(c, attiva) })),
-        )
-        if (annullato) return
-        if (tutte) {
-          for (const c of COLLECTIONS) {
-            // una sezione che lo script non è riuscito a leggere non c'è nella
-            // risposta: si tiene quella che abbiamo, non la si svuota
-            const items = tutte[c]
-            if (items) posa(c, items as { id: string }[])
-          }
-          setAggiornando(false)
-          setStato('ready')
-          return
-        }
-      } catch {
-        // niente panico: si riprova qui sotto una raccolta per volta
-      }
-      if (annullato) return
-
-      // ripiego: ogni raccolta per conto suo, e si posa appena arriva (se una
-      // fallisce — es. non ancora nota allo script — le altre non la aspettano)
-      const esiti = await Promise.all(
-        COLLECTIONS.map(async (c) => {
-          try {
-            posa(c, await store.list<{ id: string }>(c, seasonDi(c, attiva)))
-            return { c, errore: null as unknown }
-          } catch (e) {
-            return { c, errore: e }
-          }
-        }),
+    async function aggiorna(forza = false) {
+      if (annullato || inCorso) return
+      if (
+        !forza &&
+        (document.visibilityState === 'hidden' ||
+          Date.now() - ultimoAvvio < 5000)
       )
-      if (annullato) return
-      setAggiornando(false)
-      if (esiti.every((r) => r.errore)) {
-        const e = esiti[0]?.errore as Error | undefined
-        setErroreCaricamento(String(e?.message || e || 'Errore Drive'))
-        // con la copia locale in mano si continua a lavorare: l'errore blocca
-        // solo chi non ha proprio niente da mostrare
+        return
+      clearTimeout(timer)
+      if (!navigator.onLine && store.driveAttivo()) {
+        setAggiornando(false)
+        setErroreCaricamento('Connessione assente')
         setStato((st) => (st === 'ready' ? st : 'error'))
         return
       }
-      setStato('ready')
-    })()
+      inCorso = true
+      ultimoAvvio = Date.now()
+      const snapshot = guard.current.snapshot()
+      setAggiornando(true)
+      setStato((st) => (st === 'error' ? 'loading' : st))
+      const posa = (c: string, items: { id: string }[]) => {
+        if (!annullato && guard.current.canApply(c, snapshot)) {
+          dataRef.current = { ...dataRef.current, [c]: items }
+          setData((s) => ({ ...s, [c]: items }))
+        }
+      }
+      try {
+        let tutte: Record<string, unknown[]> | null = null
+        try {
+          tutte = await store.listAll(
+            COLLECTIONS.map((c) => ({
+              collection: c,
+              season: seasonDi(c, attiva),
+            })),
+          )
+        } catch {
+          /* riprova le singole raccolte, come con lo script precedente */
+        }
+        if (annullato) return
+        const esiti = await Promise.all(
+          COLLECTIONS.map(async (c) => {
+            try {
+              const items =
+                tutte?.[c] ??
+                (await store.list<{ id: string }>(c, seasonDi(c, attiva)))
+              posa(c, items as { id: string }[])
+              return null
+            } catch (e) {
+              return e
+            }
+          }),
+        )
+        if (annullato) return
+        const errori = esiti.filter(Boolean)
+        setErroreCaricamento(
+          errori.length
+            ? 'Alcuni dati non sono stati aggiornati dal Drive.'
+            : '',
+        )
+        if (!errori.length) setUltimoAggiornamento(new Date())
+        setVersioneSync((v) => v + 1)
+        setStato((st) =>
+          errori.length === COLLECTIONS.length && st !== 'ready'
+            ? 'error'
+            : 'ready',
+        )
+      } finally {
+        inCorso = false
+        if (!annullato) {
+          setAggiornando(false)
+          // Una sola richiesta alla volta. I tab nascosti non interrogano Drive.
+          timer = setTimeout(() => {
+            void aggiorna()
+          }, 60_000)
+        }
+      }
+    }
+    const rientro = () => {
+      void aggiorna()
+    }
+    const connessione = () => {
+      setOnline(navigator.onLine)
+      if (navigator.onLine) void aggiorna(true)
+    }
+    refreshRef.current = () => {
+      void aggiorna(true)
+    }
+    void aggiorna(true)
+    window.addEventListener('focus', rientro)
+    document.addEventListener('visibilitychange', rientro)
+    window.addEventListener('online', connessione)
+    window.addEventListener('offline', connessione)
     return () => {
       annullato = true
+      clearTimeout(timer)
+      window.removeEventListener('focus', rientro)
+      document.removeEventListener('visibilitychange', rientro)
+      window.removeEventListener('online', connessione)
+      window.removeEventListener('offline', connessione)
     }
   }, [attiva, tentativo])
 
@@ -190,7 +246,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setErroreSync(String((e as Error)?.message || e))
   }, [])
 
-  const getItems = useCallback(<T,>(c: string): T[] => (data[c] ?? []) as T[], [data])
+  // Conserva le scritture non confermate, così «Riprova salvataggio» è sicuro
+  // anche se nel frattempo lo stesso movimento viene modificato di nuovo.
+  const scritture = useRef(
+    new Map<
+      string,
+      { c: string; task: () => Promise<unknown>; fallita: boolean }
+    >(),
+  )
+  const [riprovando, setRiprovando] = useState(false)
+  const scrivi = useCallback(
+    async (c: string, id: string, task: () => Promise<unknown>) => {
+      const key = `${c}/${id}`
+      const voce = { c, task, fallita: false }
+      scritture.current.set(key, voce)
+      try {
+        await guard.current.write(c, task)
+        if (scritture.current.get(key) === voce) scritture.current.delete(key)
+      } catch (e) {
+        voce.fallita = true
+        fallita(e)
+      } finally {
+        if (![...scritture.current.values()].some((v) => v.c === c))
+          guard.current.confirmed(c)
+        if (!scritture.current.size) setErroreSync(null)
+      }
+    },
+    [fallita],
+  )
+  const riprovaScritture = async () => {
+    setRiprovando(true)
+    try {
+      await store.attendiScritture()
+      for (const [key, voce] of [...scritture.current]) {
+        if (voce.fallita && scritture.current.get(key) === voce) {
+          await scrivi(voce.c, key.slice(voce.c.length + 1), voce.task)
+        }
+      }
+    } finally {
+      setRiprovando(false)
+    }
+  }
+
+  const getItems = useCallback(
+    <T,>(c: string): T[] => (data[c] ?? []) as T[],
+    [data],
+  )
 
   // applica una modifica a una raccolta: allo stato e SUBITO anche a dataRef,
   // così due chiamate di fila nello stesso gestore vedono l'una l'effetto dell'altra
@@ -208,10 +309,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const record = { ...item, id } as { id: string }
       segnaModifica(c)
       cambia(c, (items) => [...items, record])
-      store.put(c, seasonDi(c, attiva), record).catch(fallita)
+      void scrivi(c, id, () => store.put(c, seasonDi(c, attiva), record))
       return id
     },
-    [attiva, fallita, segnaModifica, cambia],
+    [attiva, scrivi, segnaModifica, cambia],
   )
 
   const update = useCallback(
@@ -221,37 +322,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
       segnaModifica(c)
       cambia(c, applica)
       const aggiornato = (dataRef.current[c] ?? []).find((i) => i.id === id)
-      if (aggiornato) store.put(c, seasonDi(c, attiva), aggiornato).catch(fallita)
+      if (aggiornato)
+        void scrivi(c, id, () => store.put(c, seasonDi(c, attiva), aggiornato))
     },
-    [attiva, fallita, segnaModifica, cambia],
+    [attiva, scrivi, segnaModifica, cambia],
   )
 
   const remove = useCallback(
     (c: string, id: string) => {
       segnaModifica(c)
       cambia(c, (items) => items.filter((i) => i.id !== id))
-      store.remove(c, seasonDi(c, attiva), id).catch(fallita)
+      void scrivi(c, id, () => store.remove(c, seasonDi(c, attiva), id))
     },
-    [attiva, fallita, segnaModifica, cambia],
+    [attiva, scrivi, segnaModifica, cambia],
   )
 
   const restore = useCallback(
     (c: string, item: { id: string }) => {
       // il put del Drive fa upsert per id, quindi basta riaggiungerlo com'era
       segnaModifica(c)
-      cambia(c, (items) => (items.some((i) => i.id === item.id) ? items : [...items, item]))
-      store.put(c, seasonDi(c, attiva), item).catch(fallita)
+      cambia(c, (items) =>
+        items.some((i) => i.id === item.id) ? items : [...items, item],
+      )
+      void scrivi(c, item.id, () => store.put(c, seasonDi(c, attiva), item))
     },
-    [attiva, fallita, segnaModifica, cambia],
+    [attiva, scrivi, segnaModifica, cambia],
   )
 
   const replaceAll = useCallback(
     <T extends { id: string }>(c: string, items: T[]) => {
       segnaModifica(c)
       cambia(c, () => items)
-      store.replaceAll(c, seasonDi(c, attiva), items).catch(fallita)
+      for (const [key, voce] of scritture.current)
+        if (voce.c === c) scritture.current.delete(key)
+      void scrivi(c, '*', () =>
+        store.replaceAll(c, seasonDi(c, attiva), dataRef.current[c] ?? []),
+      )
     },
-    [attiva, fallita, segnaModifica, cambia],
+    [attiva, scrivi, segnaModifica, cambia],
   )
 
   /**
@@ -263,7 +371,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
    * condivise. Senza, il file sale com'è e col suo nome.
    */
   const uploadDoc = useCallback(
-    async (file: File, nomeBase?: string): Promise<store.DocMeta | undefined> => {
+    async (
+      file: File,
+      nomeBase?: string,
+    ): Promise<store.DocMeta | undefined> => {
       try {
         const pronto = nomeBase
           ? await preparaCaricamento(file)
@@ -273,7 +384,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
               estensione: '',
             }
         const nome = nomeBase ? nomeBase + pronto.estensione : file.name
-        const meta = await store.uploadDoc(attiva, nome, pronto.tipo, pronto.dataBase64)
+        const meta = await store.uploadDoc(
+          attiva,
+          nome,
+          pronto.tipo,
+          pronto.dataBase64,
+        )
         segnaModifica('documenti')
         cambia('documenti', (items) => [...items, meta])
         return meta
@@ -307,7 +423,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   if (stato === 'loading') return <DriveSplash />
   if (stato === 'error')
-    return <DriveSplash errore={erroreCaricamento} onRiprova={() => setTentativo((t) => t + 1)} />
+    return (
+      <DriveSplash
+        errore={erroreCaricamento}
+        onRiprova={() => setTentativo((t) => t + 1)}
+      />
+    )
 
   return (
     <DataContext.Provider
@@ -322,15 +443,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createDoc,
         renameDoc,
         aggiornando,
+        aggiorna: () => refreshRef.current(),
+        versioneSync,
       }}
     >
       {erroreSync && (
         <Alert
           type="warning"
           showIcon
-          closable
-          onClose={() => setErroreSync(null)}
           message={`Una modifica non è stata salvata sul Drive: ${erroreSync}`}
+          description={
+            scritture.current.size
+              ? 'Le modifiche locali restano visibili. Riprova il salvataggio prima di chiudere l’app.'
+              : 'Riprova il caricamento dalla sua finestra.'
+          }
+          closable={!scritture.current.size}
+          onClose={() => setErroreSync(null)}
+          action={
+            scritture.current.size ? (
+              <Button
+                size="small"
+                loading={riprovando}
+                disabled={!online}
+                onClick={riprovaScritture}
+              >
+                Riprova salvataggio
+              </Button>
+            ) : undefined
+          }
           style={{ marginBottom: 16 }}
         />
       )}
@@ -338,7 +478,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         <Alert
           type="warning"
           showIcon
-          message="Sto lavorando sull'ultima copia salvata su questo dispositivo: il Drive non ha risposto."
+          message="Alcuni dati potrebbero non essere aggiornati: mostro l’ultima copia disponibile."
           action={
             <Button size="small" onClick={() => setTentativo((t) => t + 1)}>
               Riprova
@@ -347,6 +487,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
           style={{ marginBottom: 16 }}
         />
       )}
+      <div className="sync-status" role="status" aria-live="polite">
+        <span>
+          {!store.driveAttivo()
+            ? 'Modalità locale'
+            : !online
+              ? 'Offline'
+              : aggiornando
+                ? 'Aggiornamento dal Drive…'
+                : erroreCaricamento
+                  ? 'Aggiornamento incompleto'
+                  : ultimoAggiornamento
+                    ? `Aggiornato alle ${ultimoAggiornamento.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Dati locali'}
+        </span>
+        <Button
+          size="small"
+          icon={<ReloadOutlined />}
+          loading={aggiornando}
+          disabled={!online}
+          onClick={() => refreshRef.current()}
+        >
+          Aggiorna
+        </Button>
+      </div>
       {children}
       <Aggiornamento attivo={aggiornando && copia.completa} />
     </DataContext.Provider>
@@ -377,7 +541,13 @@ function Aggiornamento({ attivo }: { attivo: boolean }) {
   )
 }
 
-function DriveSplash({ errore, onRiprova }: { errore?: string; onRiprova?: () => void }) {
+function DriveSplash({
+  errore,
+  onRiprova,
+}: {
+  errore?: string
+  onRiprova?: () => void
+}) {
   if (errore) {
     return (
       <Result

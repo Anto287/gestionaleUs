@@ -8,6 +8,7 @@ import {
   Card,
   Checkbox,
   Col,
+  Collapse,
   Empty,
   Form,
   Grid,
@@ -28,6 +29,8 @@ import {
   DeleteOutlined,
   FallOutlined,
   FileExcelOutlined,
+  FilePdfOutlined,
+  PaperClipOutlined,
   RiseOutlined,
   SearchOutlined,
   UploadOutlined,
@@ -40,16 +43,33 @@ import { CampoEuro } from '../components/CampoEuro'
 import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { StatCard } from '../components/StatCard'
-import { DettaglioMovimenti, type VistaDettaglio } from '../components/DettaglioMovimenti'
+import {
+  DettaglioMovimenti,
+  type VistaDettaglio,
+} from '../components/DettaglioMovimenti'
 import dayjs from 'dayjs'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData, formatEuro, oggiIso, plurale, ripulisciTesti } from '../lib/format'
+import {
+  formatData,
+  formatEuro,
+  oggiIso,
+  plurale,
+  ripulisciTesti,
+} from '../lib/format'
 import { esportaExcel } from '../lib/excel'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
-import { BilancioMensile, type MeseBilancio, type TipoBilancio } from './conti/BilancioMensile'
+import {
+  BilancioMensile,
+  type MeseBilancio,
+  type TipoBilancio,
+} from './conti/BilancioMensile'
 import { PerCategoria, type VoceCategoria } from './conti/PerCategoria'
 import { leggiBilancio } from './conti/importaBilancio'
-import type { Movimento, SpesaCondivisa } from '../types'
+import type { Documento, Movimento, SpesaCondivisa } from '../types'
+import { useData } from '../data/DataProvider'
+import { AllegatiMovimento } from './conti/AllegatiMovimento'
+import { EsportaConti } from './conti/EsportaConti'
+import { filtraMovimento, type FiltriConti } from '../lib/contiReport'
 
 /** Categorie proposte nel form (si può comunque scrivere qualsiasi testo). */
 const CATEGORIE_SUGGERITE = [
@@ -77,6 +97,12 @@ function labelMese(chiave: string) {
 
 export function Conti() {
   const conti = useCollection<Movimento>('conti')
+  const { uploadDoc } = useData()
+  const [allegati, setAllegati] = useState<Documento[]>([])
+  const [files, setFiles] = useState<File[]>([])
+  const [salvando, setSalvando] = useState(false)
+  const salvataggioRef = useRef(false)
+  const [esportaPdf, setEsportaPdf] = useState(false)
   const speseCondivise = useCollection<SpesaCondivisa>('speseCondivise')
   /** Avviso per il Popconfirm se il movimento è il conguaglio di una spesa condivisa. */
   function avvisoSpesa(m: Movimento): string | undefined {
@@ -107,28 +133,56 @@ export function Conti() {
     tocchi.current = { n: tocchi.current.n + 1, t: ora }
     if (tocchi.current.n >= 5) {
       setImportSbloccato(true)
-      message.success('Import sbloccato: ora puoi caricare il bilancio da file.')
+      message.success(
+        'Import sbloccato: ora puoi caricare il bilancio da file.',
+      )
     }
   }
 
   const [q, setQ] = useFiltro('conti.q', '')
   const [tipo, setTipo] = useFiltro<string | undefined>('conti.tipo', undefined)
-  const [stato, setStato] = useFiltro<string | undefined>('conti.stato', undefined)
-  const [annoF, setAnnoF] = useFiltro<string | undefined>('conti.annoF', undefined)
-  const [meseF, setMeseF] = useFiltro<string | undefined>('conti.meseF', undefined)
-  const [categoriaF, setCategoriaF] = useFiltro<string | undefined>('conti.categoriaF', undefined)
-  const [controparteF, setControparteF] = useFiltro<string | undefined>('conti.controparteF', undefined)
+  const [stato, setStato] = useFiltro<string | undefined>(
+    'conti.stato',
+    undefined,
+  )
+  const [annoF, setAnnoF] = useFiltro<string | undefined>(
+    'conti.annoF',
+    undefined,
+  )
+  const [meseF, setMeseF] = useFiltro<string | undefined>(
+    'conti.meseF',
+    undefined,
+  )
+  const [categoriaF, setCategoriaF] = useFiltro<string | undefined>(
+    'conti.categoriaF',
+    undefined,
+  )
+  const [controparteF, setControparteF] = useFiltro<string | undefined>(
+    'conti.controparteF',
+    undefined,
+  )
   // filtro importo: soglia + verso (≥ dalla soglia in su, ≤ dalla soglia in giù)
-  const [importoF, setImportoF] = useFiltro<number | null>('conti.importoF', null)
-  const [importoOp, setImportoOp] = useFiltro<'maggiore' | 'minore'>('conti.importoOp', 'maggiore')
+  const [importoF, setImportoF] = useFiltro<number | null>(
+    'conti.importoF',
+    null,
+  )
+  const [importoOp, setImportoOp] = useFiltro<'maggiore' | 'minore'>(
+    'conti.importoOp',
+    'maggiore',
+  )
   const [tipoBilancio, setTipoBilancio] = useState<TipoBilancio>('barre')
   const [periodoBilancio, setPeriodoBilancio] = useState<PeriodoChart>('tutto')
-  const [tipoCategorie, setTipoCategorie] = useState<'uscita' | 'entrata'>('uscita')
-  const [periodoCategorie, setPeriodoCategorie] = useState<PeriodoChart>('tutto')
+  const [tipoCategorie, setTipoCategorie] = useState<'uscita' | 'entrata'>(
+    'uscita',
+  )
+  const [periodoCategorie, setPeriodoCategorie] =
+    useState<PeriodoChart>('tutto')
 
   const anni = useMemo(() => {
     const chiavi = new Set(items.map((m) => (m.data ?? '').slice(0, 4)))
-    return [...chiavi].sort((a, b) => b.localeCompare(a)).map((y) => ({ value: y, label: y }))
+    return [...chiavi]
+      .sort((a, b) => b.localeCompare(a))
+      .map((y) => ({ value: y, label: y }))
   }, [items])
 
   // i mesi disponibili si restringono all'anno scelto
@@ -144,8 +198,8 @@ export function Conti() {
   }, [items, annoF])
 
   const nFiltri =
-    [tipo, stato, annoF, meseF, categoriaF, controparteF].filter(Boolean).length +
-    (importoF != null ? 1 : 0)
+    [tipo, stato, annoF, meseF, categoriaF, controparteF].filter(Boolean)
+      .length + (importoF != null ? 1 : 0)
   function azzeraFiltri() {
     setTipo(undefined)
     setStato(undefined)
@@ -159,13 +213,17 @@ export function Conti() {
 
   // le controparti già usate, per il filtro a tendina
   const controparti = useMemo(() => {
-    const usate = new Set(items.map((m) => m.controparte?.trim()).filter(Boolean) as string[])
+    const usate = new Set(
+      items.map((m) => m.controparte?.trim()).filter(Boolean) as string[],
+    )
     return [...usate].sort((a, b) => a.localeCompare(b))
   }, [items])
 
   // le categorie già usate, per filtro e suggerimenti del form
   const categorieUsate = useMemo(() => {
-    const usate = new Set(items.map((m) => m.categoria?.trim()).filter(Boolean) as string[])
+    const usate = new Set(
+      items.map((m) => m.categoria?.trim()).filter(Boolean) as string[],
+    )
     return [...usate].sort((a, b) => a.localeCompare(b))
   }, [items])
 
@@ -176,7 +234,9 @@ export function Conti() {
 
   // saldo progressivo su TUTTI i movimenti (i filtri non alterano la cassa)
   const vista = useMemo(() => {
-    const chrono = [...items].sort((a, b) => (a.data ?? '').localeCompare(b.data ?? ''))
+    const chrono = [...items].sort((a, b) =>
+      (a.data ?? '').localeCompare(b.data ?? ''),
+    )
     let cassa = 0
     const conCassa = chrono.map((m) => {
       if (m.saldato) cassa += m.tipo === 'entrata' ? m.importo : -m.importo
@@ -185,34 +245,35 @@ export function Conti() {
     return conCassa.reverse()
   }, [items])
 
-  const vistaFiltrata = useMemo(
-    () =>
-      vista.filter(({ m }) => {
-        const testo = `${m.descrizione} ${m.controparte ?? ''}`.toLowerCase()
-        if (q && !testo.includes(q.toLowerCase())) return false
-        if (tipo && m.tipo !== tipo) return false
-        if (stato === 'saldato' && !m.saldato) return false
-        if (stato === 'aperto' && m.saldato) return false
-        if (annoF && (m.data ?? '').slice(0, 4) !== annoF) return false
-        if (meseF && (m.data ?? '').slice(0, 7) !== meseF) return false
-        if (categoriaF === SENZA_CATEGORIA && m.categoria?.trim()) return false
-        if (categoriaF && categoriaF !== SENZA_CATEGORIA && m.categoria?.trim() !== categoriaF) return false
-        if (controparteF && m.controparte?.trim() !== controparteF) return false
-        if (importoF != null && (importoOp === 'maggiore' ? m.importo < importoF : m.importo > importoF))
-          return false
-        return true
-      }),
-    [vista, q, tipo, stato, annoF, meseF, categoriaF, controparteF, importoF, importoOp],
+  const filtriAttivi: FiltriConti = {
+    q,
+    tipo,
+    stato,
+    anno: annoF,
+    mese: meseF,
+    categoria: categoriaF,
+    controparte: controparteF,
+    importo: importoF,
+    importoOp,
+  }
+  const vistaFiltrata = vista.filter(({ m }) =>
+    filtraMovimento(m, filtriAttivi),
   )
 
   const saldo = cent(
-    items.filter((m) => m.saldato).reduce((s, m) => s + (m.tipo === 'entrata' ? m.importo : -m.importo), 0),
+    items
+      .filter((m) => m.saldato)
+      .reduce((s, m) => s + (m.tipo === 'entrata' ? m.importo : -m.importo), 0),
   )
   const daIncassare = cent(
-    items.filter((m) => !m.saldato && m.tipo === 'entrata').reduce((s, m) => s + m.importo, 0),
+    items
+      .filter((m) => !m.saldato && m.tipo === 'entrata')
+      .reduce((s, m) => s + m.importo, 0),
   )
   const daPagare = cent(
-    items.filter((m) => !m.saldato && m.tipo === 'uscita').reduce((s, m) => s + m.importo, 0),
+    items
+      .filter((m) => !m.saldato && m.tipo === 'uscita')
+      .reduce((s, m) => s + m.importo, 0),
   )
 
   const bilancio: MeseBilancio[] = useMemo(() => {
@@ -224,18 +285,30 @@ export function Conti() {
       else v.uscite += m.importo
       perMese.set(k, v)
     }
-    const ordinati = [...perMese.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    const ordinati = [...perMese.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    )
     // restringe alla finestra scelta (di default 'tutto' = tutti i mesi), contando da oggi come «Per categoria»
     const mesi = mesiPeriodo(periodoBilancio)
-    const cutoff = mesi ? dayjs().subtract(mesi - 1, 'month').format('YYYY-MM') : ''
+    const cutoff = mesi
+      ? dayjs()
+          .subtract(mesi - 1, 'month')
+          .format('YYYY-MM')
+      : ''
     const sel = cutoff ? ordinati.filter(([k]) => k >= cutoff) : ordinati
-    return sel.map(([k, v]) => ({ mese: labelMese(k), entrate: v.entrate, uscite: v.uscite }))
+    return sel.map(([k, v]) => ({
+      mese: labelMese(k),
+      entrate: v.entrate,
+      uscite: v.uscite,
+    }))
   }, [items, periodoBilancio])
 
   // dove vanno (o da dove arrivano) i soldi, raggruppati per categoria
   const perCategoria: VoceCategoria[] = useMemo(() => {
     const mesi = mesiPeriodo(periodoCategorie)
-    const cutoff = mesi ? dayjs().subtract(mesi, 'month').format('YYYY-MM-DD') : ''
+    const cutoff = mesi
+      ? dayjs().subtract(mesi, 'month').format('YYYY-MM-DD')
+      : ''
     const somme = new Map<string, number>()
     for (const m of items) {
       if (m.tipo !== tipoCategorie) continue
@@ -250,21 +323,53 @@ export function Conti() {
 
   function apriNuovo() {
     setInModifica(null)
+    setAllegati([])
+    setFiles([])
     form.resetFields()
     form.setFieldsValue({ tipo: 'uscita', data: oggiIso(), saldato: true })
     setModale(true)
   }
   function apriModifica(m: Movimento) {
     setInModifica(m)
+    setAllegati(m.allegati ?? [])
+    setFiles([])
     form.resetFields() // se no i campi facoltativi del movimento precedente restano nel form
     form.setFieldsValue(m)
     setModale(true)
   }
-  function salva(v: Omit<Movimento, 'id'>) {
-    const dati = { ...ripulisciTesti(v), importo: Number(v.importo) }
-    if (inModifica) update(inModifica.id, dati)
-    else add(dati)
-    setModale(false)
+  async function salva(v: Omit<Movimento, 'id'>) {
+    if (salvataggioRef.current) return
+    salvataggioRef.current = true
+    setSalvando(true)
+    try {
+      const caricati = [...allegati]
+      for (let i = 0; i < files.length; i++) {
+        const nome = `Scontrino-${v.data}-${crypto.randomUUID()}`
+        const meta = await uploadDoc(files[i], nome)
+        if (!meta) {
+          // Conserva i caricamenti riusciti: riprovando non si duplicano.
+          setFiles(files.slice(i))
+          message.error(
+            'Allegato non caricato: il movimento non è stato salvato. Puoi riprovare.',
+          )
+          return
+        }
+        caricati.push(meta)
+        setAllegati([...caricati])
+      }
+      const dati = {
+        ...ripulisciTesti(v),
+        importo: Number(v.importo),
+        allegati: caricati,
+      }
+      if (inModifica) update(inModifica.id, dati)
+      else add(dati)
+      setFiles([])
+      setModale(false)
+    } finally {
+      salvataggioRef.current = false
+      setSalvando(false)
+    }
   }
 
   /** Scarica i movimenti visibili (con i filtri applicati) in un foglio Excel. */
@@ -280,8 +385,13 @@ export function Conti() {
           Tipo: r.m.tipo,
           'Importo (€)': r.m.importo,
           // con il segno: sommando la colonna viene il saldo
-          'Importo con segno (€)': r.m.tipo === 'entrata' ? r.m.importo : -r.m.importo,
-          Stato: r.m.saldato ? 'saldato' : r.m.tipo === 'entrata' ? 'da incassare' : 'da pagare',
+          'Importo con segno (€)':
+            r.m.tipo === 'entrata' ? r.m.importo : -r.m.importo,
+          Stato: r.m.saldato
+            ? 'saldato'
+            : r.m.tipo === 'entrata'
+              ? 'da incassare'
+              : 'da pagare',
           'Totale in cassa (€)': r.cassa,
         })),
       },
@@ -317,11 +427,15 @@ export function Conti() {
         cancelText: 'Annulla',
         onOk: () => {
           replace(movimenti.map((m) => ({ ...m, id: crypto.randomUUID() })))
-          message.success(`${movimenti.length === 1 ? 'Importato' : 'Importati'} ${plurale(movimenti.length, 'movimento', 'movimenti')}.`)
+          message.success(
+            `${movimenti.length === 1 ? 'Importato' : 'Importati'} ${plurale(movimenti.length, 'movimento', 'movimenti')}.`,
+          )
         },
       })
     } catch (e) {
-      message.error(`Import non riuscito: ${String((e as Error)?.message || e)}`)
+      message.error(
+        `Import non riuscito: ${String((e as Error)?.message || e)}`,
+      )
     } finally {
       setImportando(false)
     }
@@ -342,13 +456,16 @@ export function Conti() {
     </Upload>
   )
 
-  const stopCell = { onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }) }
+  const stopCell = {
+    onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }),
+  }
 
   const columns = [
     {
       title: 'Data',
       width: 110,
-      sorter: (a: { m: Movimento }, b: { m: Movimento }) => (a.m.data ?? '').localeCompare(b.m.data ?? ''),
+      sorter: (a: { m: Movimento }, b: { m: Movimento }) =>
+        (a.m.data ?? '').localeCompare(b.m.data ?? ''),
       render: (_: unknown, r: { m: Movimento }) => formatData(r.m.data, true),
     },
     {
@@ -359,10 +476,24 @@ export function Conti() {
           <span
             className="tronca"
             style={{ maxWidth: 300 }}
-            title={r.m.controparte ? `${r.m.descrizione} · ${r.m.controparte}` : r.m.descrizione}
+            title={
+              r.m.controparte
+                ? `${r.m.descrizione} · ${r.m.controparte}`
+                : r.m.descrizione
+            }
           >
             <b>{r.m.descrizione}</b>
-            {r.m.controparte && <Typography.Text type="secondary"> · {r.m.controparte}</Typography.Text>}
+            {!!r.m.allegati?.length && (
+              <Tag icon={<PaperClipOutlined />} style={{ marginLeft: 8 }}>
+                {r.m.allegati.length}
+              </Tag>
+            )}
+            {r.m.controparte && (
+              <Typography.Text type="secondary">
+                {' '}
+                · {r.m.controparte}
+              </Typography.Text>
+            )}
           </span>
           {r.m.categoria && (
             <Tag style={{ marginLeft: 8 }} bordered={false}>
@@ -381,19 +512,33 @@ export function Conti() {
       title: 'Uscita',
       align: 'right' as const,
       render: (_: unknown, r: { m: Movimento }) =>
-        r.m.tipo === 'uscita' ? <span style={{ color: 'var(--rosso-testo)' }}>{formatEuro(r.m.importo)}</span> : '',
+        r.m.tipo === 'uscita' ? (
+          <span style={{ color: 'var(--rosso-testo)' }}>
+            {formatEuro(r.m.importo)}
+          </span>
+        ) : (
+          ''
+        ),
     },
     {
       title: 'Entrata',
       align: 'right' as const,
       render: (_: unknown, r: { m: Movimento }) =>
-        r.m.tipo === 'entrata' ? <span style={{ color: 'var(--verde)' }}>{formatEuro(r.m.importo)}</span> : '',
+        r.m.tipo === 'entrata' ? (
+          <span style={{ color: 'var(--verde)' }}>
+            {formatEuro(r.m.importo)}
+          </span>
+        ) : (
+          ''
+        ),
     },
     {
       title: 'Totale in cassa',
       align: 'right' as const,
       render: (_: unknown, r: { cassa: number }) => (
-        <b style={{ fontVariantNumeric: 'tabular-nums' }}>{formatEuro(r.cassa)}</b>
+        <b style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {formatEuro(r.cassa)}
+        </b>
       ),
     },
     {
@@ -407,7 +552,9 @@ export function Conti() {
           okText="Elimina"
           cancelText="Annulla"
           okButtonProps={{ danger: true }}
-          onConfirm={() => eliminaConUndo(conti, r.m, `«${r.m.descrizione}» eliminato.`)}
+          onConfirm={() =>
+            eliminaConUndo(conti, r.m, `«${r.m.descrizione}» eliminato.`)
+          }
         >
           <Button type="text" danger icon={<DeleteOutlined />} />
         </Popconfirm>
@@ -424,6 +571,14 @@ export function Conti() {
         azioni={
           <Space wrap>
             {importSbloccato && bottoneImporta}
+            {items.length > 0 && (
+              <Button
+                icon={<FilePdfOutlined />}
+                onClick={() => setEsportaPdf(true)}
+              >
+                Esporta PDF
+              </Button>
+            )}
             {items.length > 0 && (
               <Button icon={<FileExcelOutlined />} onClick={esporta}>
                 Esporta Excel
@@ -470,67 +625,93 @@ export function Conti() {
       </Row>
 
       {items.length > 0 && (
-        <Card
-          title="Bilancio mensile"
-          style={{ marginBottom: 16 }}
-          extra={
-            <Space wrap>
-              <Select
-                size="small"
-                value={periodoBilancio}
-                onChange={(v) => setPeriodoBilancio(v as PeriodoChart)}
-                options={OPZIONI_PERIODO}
-                style={{ width: 150 }}
-              />
-              <Segmented
-                size="small"
-                value={tipoBilancio}
-                onChange={(v) => setTipoBilancio(v as TipoBilancio)}
-                options={[
-                  { label: 'Entrate/Uscite', value: 'barre' },
-                  { label: 'Saldo', value: 'saldo' },
-                ]}
-              />
-            </Space>
-          }
-        >
-          <BilancioMensile dati={bilancio} tipo={tipoBilancio} />
-        </Card>
-      )}
+        <Collapse
+          key={isMobile ? 'mobile' : 'desktop'}
+          className="conti-analisi"
+          defaultActiveKey={isMobile ? [] : ['analisi']}
+          items={[
+            {
+              key: 'analisi',
+              label: 'Analisi del bilancio e categorie',
+              children: (
+                <>
+                  {items.length > 0 && (
+                    <Card
+                      title="Bilancio mensile"
+                      style={{ marginBottom: 16 }}
+                      extra={
+                        <Space wrap>
+                          <Select
+                            size="small"
+                            value={periodoBilancio}
+                            onChange={(v) =>
+                              setPeriodoBilancio(v as PeriodoChart)
+                            }
+                            options={OPZIONI_PERIODO}
+                            style={{ width: 150 }}
+                          />
+                          <Segmented
+                            size="small"
+                            value={tipoBilancio}
+                            onChange={(v) => setTipoBilancio(v as TipoBilancio)}
+                            options={[
+                              { label: 'Entrate/Uscite', value: 'barre' },
+                              { label: 'Saldo', value: 'saldo' },
+                            ]}
+                          />
+                        </Space>
+                      }
+                    >
+                      <BilancioMensile dati={bilancio} tipo={tipoBilancio} />
+                    </Card>
+                  )}
 
-      {categorieUsate.length > 0 && (
-        <Card
-          title="Per categoria"
-          style={{ marginBottom: 16 }}
-          extra={
-            <Space wrap>
-              <Select
-                size="small"
-                value={periodoCategorie}
-                onChange={(v) => setPeriodoCategorie(v as PeriodoChart)}
-                options={OPZIONI_PERIODO}
-                style={{ width: 150 }}
-              />
-              <Segmented
-                size="small"
-                value={tipoCategorie}
-                onChange={(v) => setTipoCategorie(v as 'uscita' | 'entrata')}
-                options={[
-                  { label: 'Uscite', value: 'uscita' },
-                  { label: 'Entrate', value: 'entrata' },
-                ]}
-              />
-            </Space>
-          }
-        >
-          {perCategoria.length === 0 ? (
-            <Typography.Text type="secondary">
-              Nessun movimento di questo tipo nel periodo scelto.
-            </Typography.Text>
-          ) : (
-            <PerCategoria dati={perCategoria} tipo={tipoCategorie} />
-          )}
-        </Card>
+                  {categorieUsate.length > 0 && (
+                    <Card
+                      title="Per categoria"
+                      style={{ marginBottom: 16 }}
+                      extra={
+                        <Space wrap>
+                          <Select
+                            size="small"
+                            value={periodoCategorie}
+                            onChange={(v) =>
+                              setPeriodoCategorie(v as PeriodoChart)
+                            }
+                            options={OPZIONI_PERIODO}
+                            style={{ width: 150 }}
+                          />
+                          <Segmented
+                            size="small"
+                            value={tipoCategorie}
+                            onChange={(v) =>
+                              setTipoCategorie(v as 'uscita' | 'entrata')
+                            }
+                            options={[
+                              { label: 'Uscite', value: 'uscita' },
+                              { label: 'Entrate', value: 'entrata' },
+                            ]}
+                          />
+                        </Space>
+                      }
+                    >
+                      {perCategoria.length === 0 ? (
+                        <Typography.Text type="secondary">
+                          Nessun movimento di questo tipo nel periodo scelto.
+                        </Typography.Text>
+                      ) : (
+                        <PerCategoria
+                          dati={perCategoria}
+                          tipo={tipoCategorie}
+                        />
+                      )}
+                    </Card>
+                  )}
+                </>
+              ),
+            },
+          ]}
+        />
       )}
 
       {items.length === 0 ? (
@@ -623,7 +804,11 @@ export function Conti() {
                       { value: 'minore', label: '≤' },
                     ]}
                   />
-                  <CampoEuro placeholder="es. 100 o 130,40" value={importoF} onChange={setImportoF} />
+                  <CampoEuro
+                    placeholder="es. 100 o 130,40"
+                    value={importoF}
+                    onChange={setImportoF}
+                  />
                 </Space.Compact>
               </FiltroCampo>
               <FiltroCampo label="Anno">
@@ -653,19 +838,53 @@ export function Conti() {
               </FiltroCampo>
             </FiltriDrawer>
           </div>
-          {isMobile ? (
+          <div className="conti-risultati">
+            <Typography.Text type="secondary">
+              {vistaFiltrata.length} di {items.length} movimenti
+            </Typography.Text>
+            {(nFiltri > 0 || q) && (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => {
+                  azzeraFiltri()
+                  setQ('')
+                }}
+              >
+                Mostra tutti
+              </Button>
+            )}
+          </div>
+          {vistaFiltrata.length === 0 ? (
+            <Empty description="Nessun movimento corrisponde ai filtri" />
+          ) : isMobile ? (
             <div className="lista-mobile">
               {vistaFiltrata.map((r) => (
-                <div key={r.m.id} className="lista-card" onClick={() => apriModifica(r.m)}>
+                <div
+                  key={r.m.id}
+                  className="lista-card"
+                  onClick={() => apriModifica(r.m)}
+                >
                   <div className="lista-card-top">
                     <div>
                       <div className="lista-card-title">{r.m.descrizione}</div>
                       <div className="lista-card-meta" style={{ marginTop: 5 }}>
                         {formatData(r.m.data, true)}
                         {r.m.controparte && <span>· {r.m.controparte}</span>}
-                        {r.m.categoria && <Tag bordered={false}>{r.m.categoria}</Tag>}
+                        {r.m.categoria && (
+                          <Tag bordered={false}>{r.m.categoria}</Tag>
+                        )}
+                        {!!r.m.allegati?.length && (
+                          <Tag icon={<PaperClipOutlined />}>
+                            {r.m.allegati.length} ricevute
+                          </Tag>
+                        )}
                         {!r.m.saldato && (
-                          <Tag color="warning">{r.m.tipo === 'entrata' ? 'Da incassare' : 'Da pagare'}</Tag>
+                          <Tag color="warning">
+                            {r.m.tipo === 'entrata'
+                              ? 'Da incassare'
+                              : 'Da pagare'}
+                          </Tag>
                         )}
                       </div>
                     </div>
@@ -676,7 +895,13 @@ export function Conti() {
                         okText="Elimina"
                         cancelText="Annulla"
                         okButtonProps={{ danger: true }}
-                        onConfirm={() => eliminaConUndo(conti, r.m, `«${r.m.descrizione}» eliminato.`)}
+                        onConfirm={() =>
+                          eliminaConUndo(
+                            conti,
+                            r.m,
+                            `«${r.m.descrizione}» eliminato.`,
+                          )
+                        }
                       >
                         <Button type="text" danger icon={<DeleteOutlined />} />
                       </Popconfirm>
@@ -685,13 +910,20 @@ export function Conti() {
                   <div className="lista-card-meta">
                     <span
                       className="lista-card-num"
-                      style={{ fontSize: 15, color: r.m.tipo === 'entrata' ? 'var(--verde)' : 'var(--rosso-testo)' }}
+                      style={{
+                        fontSize: 15,
+                        color:
+                          r.m.tipo === 'entrata'
+                            ? 'var(--verde)'
+                            : 'var(--rosso-testo)',
+                      }}
                     >
                       {r.m.tipo === 'entrata' ? '+ ' : '− '}
                       {formatEuro(r.m.importo)}
                     </span>
                     <span className="lista-card-fine">
-                      cassa <b className="lista-card-num">{formatEuro(r.cassa)}</b>
+                      cassa{' '}
+                      <b className="lista-card-num">{formatEuro(r.cassa)}</b>
                     </span>
                   </div>
                 </div>
@@ -706,10 +938,21 @@ export function Conti() {
               size="middle"
               sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
-              onRow={(r) => ({ onClick: () => apriModifica(r.m), style: { cursor: 'pointer' } })}
+              onRow={(r) => ({
+                onClick: () => apriModifica(r.m),
+                style: { cursor: 'pointer' },
+              })}
             />
           )}
         </>
+      )}
+
+      {esportaPdf && (
+        <EsportaConti
+          items={items}
+          iniziali={filtriAttivi}
+          onClose={() => setEsportaPdf(false)}
+        />
       )}
 
       <DettaglioMovimenti
@@ -723,16 +966,29 @@ export function Conti() {
       />
 
       <Modal
+        className="conti-movimento-modal"
         title={inModifica ? 'Modifica movimento' : 'Nuovo movimento'}
         open={modale}
-        onCancel={() => setModale(false)}
+        onCancel={() => {
+          if (!salvando) setModale(false)
+        }}
+        confirmLoading={salvando}
+        cancelButtonProps={{ disabled: salvando }}
+        closable={!salvando}
+        keyboard={!salvando}
         onOk={() => form.submit()}
         okText={inModifica ? 'Salva' : 'Registra'}
         cancelText="Annulla"
         maskClosable={false}
         forceRender
       >
-        <Form form={form} layout="vertical" onFinish={salva} requiredMark={false}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={salva}
+          requiredMark={false}
+          disabled={salvando}
+        >
           <Form.Item label="Tipo" name="tipo">
             <Select
               options={[
@@ -741,7 +997,12 @@ export function Conti() {
               ]}
             />
           </Form.Item>
-          <Form.Item label="Data" name="data" rules={[{ required: true, message: 'Scegli la data' }]} {...propsCampoData}>
+          <Form.Item
+            label="Data"
+            name="data"
+            rules={[{ required: true, message: 'Scegli la data' }]}
+            {...propsCampoData}
+          >
             <DataPicker />
           </Form.Item>
           <Form.Item
@@ -749,9 +1010,23 @@ export function Conti() {
             name="descrizione"
             rules={[{ required: true, message: 'Inserisci una descrizione' }]}
           >
-            <Input placeholder="es. Sponsor, Pagamento campo…" autoComplete="off" />
+            <Input
+              placeholder="es. Sponsor, Pagamento campo…"
+              autoComplete="off"
+            />
           </Form.Item>
-          <Form.Item label="Importo (€)" name="importo" rules={[{ required: true, message: 'Inserisci l’importo' }]}>
+          <Form.Item
+            label="Importo (€)"
+            name="importo"
+            rules={[
+              { required: true, message: 'Inserisci l’importo' },
+              {
+                type: 'number',
+                min: 0.01,
+                message: 'L’importo deve essere maggiore di zero',
+              },
+            ]}
+          >
             <CampoEuro />
           </Form.Item>
           <Form.Item label="Controparte (facoltativa)" name="controparte">
@@ -767,14 +1042,25 @@ export function Conti() {
               placeholder="es. Quote, Bar, Arbitri…"
               allowClear
               filterOption={(input, opt) =>
-                String(opt?.value ?? '').toLowerCase().includes(input.toLowerCase())
+                String(opt?.value ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
             />
           </Form.Item>
           <Form.Item name="saldato" valuePropName="checked">
-            <Checkbox>Già saldato (movimento chiuso, incide sulla cassa)</Checkbox>
+            <Checkbox>
+              Già saldato (movimento chiuso, incide sulla cassa)
+            </Checkbox>
           </Form.Item>
         </Form>
+        <AllegatiMovimento
+          allegati={allegati}
+          files={files}
+          disabled={salvando}
+          onAllegati={setAllegati}
+          onFiles={setFiles}
+        />
       </Modal>
     </>
   )
