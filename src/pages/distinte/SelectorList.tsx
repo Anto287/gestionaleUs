@@ -317,6 +317,7 @@ export function SelectorList({
               Ruolo (opzionale):
             </div>
             <Radio.Group
+              className="distinta-ruoli"
               value={selectedCheckbox}
               onChange={(e) => setSelectedCheckbox(e.target.value)}
               buttonStyle="solid"
@@ -325,7 +326,7 @@ export function SelectorList({
             >
               <Row gutter={[8, 8]}>
                 {CHECKBOX_KEYS.map((k) => (
-                  <Col xs={12} sm={8} md={4} key={k}>
+                  <Col xs={12} sm={8} key={k}>
                     <Radio.Button
                       value={k}
                       style={{ width: '100%', textAlign: 'center' }}
@@ -336,7 +337,7 @@ export function SelectorList({
                   </Col>
                 ))}
                 {selectedCheckbox && (
-                  <Col xs={12} sm={8} md={4}>
+                  <Col xs={12} sm={8}>
                     <Button
                       size="small"
                       onClick={() => setSelectedCheckbox(null)}
@@ -396,7 +397,7 @@ export function SelectorList({
                 </Row>
                 <Row gutter={[8, 8]}>
                   {CHECKBOX_KEYS.map((k) => (
-                    <Col xs={12} sm={8} md={4} key={k}>
+                    <Col xs={12} sm={8} key={k}>
                       <Checkbox
                         checked={!!item[k]}
                         onChange={(e) => toggleCheckbox(item.id, k, e.target.checked)}
@@ -407,7 +408,7 @@ export function SelectorList({
                       </Checkbox>
                     </Col>
                   ))}
-                  <Col xs={12} sm={8} md={4}>
+                  <Col xs={12} sm={8}>
                     <Button
                       danger
                       size="small"

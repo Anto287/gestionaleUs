@@ -19,7 +19,6 @@ import {
   Upload,
 } from 'antd'
 import {
-  InstagramOutlined,
   PlusOutlined,
   DeleteOutlined,
   CalendarOutlined,
@@ -745,7 +744,6 @@ export function Social() {
       <PageHeader
         titolo="Grafiche IG"
         sottotitolo="Crea e personalizza le foto per Instagram, poi scaricale o salvale sul Drive"
-        azioni={<InstagramOutlined style={{ fontSize: 24, color: 'var(--rosso)' }} />}
       />
 
       <div className={affianca ? 'social-griglia' : undefined}>

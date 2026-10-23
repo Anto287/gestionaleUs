@@ -258,7 +258,7 @@ export function GiocatoreDettaglio() {
           <Avatar src={foto} size={64} style={{ background: 'var(--rosso)', fontSize: 24, flex: 'none' }}>
             {iniziali(g)}
           </Avatar>
-          <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
             <Title level={3} style={{ margin: 0 }}>
               {g.cognome} {g.nome}
             </Title>
@@ -289,7 +289,7 @@ export function GiocatoreDettaglio() {
               ))}
             </Space>
           </div>
-          <Space wrap>
+          <Space wrap className="scheda-azioni">
             <Button icon={<ScanOutlined />} onClick={() => setScansione(true)}>
               Scansiona
             </Button>

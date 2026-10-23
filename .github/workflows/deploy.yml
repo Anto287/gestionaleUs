@@ -30,6 +30,7 @@ jobs:
       - run: npm run lint
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:layout
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'

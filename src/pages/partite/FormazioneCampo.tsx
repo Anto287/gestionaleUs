@@ -379,7 +379,7 @@ export function FormazioneCampo({
                   </span>
                   <span className="token-nome">{cognome(titolare)}</span>
                   {catena.slice(1).map((c) => (
-                    <span key={c.id} className="pt-entrato">
+                    <span key={c.id} className="pt-entrato" title={nomeIntero(c.id)}>
                       <span className="pt-freccia entra">▲</span>
                       {cognome(c.id)}
                       {minutoTesto(c.minuto)}

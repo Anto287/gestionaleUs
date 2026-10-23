@@ -415,7 +415,7 @@ export function Statistiche() {
                 <Select
                   value={competizione}
                   onChange={setCompetizione}
-                  style={{ minWidth: 170 }}
+                  style={{ width: 210, maxWidth: '100%' }}
                   options={[
                     { value: 'tutte', label: 'Tutte le competizioni' },
                     ...(ciSonoAmichevoli

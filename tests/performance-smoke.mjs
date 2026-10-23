@@ -104,12 +104,15 @@ try {
   await page.waitForFunction(
     () => !!localStorage.getItem('usriolunato:__dati/globale/conti'),
   )
-  // Riapertura con cache: i 300 movimenti compaiono prima che il Drive risponda.
+  // Riapertura con cache: il gestionale resta bloccato fino alla conferma delle tabelle.
   await page.reload()
-  await page.getByText('300 di 300 movimenti').waitFor()
+  await page.getByText('Sincronizzazione iniziale', { exact: true }).waitFor()
+  assert.equal(await page.getByRole('button', { name: /Nuovo movimento/ }).count(), 0)
+  assert.equal(await page.locator('.app-sider').count(), 0)
   assert.equal(archiveReads, 0)
   block = false
   for (const release of releases.splice(0)) release()
+  await page.getByText('300 di 300 movimenti').waitFor()
   const archivioPronto = page.waitForResponse((r) =>
     r.request().postData()?.includes('archivioList'),
   )
