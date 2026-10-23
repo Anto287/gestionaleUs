@@ -28,10 +28,11 @@ try {
     await button.click()
     await page.getByRole('dialog').waitFor()
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-    await page.getByRole('dialog').evaluate(async (el) => { await Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {}))) })
+    await waitForDialog(page)
     for (const width of [320, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: width === 1024 ? 768 : width === 768 ? 1024 : 900 })
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      await waitForDialog(page)
       const issues = await page.evaluate(() => {
         const modal = [...document.querySelectorAll('.ant-modal')].find((el) => el.checkVisibility({ checkVisibilityCSS: true }))
         const bad = [], box = modal.getBoundingClientRect()
@@ -57,3 +58,12 @@ try {
   assert.equal(checks.some((c) => c.issues.length), false)
   assert.deepEqual(errors, [])
 } finally { await browser?.close(); await server.close() }
+
+// rc-motion prepara lo zoom in modo asincrono: attendere solo le animazioni
+// già presenti può lasciare passare un dialogo ancora in apertura.
+async function waitForDialog(page) {
+  await page.waitForFunction(() => {
+    const el = [...document.querySelectorAll('.ant-modal')].find((node) => node.checkVisibility({ checkVisibilityCSS: true }))
+    return el && !/ant-zoom-(appear|enter|leave)/.test(el.className) && getComputedStyle(el).transform === 'none'
+  })
+}
