@@ -22,7 +22,8 @@ import {
   type Tesserato,
 } from '../lib/archivio'
 import { preparaCaricamento } from '../lib/immagine'
-import { useData } from './DataProvider'
+import { useData, useDataSyncVersion } from './DataProvider'
+import { riusaLista } from '../lib/riusaLista'
 import { SyncGuard } from '../lib/syncGuard'
 import type { Giocatore } from '../types'
 
@@ -126,8 +127,15 @@ function salvaCache(miniature: Record<string, string>): void {
   }
 }
 
-export function ArchivioProvider({ children }: { children: ReactNode }) {
-  const { getItems, versioneSync } = useData()
+export function ArchivioProvider({
+  children,
+  attivo = true,
+}: {
+  children: ReactNode
+  attivo?: boolean
+}) {
+  const { getItems } = useData()
+  const versioneSync = useDataSyncVersion()
   const guard = useRef(new SyncGuard())
   const giocatori = getItems<Giocatore>('giocatori')
 
@@ -142,6 +150,7 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
   const [miniature, setMiniature] = useState<Record<string, string>>(leggiCache)
 
   useEffect(() => {
+    if (!attivo) return
     let vivo = true
     const snapshot = guard.current.snapshot()
     setErrore('')
@@ -154,8 +163,8 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
           return
         }
         if (!guard.current.canApply('archivio', snapshot)) return
-        setDocumenti(res.documenti)
-        setFoto(res.foto)
+        setDocumenti((prima) => riusaLista(prima, res.documenti))
+        setFoto((prima) => riusaLista(prima, res.foto))
         setStato('pronto')
       })
       .catch((e) => {
@@ -168,7 +177,7 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
     return () => {
       vivo = false
     }
-  }, [tentativo, versioneSync])
+  }, [tentativo, versioneSync, attivo])
 
   const tesserati = useMemo<Tesserato[]>(
     () =>
@@ -236,9 +245,9 @@ export function ArchivioProvider({ children }: { children: ReactNode }) {
 
   // le foto dei tesserati in rosa servono subito: sono gli avatar
   useEffect(() => {
-    if (stato !== 'pronto') return
+    if (!attivo || stato !== 'pronto') return
     chiediMiniature(Object.values(aggancio.per).map((s) => s.foto?.id))
-  }, [stato, aggancio, chiediMiniature])
+  }, [attivo, stato, aggancio, chiediMiniature])
 
   useEffect(() => {
     const t = setTimeout(() => salvaCache(miniature), 1500)

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -10,6 +11,7 @@ import {
 import { Alert, Button, Result, Spin } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { SyncGuard } from '../lib/syncGuard'
+import { riusaLista } from '../lib/riusaLista'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
@@ -40,13 +42,15 @@ interface DataValue {
   ) => Promise<store.DocMeta>
   /** Rinomina un documento: il registro subito, e anche il file vero sul Drive. */
   renameDoc: (doc: store.DocMeta, nome: string) => void
-  /** true mentre si sta rileggendo dal Drive (l'app intanto usa la copia locale) */
-  aggiornando: boolean
-  aggiorna: () => void
-  versioneSync: number
 }
 
 const DataContext = createContext<DataValue | null>(null)
+// Solo l’archivio ha bisogno del segnale di refresh: i cambi di stato del Drive
+// non devono invalidare tutti i consumatori dei dati nelle pagine.
+const SyncVersionContext = createContext(0)
+export function useDataSyncVersion(): number {
+  return useContext(SyncVersionContext)
+}
 
 // raccolte NON divise per stagione: la cassa è continua nel tempo, e così
 // anche i conti in sospeso con le altre società e le schede degli avversari
@@ -146,8 +150,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setStato((st) => (st === 'error' ? 'loading' : st))
       const posa = (c: string, items: { id: string }[]) => {
         if (!annullato && guard.current.canApply(c, snapshot)) {
-          dataRef.current = { ...dataRef.current, [c]: items }
-          setData((s) => ({ ...s, [c]: items }))
+          const condivisi = riusaLista(dataRef.current[c], items)
+          if (condivisi === dataRef.current[c]) return
+          dataRef.current = { ...dataRef.current, [c]: condivisi }
+          setData((s) => ({ ...s, [c]: condivisi }))
         }
       }
       try {
@@ -421,6 +427,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [update, fallita],
   )
 
+  const valore = useMemo<DataValue>(
+    () => ({
+      getItems,
+      add,
+      update,
+      remove,
+      restore,
+      replaceAll,
+      uploadDoc,
+      createDoc,
+      renameDoc,
+    }),
+    [
+      getItems,
+      add,
+      update,
+      remove,
+      restore,
+      replaceAll,
+      uploadDoc,
+      createDoc,
+      renameDoc,
+    ],
+  )
+
   if (stato === 'loading') return <DriveSplash />
   if (stato === 'error')
     return (
@@ -431,88 +462,75 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
 
   return (
-    <DataContext.Provider
-      value={{
-        getItems,
-        add,
-        update,
-        remove,
-        restore,
-        replaceAll,
-        uploadDoc,
-        createDoc,
-        renameDoc,
-        aggiornando,
-        aggiorna: () => refreshRef.current(),
-        versioneSync,
-      }}
-    >
-      {erroreSync && (
-        <Alert
-          type="warning"
-          showIcon
-          message={`Una modifica non è stata salvata sul Drive: ${erroreSync}`}
-          description={
-            scritture.current.size
-              ? 'Le modifiche locali restano visibili. Riprova il salvataggio prima di chiudere l’app.'
-              : 'Riprova il caricamento dalla sua finestra.'
-          }
-          closable={!scritture.current.size}
-          onClose={() => setErroreSync(null)}
-          action={
-            scritture.current.size ? (
-              <Button
-                size="small"
-                loading={riprovando}
-                disabled={!online}
-                onClick={riprovaScritture}
-              >
-                Riprova salvataggio
+    <DataContext.Provider value={valore}>
+      <SyncVersionContext.Provider value={versioneSync}>
+        {erroreSync && (
+          <Alert
+            type="warning"
+            showIcon
+            message={`Una modifica non è stata salvata sul Drive: ${erroreSync}`}
+            description={
+              scritture.current.size
+                ? 'Le modifiche locali restano visibili. Riprova il salvataggio prima di chiudere l’app.'
+                : 'Riprova il caricamento dalla sua finestra.'
+            }
+            closable={!scritture.current.size}
+            onClose={() => setErroreSync(null)}
+            action={
+              scritture.current.size ? (
+                <Button
+                  size="small"
+                  loading={riprovando}
+                  disabled={!online}
+                  onClick={riprovaScritture}
+                >
+                  Riprova salvataggio
+                </Button>
+              ) : undefined
+            }
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        {erroreCaricamento && !aggiornando && (
+          <Alert
+            type="warning"
+            showIcon
+            message="Alcuni dati potrebbero non essere aggiornati: mostro l’ultima copia disponibile."
+            action={
+              <Button size="small" onClick={() => setTentativo((t) => t + 1)}>
+                Riprova
               </Button>
-            ) : undefined
-          }
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      {erroreCaricamento && !aggiornando && (
-        <Alert
-          type="warning"
-          showIcon
-          message="Alcuni dati potrebbero non essere aggiornati: mostro l’ultima copia disponibile."
-          action={
-            <Button size="small" onClick={() => setTentativo((t) => t + 1)}>
-              Riprova
-            </Button>
-          }
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      <div className="sync-status" role="status" aria-live="polite">
-        <span>
-          {!store.driveAttivo()
-            ? 'Modalità locale'
-            : !online
-              ? 'Offline'
-              : aggiornando
-                ? 'Aggiornamento dal Drive…'
-                : erroreCaricamento
-                  ? 'Aggiornamento incompleto'
-                  : ultimoAggiornamento
-                    ? `Aggiornato alle ${ultimoAggiornamento.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
-                    : 'Dati locali'}
-        </span>
-        <Button
-          size="small"
-          icon={<ReloadOutlined />}
-          loading={aggiornando}
-          disabled={!online}
-          onClick={() => refreshRef.current()}
-        >
-          Aggiorna
-        </Button>
-      </div>
-      {children}
-      <Aggiornamento attivo={aggiornando && copia.completa} />
+            }
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        <div className="sync-status" role="status" aria-live="polite">
+          <span>
+            {!store.driveAttivo()
+              ? 'Modalità locale'
+              : !online
+                ? 'Offline'
+                : aggiornando
+                  ? 'Aggiornamento dal Drive…'
+                  : erroreCaricamento
+                    ? 'Aggiornamento incompleto'
+                    : ultimoAggiornamento
+                      ? `Aggiornato alle ${ultimoAggiornamento.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
+                      : 'Dati locali'}
+          </span>
+          <Button
+            size="small"
+            icon={<ReloadOutlined />}
+            loading={aggiornando}
+            disabled={!online}
+            onClick={() => refreshRef.current()}
+          >
+            Aggiorna
+          </Button>
+        </div>
+        {children}
+        <Aggiornamento attivo={aggiornando && copia.completa} />
+      </SyncVersionContext.Provider>
     </DataContext.Provider>
   )
 }

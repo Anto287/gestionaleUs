@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import {
@@ -58,17 +58,23 @@ import {
 } from '../lib/format'
 import { esportaExcel } from '../lib/excel'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
-import {
-  BilancioMensile,
-  type MeseBilancio,
-  type TipoBilancio,
-} from './conti/BilancioMensile'
-import { PerCategoria, type VoceCategoria } from './conti/PerCategoria'
+import type { MeseBilancio, TipoBilancio } from './conti/BilancioMensile'
+import type { VoceCategoria } from './conti/PerCategoria'
 import { leggiBilancio } from './conti/importaBilancio'
 import type { Documento, Movimento, SpesaCondivisa } from '../types'
 import { useData } from '../data/DataProvider'
 import { AllegatiMovimento } from './conti/AllegatiMovimento'
-import { EsportaConti } from './conti/EsportaConti'
+const EsportaConti = lazy(() =>
+  import('./conti/EsportaConti').then((m) => ({ default: m.EsportaConti })),
+)
+const BilancioMensile = lazy(() =>
+  import('./conti/BilancioMensile').then((m) => ({
+    default: m.BilancioMensile,
+  })),
+)
+const PerCategoria = lazy(() =>
+  import('./conti/PerCategoria').then((m) => ({ default: m.PerCategoria })),
+)
 import { filtraMovimento, type FiltriConti } from '../lib/contiReport'
 
 /** Categorie proposte nel form (si può comunque scrivere qualsiasi testo). */
@@ -117,6 +123,7 @@ export function Conti() {
   const screens = Grid.useBreakpoint()
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
+  const [limiteMobile, setLimiteMobile] = useState(50)
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Movimento | null>(null)
   const [dettaglio, setDettaglio] = useState<VistaDettaglio | null>(null)
@@ -256,9 +263,47 @@ export function Conti() {
     importo: importoF,
     importoOp,
   }
-  const vistaFiltrata = vista.filter(({ m }) =>
-    filtraMovimento(m, filtriAttivi),
+  const vistaFiltrata = useMemo(
+    () =>
+      vista.filter(({ m }) =>
+        filtraMovimento(m, {
+          q,
+          tipo,
+          stato,
+          anno: annoF,
+          mese: meseF,
+          categoria: categoriaF,
+          controparte: controparteF,
+          importo: importoF,
+          importoOp,
+        }),
+      ),
+    [
+      vista,
+      q,
+      tipo,
+      stato,
+      annoF,
+      meseF,
+      categoriaF,
+      controparteF,
+      importoF,
+      importoOp,
+    ],
   )
+  useEffect(() => {
+    setLimiteMobile(50)
+  }, [
+    q,
+    tipo,
+    stato,
+    annoF,
+    meseF,
+    categoriaF,
+    controparteF,
+    importoF,
+    importoOp,
+  ])
 
   const saldo = cent(
     items
@@ -662,7 +707,11 @@ export function Conti() {
                         </Space>
                       }
                     >
-                      <BilancioMensile dati={bilancio} tipo={tipoBilancio} />
+                      <Suspense
+                        fallback={<div role="status">Carico il grafico…</div>}
+                      >
+                        <BilancioMensile dati={bilancio} tipo={tipoBilancio} />
+                      </Suspense>
                     </Card>
                   )}
 
@@ -700,10 +749,14 @@ export function Conti() {
                           Nessun movimento di questo tipo nel periodo scelto.
                         </Typography.Text>
                       ) : (
-                        <PerCategoria
-                          dati={perCategoria}
-                          tipo={tipoCategorie}
-                        />
+                        <Suspense
+                          fallback={<div role="status">Carico il grafico…</div>}
+                        >
+                          <PerCategoria
+                            dati={perCategoria}
+                            tipo={tipoCategorie}
+                          />
+                        </Suspense>
                       )}
                     </Card>
                   )}
@@ -859,7 +912,7 @@ export function Conti() {
             <Empty description="Nessun movimento corrisponde ai filtri" />
           ) : isMobile ? (
             <div className="lista-mobile">
-              {vistaFiltrata.map((r) => (
+              {vistaFiltrata.slice(0, limiteMobile).map((r) => (
                 <div
                   key={r.m.id}
                   className="lista-card"
@@ -928,13 +981,24 @@ export function Conti() {
                   </div>
                 </div>
               ))}
+              {vistaFiltrata.length > limiteMobile && (
+                <Button block onClick={() => setLimiteMobile((n) => n + 50)}>
+                  Mostra altri{' '}
+                  {Math.min(50, vistaFiltrata.length - limiteMobile)} movimenti
+                </Button>
+              )}
             </div>
           ) : (
             <Table
               rowKey={(r) => r.m.id}
               dataSource={vistaFiltrata}
               columns={columns}
-              pagination={false}
+              pagination={{
+                defaultPageSize: 50,
+                showSizeChanger: true,
+                pageSizeOptions: [20, 50, 100],
+                showTotal: (n) => `${n} movimenti`,
+              }}
               size="middle"
               sticky={{ offsetHeader }}
               scroll={{ x: 'max-content' }}
@@ -948,11 +1012,15 @@ export function Conti() {
       )}
 
       {esportaPdf && (
-        <EsportaConti
-          items={items}
-          iniziali={filtriAttivi}
-          onClose={() => setEsportaPdf(false)}
-        />
+        <Suspense
+          fallback={<div role="status">Carico l’esportazione PDF…</div>}
+        >
+          <EsportaConti
+            items={items}
+            iniziali={filtriAttivi}
+            onClose={() => setEsportaPdf(false)}
+          />
+        </Suspense>
       )}
 
       <DettaglioMovimenti

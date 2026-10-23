@@ -147,7 +147,7 @@ raccolte si possono precaricare da console con
 - Le raccolte vengono rilette all'apertura, al rientro nella scheda/PWA,
   quando torna la connessione e ogni **60 secondi** mentre l'app è visibile.
   «Aggiorna» forza la lettura; lo stato indica l'ultimo aggiornamento completo.
-  Anche l'elenco dell'archivio tesserati segue gli aggiornamenti.
+  L'elenco dell'archivio tesserati segue gli aggiornamenti quando si usa la Rosa o l'Archivio.
 - Apps Script non offre una socket in questa architettura: è polling, quindi
   le modifiche fatte da altri dispositivi non compaiono istantaneamente.
   Non occorrono servizi aggiuntivi o modifiche allo script per la rilettura.
@@ -176,3 +176,18 @@ reali: `npx playwright install chromium`, poi `npm run test:browser`.
 Verifica caricamento ricevute, anteprima/download PDF, cinque larghezze,
 recupero dei salvataggi falliti, rientro in app e aggiornamento periodico.
 Le schermate e i PDF di prova sono temporanei in `/tmp/us-*`.
+
+
+## Prestazioni
+
+- Panoramica, grafici dei Conti ed esportazione PDF si caricano quando servono.
+  Su telefono, i grafici richiusi non scaricano Recharts finché non vengono aperti.
+- Foto e documenti dei tesserati si aggiornano entrando in Rosa/Archivio:
+  nessuna lettura o miniatura dell'archivio mentre si lavora nei Conti.
+- Un refresh con dati invariati conserva le liste e non invalida il contesto
+  dei dati: evita di rifare calcoli, grafici e scritture della cache locale.
+- I Conti mostrano 50 righe alla volta (paginazione desktop, Mostra altri su
+  mobile). Ricerca, filtri, saldi e PDF continuano a usare tutti i movimenti.
+- Il test prestazionale usa 300 movimenti, controlla il caricamento differito,
+  verifica che i comandi e la riapertura con cache funzionino anche prima della
+  risposta del Drive. Non misura la latenza del backend Google reale.

@@ -1,7 +1,19 @@
 import { createElement, Suspense, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Layout as AntLayout, Menu, Button, Drawer, Grid, Typography } from 'antd'
-import { LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import {
+  Layout as AntLayout,
+  Menu,
+  Button,
+  Drawer,
+  Grid,
+  Typography,
+} from 'antd'
+import {
+  LogoutOutlined,
+  MenuOutlined,
+  MoonOutlined,
+  SunOutlined,
+} from '@ant-design/icons'
 import { config } from '../config'
 import { navItems } from '../nav'
 import { useAuth } from '../auth/AuthContext'
@@ -27,7 +39,11 @@ function Brand() {
   const { attiva } = useSeason()
   return (
     <div className="brand">
-      <img className="brand-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt={config.clubName} />
+      <img
+        className="brand-logo"
+        src={`${import.meta.env.BASE_URL}logo.png`}
+        alt={config.clubName}
+      />
       <Text className="brand-season">Stagione {attiva}</Text>
     </div>
   )
@@ -94,7 +110,10 @@ export function Layout() {
           onClose={() => setDrawer(false)}
           width={252}
           // stesso colore della sidebar (in scuro l'elevated di antd stona)
-          styles={{ body: { padding: 0 }, content: { background: 'var(--cartoncino)' } }}
+          styles={{
+            body: { padding: 0 },
+            content: { background: 'var(--cartoncino)' },
+          }}
           className="app-drawer"
         >
           {sidebarContent}
@@ -104,23 +123,42 @@ export function Layout() {
       <AntLayout>
         {!isDesktop && (
           <Header className="app-topbar">
-            <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawer(true)} />
-            <img className="topbar-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              onClick={() => setDrawer(true)}
+            />
+            <img
+              className="topbar-logo"
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt=""
+            />
             <span className="topbar-title">
-              {navItems.find((n) => n.to === location.pathname)?.label ?? config.clubName}
+              {navItems.find((n) => n.to === location.pathname)?.label ??
+                config.clubName}
             </span>
             <Button
               type="text"
               style={{ marginLeft: 'auto' }}
               icon={tema === 'scuro' ? <SunOutlined /> : <MoonOutlined />}
               onClick={alterna}
-              aria-label={tema === 'scuro' ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
+              aria-label={
+                tema === 'scuro'
+                  ? 'Passa al tema chiaro'
+                  : 'Passa al tema scuro'
+              }
             />
           </Header>
         )}
         <Content className="app-content">
           <DataProvider key={attiva}>
-            <ArchivioProvider>
+            <ArchivioProvider
+              attivo={
+                location.pathname === '/archivio' ||
+                location.pathname === '/rosa' ||
+                location.pathname.startsWith('/rosa/')
+              }
+            >
               <div className="app-container">
                 <Suspense fallback={<PaginaInArrivo />}>
                   <Outlet />
