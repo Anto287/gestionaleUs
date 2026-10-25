@@ -737,9 +737,9 @@ body {
 }
 
 /* le card in griglia riempiono la loro cella: file pari, niente tessere storte */
-.ant-row > .ant-col > .ant-card,
-.ant-row > .ant-col > a,
-.ant-row > .ant-col > a > .ant-card {
+.ant-row > .ant-col > .ant-card:only-child,
+.ant-row > .ant-col > a:only-child,
+.ant-row > .ant-col > a:only-child > .ant-card {
   height: 100%;
 }
 
@@ -2698,3 +2698,239 @@ body {
   background: var(--panna);
   border-radius: 6px;
 }
+
+/* Stato del Drive e strumenti contabili */
+.sync-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  max-width: 1040px;
+  margin: 0 auto 18px;
+  color: var(--testo-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.conti-risultati {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.ricevute {
+  border-top: 1px solid var(--linea);
+  margin-top: 12px;
+  padding-top: 18px;
+}
+.ricevute-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ricevute-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--panna);
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+}
+.ricevute-list li > :first-child {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  height: auto;
+}
+.ricevute-list li > .ant-btn:last-child { flex-shrink: 0; }
+.report-filtri { display: grid; gap: 16px; }
+.report-filtri label { display: grid; gap: 6px; font-weight: 500; }
+.report-filtri .ant-select { width: 100%; font-weight: normal; }
+
+/* Impedisce a tabelle, nomi lunghi e comandi di allargare l'intera pagina. */
+.app-content, .app-container, .page-header > div { min-width: 0; }
+.lista-card-top > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.lista-card-top > :last-child { flex-shrink: 0; }
+.lista-card-title { overflow-wrap: anywhere; }
+.ant-modal .ant-modal-body { overflow-wrap: anywhere; }
+@media (min-width: 576px) and (max-width: 1199.98px) {
+  .page-header { align-items: flex-start; }
+  .page-actions { max-width: 100%; }
+  .ant-card-head-wrapper { flex-wrap: wrap; gap: 10px; padding: 12px 0; }
+  .ant-card-extra { margin-inline-start: 0; }
+}
+@media (max-width: 575.98px) {
+  .sync-status { justify-content: space-between; margin-bottom: 16px; }
+  .page-actions > .ant-space { gap: 8px !important; }
+  .page-actions > .ant-space > .ant-space-item { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  .page-actions > .ant-space > .ant-space-item:last-child { flex-basis: 100%; }
+  .page-actions .ant-btn { height: auto; min-height: 40px; white-space: normal; padding-block: 8px; }
+  .ant-card-head-title { white-space: normal; }
+  .ant-modal .ant-modal-footer .ant-space { justify-content: flex-end; }
+  .ricevute > .ant-space { display: flex; }
+  .ricevute > .ant-space > .ant-space-item { flex: 1; }
+  .ricevute > .ant-space .ant-btn { width: 100%; min-height: 40px; }
+}
+.conti-analisi { margin-bottom: 20px; }
+.conti-analisi > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box { padding: 12px; }
+.conti-analisi .ant-card:last-child { margin-bottom: 0 !important; }
+@media (max-width: 575.98px) {
+  .conti-movimento-modal, .conti-report-modal { top: 12px; padding-bottom: 12px; }
+  .conti-movimento-modal .ant-modal-body, .conti-report-modal .ant-modal-body {
+    max-height: calc(100dvh - 200px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+  }
+}
+
+/* Avvio: prima tutte le tabelle, poi il gestionale. */
+.startup-screen {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: radial-gradient(ellipse at top, var(--panna), var(--carta) 65%);
+}
+.startup-card {
+  width: min(100%, 440px);
+  box-sizing: border-box;
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid var(--linea);
+  border-radius: 24px;
+  background: var(--cartoncino);
+  box-shadow: var(--ombra-card);
+  text-align: center;
+}
+.startup-logo { width: 72px; height: 80px; object-fit: contain; display: block; margin: 0 auto 20px; }
+.startup-card h1 { font-family: var(--font-display); font-size: clamp(26px, 6vw, 34px); line-height: 1.1; margin: 12px 0; }
+.startup-card p { color: var(--testo-2); line-height: 1.65; margin-bottom: 24px; }
+.startup-card .pallone-spinner { margin-inline: auto; }
+.startup-card .ant-progress { margin-top: 24px; }
+.startup-progress { display: block; color: var(--inchiostro); font-weight: 600; font-size: 13px; margin: 8px 0 12px; }
+.startup-card small { display: block; color: var(--testo-2); line-height: 1.5; }
+.startup-error .ant-result { padding: 8px 0; }
+.startup-error .ant-result-title { font-size: 22px; }
+
+/* Griglia comune: stessi allineamenti nelle pagine e nelle schede. */
+.app-container { max-width: 1160px; }
+.sync-status { max-width: 1160px; }
+.page-header { align-items: flex-start; gap: 20px; margin-bottom: 24px; }
+.page-header > :first-child { flex: 1 1 280px; min-width: 0; }
+.page-actions { flex: 0 1 auto; max-width: 100%; }
+.page-actions > .ant-space { display: flex; justify-content: flex-end; align-items: stretch; gap: 8px !important; }
+.page-actions > .ant-space > .ant-space-item { display: flex; min-width: 0; }
+.page-actions .ant-btn { min-height: 38px; height: auto; white-space: normal; line-height: 1.35; padding-block: 8px; }
+.page-actions .ant-btn > span:not(.ant-btn-icon) { overflow-wrap: anywhere; }
+.page-sub { max-width: 66ch; line-height: 1.55; margin-top: 2px; }
+.app-container .ant-card > .ant-card-head { padding: 14px 20px; min-height: 58px; }
+.app-container .ant-card-head-wrapper { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 0; min-width: 0; }
+.app-container .ant-card-head-title {
+  flex: 1 1 160px; min-width: 0; max-width: 100%; padding: 0;
+  white-space: normal; text-overflow: clip; overflow-wrap: anywhere;
+  line-height: 1.3; text-align: left;
+}
+.app-container .ant-card-extra { min-width: 0; max-width: 100%; margin-inline-start: auto; }
+.app-container .ant-card-extra > .ant-space { display: flex; flex-wrap: wrap; gap: 8px !important; }
+.ant-space-item, .ant-flex > *, .ant-col, .stat-corpo { min-width: 0; }
+.ant-btn-block { height: auto; min-height: 38px; white-space: normal; line-height: 1.4; padding-block: 8px; }
+.ant-tag { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.ant-card .ant-typography { overflow-wrap: anywhere; }
+.ant-select, .ant-input-number, .ant-picker { max-width: 100%; }
+.ant-space-compact { max-width: 100%; }
+.ant-space-compact > .ant-input-number { flex: 1; min-width: 0; }
+.distinta-ruoli .ant-radio-button-wrapper {
+  display: flex; align-items: center; justify-content: center;
+  height: 36px; padding: 4px 6px; border-radius: 7px;
+  white-space: normal; line-height: 1.2; text-align: center;
+}
+.distinta-ruoli .ant-radio-button-wrapper::before { display: none; }
+.ant-modal-title { padding-inline-end: 26px; line-height: 1.3 !important; overflow-wrap: anywhere; }
+.ant-drawer-content-wrapper { max-width: 100vw; }
+.ant-modal-footer .ant-space { flex-wrap: wrap; }
+.ant-modal-footer .ant-btn { min-height: 38px; height: auto; white-space: normal; }
+.ant-table-pagination { gap: 6px; flex-wrap: wrap; padding-inline: 12px; }
+.ant-table-cell { overflow-wrap: anywhere; }
+@media (max-width: 1199.98px) {
+  .page-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .page-actions { width: 100%; }
+  .page-actions > .ant-space { justify-content: flex-start; }
+}
+@media (max-width: 767.98px) {
+  .app-content { padding: 20px 16px 28px; }
+  .app-container .ant-card > .ant-card-head { padding: 14px 16px; }
+  .app-container .ant-card-head-title { flex-basis: 100%; font-size: 17px; }
+  .app-container .ant-card-extra { flex-basis: 100%; width: 100%; margin-inline-start: 0; }
+  .page-actions > .ant-space { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .page-actions > .ant-space > .ant-space-item { width: 100%; }
+  .page-actions > .ant-space > .ant-space-item:nth-child(odd):last-child { grid-column: 1 / -1; }
+  .page-actions .ant-btn, .page-actions .ant-select, .page-actions .ant-upload { width: 100%; }
+  .page-actions > .ant-space > .ant-space-item > .ant-upload-wrapper { width: 100%; }
+  .page-actions .ant-btn { min-height: 42px; height: 100%; padding-inline: 10px; }
+  .ant-modal { top: 12px; padding-bottom: 12px; }
+  .ant-modal .ant-modal-content { padding: 20px 16px 16px; }
+  .ant-modal .ant-modal-body { max-height: calc(100dvh - 205px); overflow-y: auto; overscroll-behavior: contain; padding-right: 3px; }
+  .ant-modal-footer { padding-top: 12px; }
+  .ant-modal-footer .ant-space { display: flex; justify-content: flex-end; gap: 8px !important; }
+  .ant-modal-footer .ant-btn { min-height: 42px; margin-inline-start: 0; }
+  .ant-modal-footer > .ant-btn + .ant-btn { margin-inline-start: 8px; }
+  .ant-drawer-header { padding: 18px 16px; }
+  .ant-drawer-body { padding: 16px; }
+  .ant-card .ant-picker { min-width: 0; }
+}
+@media (max-width: 359.98px) {
+  .app-content { padding-inline: 12px; }
+  .stat-card .ant-statistic-content { font-size: 21px !important; letter-spacing: -0.035em; }
+}
+
+/* Le schede multiple nella stessa colonna mantengono la propria altezza. */
+.pt-entrato { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; }
+.ant-picker-dropdown { max-width: calc(100vw - 16px); }
+.page-actions .ant-select-single { height: 38px; }
+@media (max-width: 767.98px) {
+  .page-actions .ant-select-single { height: 42px; }
+  .scheda-azioni { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; width: 100%; gap: 8px !important; }
+  .scheda-azioni .ant-btn { width: 100%; min-height: 40px; padding-inline: 10px; }
+}
+@media (max-width: 575.98px) {
+  .ant-col-xs-12 .stat-card .ant-statistic-content { font-size: clamp(16px, 4.6vw, 22px) !important; letter-spacing: -0.03em; }
+}
+@media (min-width: 768px) {
+  .ant-modal { top: 32px; padding-bottom: 24px; }
+  .ant-modal .ant-modal-body { max-height: calc(100dvh - 220px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+}
+/* Il contenuto scorre; titolo e azioni del dialogo rimangono visibili. */
+.ant-modal .ant-modal-content { display: flex; flex-direction: column; max-height: calc(100dvh - 96px); overflow: hidden; }
+.ant-modal .ant-modal-header, .ant-modal .ant-modal-footer { flex: 0 0 auto; }
+.ant-modal .ant-modal-body { min-height: 0; flex: 1 1 auto; }
+.ed-wrap-compatto .ed-corpo { grid-template-columns: minmax(0, 1fr); }
+.ed-wrap-compatto .ed-export { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ed-wrap-compatto .ed-export-drive { grid-column: 1 / -1; }
+.ed-wrap-compatto .ed-export .ant-btn { min-width: 0; white-space: normal; height: auto; min-height: 40px; }
+.social-griglia .ant-segmented-block .ant-segmented-group:has(> .ant-segmented-item:nth-child(4)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.social-griglia .ant-segmented-block .ant-segmented-item-label { white-space: normal; min-height: 36px; height: 100%; display: flex; align-items: center; justify-content: center; padding: 6px 8px; line-height: 1.3; }
+@media (max-width: 767.98px) {
+  .ant-modal .ant-modal-content { max-height: calc(100dvh - 24px); }
+}
+@media (max-width: 767.98px) {
+  .ant-modal-root .ant-modal { margin: 0 auto; top: 12px; padding-bottom: 12px; }
+  .ant-modal-root .ant-modal-content { max-height: calc(100dvh - 32px); }
+}
+/* Sui telefoni stretti, etichette e icone delle statistiche hanno spazio proprio. */
+.stat-card .ant-statistic-title { overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+  .ant-col-xs-12 .stat-card .ant-card-body { flex-direction: column; padding: 44px 16px 16px; }
+  .ant-col-xs-12 .stat-card .stat-icon { position: absolute; top: 16px; right: 16px; line-height: 1; }
+  .ant-col-xs-12 .stat-card .ant-statistic-title { padding-right: 0; }
+  .page-actions > .ant-space:has(.ant-select) { grid-template-columns: minmax(0, 1fr); }
+  .page-actions .ant-select { width: 100% !important; }
+}
+
+.avv-da-creare .ant-btn { max-width: 100%; height: auto; min-height: 32px; white-space: normal; text-align: left; padding-block: 6px; line-height: 1.35; }
+.avv-da-creare .ant-btn > span:not(.ant-btn-icon) { overflow-wrap: anywhere; }

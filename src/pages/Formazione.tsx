@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, Empty, Segmented, Space, Tag, Typography } from 'antd'
+import { Button, Card, Empty, Select, Space, Tag, Typography } from 'antd'
 import { ThunderboltOutlined, ClearOutlined, InstagramOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
@@ -17,6 +17,7 @@ import {
   type Assegnazione,
 } from '../lib/formazione'
 import { Campo } from './formazione/Campo'
+import { nomeGiocatoreBreve } from '../lib/format'
 import type { Allenamento, Giocatore } from '../types'
 
 const { Text } = Typography
@@ -142,7 +143,8 @@ export function Formazione() {
         .map((a, i) =>
           a
             ? {
-                nome: byId.get(a.giocatoreId)?.cognome || byId.get(a.giocatoreId)?.nome || '—',
+                giocatoreId: a.giocatoreId,
+                nome: nomeGiocatoreBreve(byId.get(a.giocatoreId)),
                 role: modulo.slots[i].role,
                 numero: byId.get(a.giocatoreId)?.numeroMaglia,
                 x: modulo.slots[i].x,
@@ -154,7 +156,7 @@ export function Formazione() {
       // col numero davanti, come si legge una panchina: "7 Rossi  9 Bianchi"
       panchina: panchina.map((id) => {
         const g = byId.get(id)
-        const nome = g?.cognome || g?.nome || '—'
+        const nome = nomeGiocatoreBreve(g)
         return g?.numeroMaglia != null ? `${g.numeroMaglia} ${nome}` : nome
       }),
     }
@@ -179,14 +181,19 @@ export function Formazione() {
       />
 
       <Card title="Modulo" style={{ marginBottom: 16 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <Segmented
+        <div>
+          <Select
+            aria-label="Modulo"
+            showSearch
+            optionFilterProp="search"
+            style={{ width: '100%', maxWidth: 320 }}
             value={moduloId}
             onChange={(v) => cambiaModulo(v as string)}
             options={MODULI.map((m) => {
               const v = valById.get(m.id)
               return {
                 value: m.id,
+                search: m.label,
                 label: (
                   <span className="modulo-opt">
                     {m.label}
@@ -340,7 +347,7 @@ export function Formazione() {
                   if (!g) return null
                   return (
                     <span key={id} className="panchina-chip">
-                      <b>{g.cognome}</b>
+                      <b>{nomeGiocatoreBreve(g)}</b>
                       {g.ruoloPreferito && (
                         <Tag color={coloreRuolo(g.ruoloPreferito)} style={{ margin: 0 }}>
                           {g.ruoloPreferito}

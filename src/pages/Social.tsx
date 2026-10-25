@@ -9,6 +9,7 @@ import {
   Form,
   Grid,
   Input,
+  InputNumber,
   List,
   Modal,
   Popconfirm,
@@ -18,7 +19,6 @@ import {
   Upload,
 } from 'antd'
 import {
-  InstagramOutlined,
   PlusOutlined,
   DeleteOutlined,
   CalendarOutlined,
@@ -27,7 +27,7 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
-import { formatData, oggiIso } from '../lib/format'
+import { formatData, oggiIso, nomeGiocatoreBreve } from '../lib/format'
 import {
   etichettaGiorno,
   etichettaMese,
@@ -43,6 +43,7 @@ import {
 import { useSeason } from '../season/SeasonContext'
 import { useAppuntamenti, type Appuntamento } from '../lib/appuntamenti'
 import { leggiPrefs } from '../lib/graficaPrefs'
+import { graficaDaPartita } from '../lib/formazioneGrafica'
 import { preparaLogo } from '../lib/immagine'
 import { driveAttivo, uploadGrafica } from '../services/driveStore'
 import type { Giocatore, Partita } from '../types'
@@ -113,8 +114,33 @@ export function Social() {
     return k === 'risultato' || k === 'mese' || k === 'formazione' ? k : 'annuncio'
   })
   const [formatoChiave, setFormatoChiave] = useState<FormatoIG['chiave']>('post')
-  // l'undici arriva dalla pagina Formazione (bottone «Grafica IG»)
-  const formazioneGrafica = useMemo(() => leggiFormazioneGrafica(), [])
+  const formazioneGenerata = useMemo(() => leggiFormazioneGrafica(), [])
+  const [fonteFormazione, setFonteFormazione] = useState<string>()
+  const [numeriMaglia, setNumeriMaglia] = useState<Record<string, Record<string, number | null>>>({})
+  const partiteFormazione = useMemo(
+    () => partite.filter((p) => p.formazione?.posti.some(Boolean) || p.titolari?.length)
+      .sort((a, b) => b.data.localeCompare(a.data)),
+    [partite],
+  )
+  // Mantiene il passaggio «Grafica IG» dal generatore; altrimenti parte dalla gara più recente.
+  const fonteFormazioneEff = fonteFormazione ?? (formazioneGenerata ? 'generata' : partiteFormazione[0]?.id)
+  const partitaFormazione = partiteFormazione.find((p) => p.id === fonteFormazioneEff)
+  const chiaveNumeri = `${attiva}|${fonteFormazioneEff ?? ''}`
+  const formazioneBase = useMemo(
+    () => fonteFormazioneEff === 'generata' ? formazioneGenerata
+      : partitaFormazione ? graficaDaPartita(partitaFormazione, giocatori) : undefined,
+    [fonteFormazioneEff, formazioneGenerata, partitaFormazione, giocatori],
+  )
+  const formazioneGrafica = useMemo(() => formazioneBase && ({
+    ...formazioneBase,
+    titolari: formazioneBase.titolari.map((t, i) => {
+      const numeri = numeriMaglia[chiaveNumeri] ?? {}
+      const id = t.giocatoreId ?? String(i)
+      const g = t.giocatoreId ? giocatori.find((g) => g.id === t.giocatoreId) : undefined
+      const titolare = g ? { ...t, nome: nomeGiocatoreBreve(g) } : t
+      return Object.hasOwn(numeri, id) ? { ...titolare, numero: numeri[id] ?? undefined } : titolare
+    }),
+  }), [formazioneBase, numeriMaglia, chiaveNumeri, giocatori])
 
   // annuncio (dati inseriti a mano, mono-uso)
   const [avversario, setAvversario] = useState('')
@@ -292,8 +318,10 @@ export function Social() {
       }
       return {
         input: inp,
-        seedKey: `formazione|${formatoChiave}|${formazioneGrafica?.creata ?? 'vuota'}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src ? 'logo' : ''}`,
-        nomeFile: `riolunato-formazione-${slug(formazioneGrafica?.modulo ?? 'xi')}.png`,
+        seedKey: `formazione|${formatoChiave}|${fonteFormazioneEff ?? 'vuota'}|${JSON.stringify(formazioneGrafica)}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src ? 'logo' : ''}`,
+        nomeFile: partitaFormazione
+          ? `riolunato-formazione-${partitaFormazione.data}-${slug(partitaFormazione.avversario)}.png`
+          : `riolunato-formazione-${slug(formazioneGrafica?.modulo || 'xi')}.png`,
       }
     }
     const inp: BuildInput = {
@@ -333,6 +361,8 @@ export function Social() {
     meseAttivo,
     fixtures,
     formazioneGrafica,
+    fonteFormazioneEff,
+    partitaFormazione,
   ])
 
   /** Lo stemma avversario: PNG rimpicciolito, con le sue proporzioni. */
@@ -549,17 +579,66 @@ export function Social() {
 
       {kind === 'formazione' && (
         <div className="social-campo">
+          <span className="social-label">Prendi la formazione da</span>
+          <Select
+            style={{ width: '100%', marginBottom: 12 }}
+            value={fonteFormazioneEff}
+            placeholder="Seleziona una partita"
+            showSearch
+            optionFilterProp="label"
+            onChange={(id: string) => {
+              setFonteFormazione(id)
+              setPanchinaTxt(undefined)
+            }}
+            options={[
+              ...(formazioneGenerata ? [{ value: 'generata', label: 'Formazione dal generatore' }] : []),
+              ...partiteFormazione.map((p) => ({
+                value: p.id,
+                label: `${labelAppuntamento(p)}${p.giocata === false ? ' · In programma' : ''}`,
+              })),
+            ]}
+            notFoundContent="Nessuna partita con titolari registrati"
+          />
           <span className="social-label">Undici titolare</span>
           {formazioneGrafica ? (
             <div className="social-vuoto">
-              Modulo <b>{formazioneGrafica.modulo}</b> · {formazioneGrafica.titolari.length} titolari
+              {formazioneGrafica.modulo && <>Modulo <b>{formazioneGrafica.modulo}</b> · </>}{formazioneGrafica.titolari.length} titolari
               {formazioneGrafica.panchina.length ? ` · ${formazioneGrafica.panchina.length} in panchina` : ''}.{' '}
-              <Link to="/formazione">Rigenera</Link> per cambiarlo.
+              {partitaFormazione
+                ? <Link to={`/partite/${partitaFormazione.id}`}>Modifica la formazione della partita</Link>
+                : <><Link to="/formazione">Rigenera</Link> per cambiarlo.</>}
             </div>
           ) : (
             <div className="social-vuoto">
-              Genera l'undici nella pagina <Link to="/formazione">Formazione</Link> e poi tocca «Grafica IG».
+              Segna i titolari in <Link to="/partite">Partite</Link>, oppure genera l'undici nella pagina{' '}
+              <Link to="/formazione">Formazione</Link> e poi tocca «Grafica IG».
             </div>
+          )}
+          {formazioneGrafica && (
+            <>
+              <span className="social-label" style={{ display: 'block', marginTop: 12 }}>Numeri di maglia</span>
+              {formazioneGrafica.titolari.map((t, i) => (
+                <div key={t.giocatoreId ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  <InputNumber
+                    min={1}
+                    max={99}
+                    precision={0}
+                    value={t.numero ?? null}
+                    style={{ width: 80, flexShrink: 0 }}
+                    placeholder="N."
+                    aria-label={`Numero di maglia di ${t.nome}`}
+                    onChange={(numero) => setNumeriMaglia((prima) => ({
+                      ...prima,
+                      [chiaveNumeri]: { ...prima[chiaveNumeri], [t.giocatoreId ?? String(i)]: numero },
+                    }))}
+                  />
+                  <span>{t.nome}{t.role ? ` · ${t.role}` : ''}</span>
+                </div>
+              ))}
+              <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
+                Precompilati dalla rosa. Puoi cambiarli o svuotarli per questa grafica.
+              </div>
+            </>
           )}
         </div>
       )}
@@ -583,8 +662,8 @@ export function Social() {
               placeholder={'12 Rossi\n13 Bianchi'}
             />
             <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
-              Uno per riga, col numero davanti se vuoi. Arrivano dalla Formazione: correggerli
-              qui non cambia l'undici.
+              Uno per riga, col numero davanti se vuoi. Dalla partita arrivano i subentrati:
+              aggiungi qui anche le riserve rimaste in panchina.
             </div>
           </div>
         </>
@@ -665,7 +744,6 @@ export function Social() {
       <PageHeader
         titolo="Grafiche IG"
         sottotitolo="Crea e personalizza le foto per Instagram, poi scaricale o salvale sul Drive"
-        azioni={<InstagramOutlined style={{ fontSize: 24, color: 'var(--rosso)' }} />}
       />
 
       <div className={affianca ? 'social-griglia' : undefined}>

@@ -5,6 +5,7 @@
  * html2canvas, che non risolve le variabili CSS.
  */
 import type { Giocatore, Partita } from '../types'
+import { nomeGiocatoreBreve } from './format'
 
 /** Palette del crest, ripetuta nelle grafiche (niente var CSS per html2canvas). */
 export const TINTE = {
@@ -115,10 +116,10 @@ export function giornoNum(iso: string): string {
   return String(Number(g) || g)
 }
 
-/** Mappa id giocatore → "Cognome" (o nome se manca il cognome), per i marcatori. */
+/** Mappa id giocatore → "Cognome N.", per i marcatori delle grafiche. */
 export function mappaCognomi(giocatori: Giocatore[]): Record<string, string> {
   const m: Record<string, string> = {}
-  for (const g of giocatori) m[g.id] = g.cognome?.trim() || g.nome?.trim() || '—'
+  for (const g of giocatori) m[g.id] = nomeGiocatoreBreve(g)
   return m
 }
 

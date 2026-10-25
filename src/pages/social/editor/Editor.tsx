@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Stage, Layer, Rect, Line, Text as KText, Image as KImage, Circle, Transformer } from 'react-konva'
 import type Konva from 'konva'
-import { App, Button, Drawer, Dropdown, Grid, Tooltip, Upload } from 'antd'
+import { App, Button, Drawer, Dropdown, Tooltip, Upload } from 'antd'
 import {
   BgColorsOutlined,
   BorderOutlined,
@@ -178,8 +178,17 @@ export function Editor({
   onSalvaDrive?: (dataUrl: string) => Promise<void> | void
 }) {
   const { message } = App.useApp()
-  const screens = Grid.useBreakpoint()
-  const mobile = !screens.lg
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [larghezzaEditor, setLarghezzaEditor] = useState(0)
+  // Conta lo spazio effettivo dell’editor, non la larghezza dell’intera finestra.
+  const mobile = larghezzaEditor < 760
+  useLayoutEffect(() => {
+    const el = editorRef.current
+    if (!el) return
+    const observer = new ResizeObserver(([e]) => setLarghezzaEditor(e.contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   const W = input.formato.w
   const H = input.formato.h
 
@@ -760,7 +769,7 @@ export function Editor({
   )
 
   return (
-    <div className="ed-wrap">
+    <div ref={editorRef} className={mobile ? "ed-wrap ed-wrap-compatto" : "ed-wrap"}>
       {/* barra strumenti */}
       <div className="ed-toolbar">
         <Tooltip title="Annulla (Ctrl+Z)">

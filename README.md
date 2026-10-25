@@ -141,3 +141,63 @@ VITE_DRIVE_URL= npm run dev
 Così i dati restano nel browser: il login accetta qualsiasi password e le
 raccolte si possono precaricare da console con
 `localStorage.setItem('usriolunato:2026/27/giocatori', '[...]')`.
+
+## Sincronizzazione e ricevute dei Conti
+
+- All’avvio si attende la conferma della stagione e il caricamento di tutte le
+  17 tabelle da Drive prima di mostrare menu e comandi, anche con cache locale.
+  Se una tabella manca o contiene una risposta non valida, resta la schermata
+  di caricamento con **Riprova**. Immagini e documenti si caricano quando servono.
+  Gli aggiornamenti successivi avvengono senza bloccare il lavoro.
+
+- Le raccolte vengono rilette all'apertura, al rientro nella scheda/PWA,
+  quando torna la connessione e ogni **60 secondi** mentre l'app è visibile.
+  «Aggiorna» forza la lettura; lo stato indica l'ultimo aggiornamento completo.
+  L'elenco dell'archivio tesserati segue gli aggiornamenti quando si usa la Rosa o l'Archivio.
+- Apps Script non offre una socket in questa architettura: è polling, quindi
+  le modifiche fatte da altri dispositivi non compaiono istantaneamente.
+  Non occorrono servizi aggiuntivi o modifiche allo script per la rilettura.
+- Le risposte remote non sovrascrivono raccolte modificate durante la lettura,
+  con scritture in corso o fallite. In caso di errore usare **Riprova salvataggio**
+  prima di chiudere l'app o cambiare stagione: la coda di recupero vive nella
+  sessione, non è una coda offline permanente. Modifiche contemporanee allo
+  stesso record da dispositivi diversi restano soggette all'ultima scrittura.
+- Ogni movimento può avere fino a **10 ricevute** (immagini/PDF, massimo 10 MB
+  ciascuna), da fotocamera o file. Le foto sono ridimensionate e i file salvati
+  tramite l'azione `upload` già usata per le spese condivise. I metadati sono
+  incorporati nel movimento, per mantenere il collegamento tra stagioni.
+  Scollegare un allegato non elimina il documento originale dal Drive.
+- **Esporta PDF** apre filtri indipendenti, inizializzati da quelli della lista:
+  periodo inclusivo, ricerca, tipo, stato, categoria, controparte, anno/mese,
+  importo e presenza di ricevute. Si possono vedere l'anteprima, scaricare il
+  PDF o aprirlo per stamparlo. Il netto riguarda solo i saldati selezionati;
+  crediti e debiti ancora aperti sono riepilogati separatamente.
+- Su mobile i grafici dei conti sono richiusi inizialmente per dare priorità
+  ai movimenti; desktop e tablet mantengono i controlli adattabili.
+
+Verifiche locali (Node 24): `npm ci`, `npm test`, `npm run lint`, `npm run build`.
+
+Il controllo completo dell'interfaccia usa un Drive simulato e non scrive dati
+reali: `npx playwright install chromium`, poi `npm run test:browser`.
+Verifica caricamento ricevute, anteprima/download PDF, cinque larghezze,
+recupero dei salvataggi falliti, rientro in app e aggiornamento periodico.
+`npm run test:layout` controlla 20 schermate in entrambi i temi a 320, 390,
+768, 1024 e 1440 px, oltre a 56 finestre e 44 varianti di schede/editor.
+Verifica sforamenti, etichette dei pulsanti, titoli e dimensioni dell’editor.
+Le schermate e i PDF di prova sono temporanei in `/tmp/us-*`; in CI le
+schermate sono disabilitate, ma restano tutti i controlli geometrici.
+
+
+## Prestazioni
+
+- Panoramica, grafici dei Conti ed esportazione PDF si caricano quando servono.
+  Su telefono, i grafici richiusi non scaricano Recharts finché non vengono aperti.
+- Foto e documenti dei tesserati si aggiornano entrando in Rosa/Archivio:
+  nessuna lettura o miniatura dell'archivio mentre si lavora nei Conti.
+- Un refresh con dati invariati conserva le liste e non invalida il contesto
+  dei dati: evita di rifare calcoli, grafici e scritture della cache locale.
+- I Conti mostrano 50 righe alla volta (paginazione desktop, Mostra altri su
+  mobile). Ricerca, filtri, saldi e PDF continuano a usare tutti i movimenti.
+- Il test prestazionale usa 300 movimenti, controlla il caricamento differito,
+  verifica che la riapertura con cache aspetti il Drive e che i successivi
+  aggiornamenti non blocchino i comandi. Non misura la latenza del backend Google reale.

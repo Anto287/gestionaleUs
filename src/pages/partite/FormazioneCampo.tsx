@@ -4,6 +4,7 @@ import { DeleteOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons'
 import { ErbaCampo, posizioneSlot } from '../../components/ErbaCampo'
 import { RUOLO_BY_CODE, areaHex } from '../../ruoli'
 import { MODULI } from '../../lib/formazione'
+import { nomeGiocatoreBreve } from '../../lib/format'
 import { isGiocatore } from '../../lib/categoria'
 import { sommaEventi } from '../../lib/partita'
 import {
@@ -73,7 +74,7 @@ export function FormazioneCampo({
   const byId = new Map(rosa.map((g) => [g.id, g]))
   const cognome = (id: string) => {
     const g = byId.get(id)
-    return g ? g.cognome || g.nome : 'Ex tesserato'
+    return nomeGiocatoreBreve(g, 'Ex tesserato')
   }
   const nomeIntero = (id: string) => {
     const g = byId.get(id)
@@ -312,7 +313,10 @@ export function FormazioneCampo({
         <Space size={6}>
           <Select
             size="small"
-            style={{ width: 104 }}
+            aria-label="Modulo della partita"
+            showSearch
+            optionFilterProp="label"
+            style={{ width: 140 }}
             value={modulo.id}
             options={MODULI.map((m) => ({ value: m.id, label: m.label }))}
             onChange={(id) => salva(cambiaModulo(f, moduloDa(id), rosa))}
@@ -375,7 +379,7 @@ export function FormazioneCampo({
                   </span>
                   <span className="token-nome">{cognome(titolare)}</span>
                   {catena.slice(1).map((c) => (
-                    <span key={c.id} className="pt-entrato">
+                    <span key={c.id} className="pt-entrato" title={nomeIntero(c.id)}>
                       <span className="pt-freccia entra">▲</span>
                       {cognome(c.id)}
                       {minutoTesto(c.minuto)}

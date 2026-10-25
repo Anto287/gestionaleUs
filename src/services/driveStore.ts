@@ -75,9 +75,9 @@ export interface DocMeta {
 
 // --- copia locale delle raccolte ---
 //
-// Ogni lettura riuscita lascia una copia nel browser: alla riapertura l'app
-// parte da lì (subito, anche con la rete del campo) e intanto rilegge dal
-// Drive in sottofondo. È solo una copia: la verità resta sul Drive.
+// Ogni lettura riuscita lascia una copia nel browser, usata per confrontare
+// gli aggiornamenti e conservare le liste invariate. La cache non sblocca
+// l’avvio: prima di accedere si attendono tutte le tabelle dal Drive.
 
 const CACHE_DATI = '__dati/'
 
@@ -135,7 +135,8 @@ export async function list<T>(collection: string, season: string): Promise<T[]> 
   await attendiScritture()
   // lettura via POST: la chiave resta nel corpo, fuori dall'URL
   const data = await post({ action: 'list', collection, season: seasonKey(season) })
-  return (data.items ?? []) as T[]
+  if (!Array.isArray(data.items)) throw new Error('Il Drive non ha restituito la tabella richiesta')
+  return data.items as T[]
 }
 
 export interface Richiesta {
@@ -170,7 +171,9 @@ export async function listAll(
     throw new Error(data.error || 'Errore Drive')
   }
   const liste = (data.liste ?? []) as Array<{ collection: string; items?: unknown[] }>
-  return Object.fromEntries(liste.map((l) => [l.collection, l.items ?? []]))
+  const raccolte: Record<string, unknown[]> = {}
+  for (const l of liste) if (Array.isArray(l.items)) raccolte[l.collection] = l.items
+  return raccolte
 }
 
 // --- scrittura (serializzata per evitare corse) ---
@@ -202,9 +205,12 @@ export function attendiScritture(): Promise<void> {
 async function callDrive(body: Record<string, unknown>) {
   const res = await fetch(DRIVE_URL, {
     method: 'POST',
+    cache: 'no-store',
+    signal: AbortSignal.timeout(45_000),
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body),
   })
+  if (!res.ok) throw new Error(`Drive non disponibile (${res.status})`)
   return res.json()
 }
 

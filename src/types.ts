@@ -300,6 +300,8 @@ export interface VoceMagazzino {
 
 /** Un movimento di cassa: entrata o uscita, saldato o ancora aperto. */
 export interface Movimento {
+  /** Metadati incorporati: il collegamento resta valido anche cambiando stagione. */
+  allegati?: Documento[]
   id: string
   data: string
   descrizione: string

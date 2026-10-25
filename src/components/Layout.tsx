@@ -1,13 +1,25 @@
 import { createElement, Suspense, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Layout as AntLayout, Menu, Button, Drawer, Grid, Typography } from 'antd'
-import { LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import {
+  Layout as AntLayout,
+  Menu,
+  Button,
+  Drawer,
+  Grid,
+  Typography,
+} from 'antd'
+import {
+  LogoutOutlined,
+  MenuOutlined,
+  MoonOutlined,
+  SunOutlined,
+} from '@ant-design/icons'
 import { config } from '../config'
 import { navItems } from '../nav'
 import { useAuth } from '../auth/AuthContext'
 import { useSeason } from '../season/SeasonContext'
 import { useTema } from '../theme/TemaProvider'
-import { DataProvider } from '../data/DataProvider'
+import { DataProvider, DataFeedback } from '../data/DataProvider'
 import { ArchivioProvider } from '../data/ArchivioProvider'
 import { PalloneSpinner } from './PalloneSpinner'
 
@@ -27,27 +39,36 @@ function Brand() {
   const { attiva } = useSeason()
   return (
     <div className="brand">
-      <img className="brand-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt={config.clubName} />
+      <img
+        className="brand-logo"
+        src={`${import.meta.env.BASE_URL}logo.png`}
+        alt={config.clubName}
+      />
       <Text className="brand-season">Stagione {attiva}</Text>
     </div>
   )
 }
 
 export function Layout() {
+  const { attiva } = useSeason()
+  return <DataProvider key={attiva}><LayoutPronto /></DataProvider>
+}
+
+function LayoutPronto() {
   const { esci } = useAuth()
   const { tema, alterna } = useTema()
-  const { attiva } = useSeason()
   const navigate = useNavigate()
   const location = useLocation()
   const screens = Grid.useBreakpoint()
   const [drawer, setDrawer] = useState(false)
 
   const isDesktop = screens.lg
+  const sezione = navItems.find((n) => n.to !== '/' && (location.pathname === n.to || location.pathname.startsWith(n.to + '/'))) ?? navItems[0]
 
   const menu = (
     <Menu
       mode="inline"
-      selectedKeys={[location.pathname]}
+      selectedKeys={[sezione.to]}
       items={navItems.map((item) => ({
         key: item.to,
         icon: createElement(item.icon),
@@ -94,7 +115,10 @@ export function Layout() {
           onClose={() => setDrawer(false)}
           width={252}
           // stesso colore della sidebar (in scuro l'elevated di antd stona)
-          styles={{ body: { padding: 0 }, content: { background: 'var(--cartoncino)' } }}
+          styles={{
+            body: { padding: 0 },
+            content: { background: 'var(--cartoncino)' },
+          }}
           className="app-drawer"
         >
           {sidebarContent}
@@ -104,30 +128,49 @@ export function Layout() {
       <AntLayout>
         {!isDesktop && (
           <Header className="app-topbar">
-            <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawer(true)} />
-            <img className="topbar-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              aria-label="Apri menu"
+              onClick={() => setDrawer(true)}
+            />
+            <img
+              className="topbar-logo"
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt=""
+            />
             <span className="topbar-title">
-              {navItems.find((n) => n.to === location.pathname)?.label ?? config.clubName}
+              {sezione.label}
             </span>
             <Button
               type="text"
               style={{ marginLeft: 'auto' }}
               icon={tema === 'scuro' ? <SunOutlined /> : <MoonOutlined />}
               onClick={alterna}
-              aria-label={tema === 'scuro' ? 'Passa al tema chiaro' : 'Passa al tema scuro'}
+              aria-label={
+                tema === 'scuro'
+                  ? 'Passa al tema chiaro'
+                  : 'Passa al tema scuro'
+              }
             />
           </Header>
         )}
         <Content className="app-content">
-          <DataProvider key={attiva}>
-            <ArchivioProvider>
+          <DataFeedback />
+            <ArchivioProvider
+              attivo={
+                location.pathname === '/archivio' ||
+                location.pathname === '/rosa' ||
+                location.pathname.startsWith('/rosa/')
+              }
+            >
               <div className="app-container">
                 <Suspense fallback={<PaginaInArrivo />}>
                   <Outlet />
                 </Suspense>
               </div>
             </ArchivioProvider>
-          </DataProvider>
+
         </Content>
       </AntLayout>
     </AntLayout>

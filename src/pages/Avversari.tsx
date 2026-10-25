@@ -58,7 +58,7 @@ export function Avversari() {
           <Text type="secondary" style={{ fontSize: 13 }}>
             Dalle partite di questa stagione, ancora senza scheda:
           </Text>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <div className="avv-da-creare" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {mancanti.map((nome) => (
               <Button key={nome} size="small" icon={<PlusOutlined />} onClick={() => crea(nome)}>
                 {nome}

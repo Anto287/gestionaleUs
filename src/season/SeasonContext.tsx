@@ -27,9 +27,8 @@ function ordina(stagioni: string[]): string[] {
  * condiviso tra tutti. Il provider lo carica all'avvio e lo aggiorna sul
  * Drive a ogni cambio/creazione/eliminazione.
  *
- * Se il browser ha ancora l'elenco dell'ultima volta si parte da quello,
- * senza schermata d'attesa: la rilettura dal Drive va avanti in sottofondo
- * e corregge il tiro se nel frattempo è cambiato qualcosa.
+ * Anche con una copia locale si aspetta la conferma del Drive: l’app
+ * deve aprire la stagione aggiornata prima di caricarne tutte le tabelle.
  */
 export function SeasonProvider({ children }: { children: ReactNode }) {
   const { esci } = useAuth()
@@ -38,15 +37,14 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
     const c = store.seasonsConfigCache()
     return c ? { stagioni: ordina(c.stagioni), attiva: c.attiva || c.stagioni[0] } : null
   })
-  const [stato, setStato] = useState<'loading' | 'ready' | 'error'>(cfg ? 'ready' : 'loading')
+  const [stato, setStato] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errore, setErrore] = useState('')
   const [tentativo, setTentativo] = useState(0)
 
   useEffect(() => {
     let annullato = false
-    // con l'elenco della volta scorsa in mano non si torna allo spinner:
-    // si rilegge e basta
-    setStato((s) => (s === 'ready' ? s : 'loading'))
+    // L’avvio non usa l’elenco in cache finché Drive non lo conferma.
+    setStato('loading')
     setErrore('')
     ;(async () => {
       try {
@@ -73,8 +71,8 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (!annullato) {
           setErrore(String((e as Error)?.message || e))
-          // se l'elenco della volta scorsa c'è già, si continua con quello
-          setStato((s) => (s === 'ready' ? s : 'error'))
+          // Niente accesso con una stagione potenzialmente superata.
+          setStato('error')
         }
       }
     })()
