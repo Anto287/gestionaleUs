@@ -11,6 +11,7 @@
  */
 
 import type { PSM, Worker } from 'tesseract.js'
+import { leggiMrz } from './scansione'
 
 export interface Lettura {
   testo: string
@@ -43,7 +44,11 @@ function worker(): Promise<Worker> {
 export async function chiudiLettore(): Promise<void> {
   const w = workerInCorso
   workerInCorso = null
-  if (w) await (await w).terminate().catch(() => {})
+  try {
+    if (w) await (await w).terminate()
+  } catch {
+    // Anche il caricamento del worker può essere fallito.
+  }
 }
 
 /**
@@ -94,6 +99,8 @@ async function prepara(file: Blob, gradi: number): Promise<HTMLCanvasElement> {
 
 async function riconosci(canvas: HTMLCanvasElement): Promise<Lettura> {
   const w = await worker()
+  // I documenti hanno campi su più colonne: non sono una pagina di testo.
+  await w.setParameters({ tessedit_pageseg_mode: '11' as PSM })
   const { data } = await w.recognize(canvas)
   return { testo: data.text ?? '', fiducia: data.confidence ?? 0 }
 }
@@ -114,7 +121,7 @@ async function riconosciMrz(canvas: HTMLCanvasElement): Promise<string> {
     const { data } = await w.recognize(canvas)
     return data.text ?? ''
   } finally {
-    await w.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: '3' as PSM })
+    await w.setParameters({ tessedit_char_whitelist: '', tessedit_pageseg_mode: '11' as PSM })
   }
 }
 
@@ -146,7 +153,7 @@ export async function leggiFoto(
     let tela = await prepara(file, 0)
     let migliore = await riconosci(tela)
     if (migliore.fiducia < 60) {
-      for (const gradi of [90, 270]) {
+      for (const gradi of [90, 270, 180]) {
         onAvanzamento(`Provo a girare la foto (${gradi}°)`, 0)
         const prova = await prepara(file, gradi)
         const lettura = await riconosci(prova)
@@ -157,11 +164,14 @@ export async function leggiFoto(
         if (migliore.fiducia >= 60) break
       }
     }
-    // l'MRZ si riconosce già dalla prima lettura: righe lunghe piene di «<» (o di K/« che li sostituiscono)
-    if (opzioni.mrz && /<{2,}|[<K«]{4,}|ITA[<K«]/.test(migliore.testo)) {
+    // Prova sempre il codice: l'OCR generale può perdere tutti i simboli «<».
+    if (opzioni.mrz) {
       onAvanzamento('Leggo il codice in basso', 0)
       const codice = await riconosciMrz(parteBassa(tela))
-      migliore = { ...migliore, testo: `${migliore.testo}\n${codice}` }
+      // Una foto già ritagliata sul codice non va ritagliata una seconda volta.
+      const completo = leggiMrz(codice)?.valido ? '' : await riconosciMrz(tela)
+      const letture = leggiMrz(completo)?.valido ? [completo, codice] : [codice, completo]
+      migliore = { ...migliore, testo: [...letture, migliore.testo].join('\n') }
     }
     return migliore
   } finally {

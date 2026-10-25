@@ -2576,13 +2576,33 @@ body {
   gap: 14px;
 }
 .scansione-tipo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 6px;
+  width: 100%;
 }
-/* icona sopra e nome sotto: tre voci stanno in riga anche sul telefono */
-.scansione-tipo .ant-segmented-item-label {
+/* Celle stabili, senza il cursore animato che cambiava misura sui telefoni. */
+.scansione-tipo .ant-radio-button-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 76px;
+  height: auto;
+  padding: 8px 4px;
   white-space: normal;
   line-height: 1.2;
-  padding-block: 8px;
+  text-align: center;
+}
+.scansione-consigli {
+  display: grid;
+}
+.scansione-consigli .scansione-consiglio {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+.scansione-consigli .scansione-consiglio.attivo {
+  visibility: visible;
 }
 .scansione-tipo-opt {
   display: inline-flex;

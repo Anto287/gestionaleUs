@@ -145,7 +145,8 @@ export function maiuscoleNome(testo: string): string {
 /** Ripulisce un nome letto: solo lettere, apostrofi e spazi; via le etichette inglesi rimaste attaccate. */
 function pulisciNome(testo: string): string | undefined {
   const t = testo
-    .replace(/\b(SURNAME|NAME|NOME|COGNOME|GIVEN|NAMES?)\b/gi, ' ')
+    .split(/\b(?:COGNOME|SURNAME|NOME|GIVEN\s+NAMES?|NASCITA|BIRTH|SESSO|SEX|CITTADINANZA|NATIONALITY|SCADENZA|EXPIRY)\b/i)[0]
+    .replace(/\b(NAME|GIVEN|NAMES?)\b/gi, ' ')
     .replace(/[^\p{L}'’\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -169,13 +170,15 @@ function valoreEtichetta(elenco: string[], etichetta: RegExp, non?: RegExp): str
     const r = elenco[i]
     const m = r.match(etichetta)
     if (!m || (non && non.test(r))) continue
-    const resto = r.slice((m.index ?? 0) + m[0].length).replace(/^[\s/:.,-]*(SURNAME|NAME|GIVEN NAMES?)?[\s/:.,-]*/i, '')
+    const resto = r.slice((m.index ?? 0) + m[0].length)
+      .replace(/^[\s/:.,-]+/, '')
+      .replace(/^(?:SURNAME|GIVEN\s+NAMES?|NAMES?)\b[\s/:.,-]*/i, '')
     const sulPosto = pulisciNome(resto)
     if (sulPosto) return sulPosto
     for (let j = i + 1; j < Math.min(i + 3, elenco.length); j++) {
       // la riga dopo non deve essere a sua volta un'etichetta
       if (/COGNOME|SURNAME|NASCITA|BIRTH|SESSO|SEX|CITTADIN|NATIONALITY|SCADENZA|EXPIRY|EMISSIONE|ISSUE|STATURA|HEIGHT|\bNOME\b|\bNAME\b/i.test(elenco[j]))
-        continue
+        break
       const dopo = pulisciNome(elenco[j])
       if (dopo) return dopo
     }
@@ -297,7 +300,7 @@ export function leggiMrz(testo: string): Mrz | null {
   }
   if (!r1 && !r2 && !r3) return null
 
-  const out: Mrz = { valido: true }
+  const out: Mrz = { valido: !!r1 && !!r2 }
   if (r1) {
     const grezzo = r1.slice(5, 14)
     const ctrl = r1[14] ?? ''
@@ -359,7 +362,7 @@ export function leggiCartaIdentita(testo: string): DatiLetti {
 
   const elenco = righe(testo)
   out.cognome ??= valoreEtichetta(elenco, /COGNOME|SURNAME/i)
-  out.nome ??= valoreEtichetta(elenco, /(?<!COG)\bNOME\b|(?<!SUR)\bNAME\b/i, /COGNOME|SURNAME/i)
+  out.nome ??= valoreEtichetta(elenco, /(?<!COG)\bNOME\b|\bGIVEN\s+NAMES?\b|(?<!SUR)\bNAMES?\b/i)
 
   const date = trovaDate(testo, 'nascita')
   out.nascita ??= dataDopo(testo, /NASCITA|BIRTH|NAT[OA]\s+IL/, date, 120)?.iso
@@ -387,16 +390,19 @@ export function leggiCartaIdentita(testo: string): DatiLetti {
 
 /** Le righe della patente che cominciano col numero del campo: "4b. 01/01/2030". */
 function campoPatente(elenco: string[], numero: string): string | undefined {
-  const re = new RegExp(`^\\W{0,2}${numero}\\s*[.,:;]\\s*(.+)$`, 'i')
-  for (const r of elenco) {
-    const m = r.match(re)
-    if (m) return m[1].trim()
-  }
-  // l'OCR a volte stacca il numero ("4b" e la data su due colonne): cerca anche a metà riga
-  const dentro = new RegExp(`(?:^|\\s)${numero}\\s*[.,:;]\\s*(\\S.+)$`, 'i')
-  for (const r of elenco) {
-    const m = r.match(dentro)
-    if (m) return m[1].trim()
+  // L'OCR può separare numero e valore su due righe, perdere il punto,
+  // oppure unire 4a e 4b sulla stessa riga.
+  const re = new RegExp(`(?:^|\\s)${numero}(?:\\s*[.,:;]\\s*|\\s+|$)`, 'i')
+  const prossimoCampo = /(?:^|\s)(?:[1-9]|4\s?[a-cb8])(?:\s*[.,:;]\s*|\s+|$)/i
+  for (let i = 0; i < elenco.length; i++) {
+    const m = re.exec(elenco[i])
+    if (!m) continue
+    let valore = elenco[i].slice(m.index + m[0].length)
+    if (!valore && i + 1 < elenco.length && (!prossimoCampo.test(elenco[i + 1]) || trovaDate(elenco[i + 1]).some((d) => d.pos === 0))) valore = elenco[i + 1]
+    // I campi successivi non fanno parte del nome o del numero di documento.
+    const fine = valore.search(/\s+(?:4\s?[a-cb8]|[1-9])\s*[.,:;](?:\s|$)/i)
+    if (fine >= 0) valore = valore.slice(0, fine)
+    if (valore.trim()) return valore.trim()
   }
   return undefined
 }

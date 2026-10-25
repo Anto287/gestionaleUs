@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Alert, App, Button, Collapse, Form, Input, Modal, Progress, Segmented, Select, Space, Typography } from 'antd'
+import { Alert, App, Button, Collapse, Form, Input, Modal, Progress, Radio, Select, Space, Typography } from 'antd'
 import {
   CameraOutlined,
   CloseOutlined,
@@ -91,7 +91,7 @@ export function ScansionaDocumento({
   const { items, add, update } = useCollection<Giocatore>('giocatori')
   const [form] = Form.useForm<Campi>()
   const valoriForm = Form.useWatch([], form) as Partial<Campi> | undefined
-  const [tipo, setTipo] = useState<TipoDocumento>('visita')
+  const [tipo, setTipo] = useState<TipoDocumento>(giocatore ? 'visita' : 'identita')
   const [foto, setFoto] = useState<Foto[]>([])
   const [avanzamento, setAvanzamento] = useState<{ fase: string; percento: number } | null>(null)
   const [scelto, setScelto] = useState<string | undefined>(giocatore?.id)
@@ -99,6 +99,9 @@ export function ScansionaDocumento({
   const inputCamera = useRef<HTMLInputElement>(null)
   const inputGalleria = useRef<HTMLInputElement>(null)
   const inLettura = useRef(false)
+  const aperto = useRef(open)
+  const generazione = useRef(0)
+  const campiModificati = useRef(new Set<keyof Campi>())
 
   const tesserati = useMemo(
     () => [...items].sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`)),
@@ -114,29 +117,50 @@ export function ScansionaDocumento({
   const daPersona = scelto && scelto !== NUOVO ? items.find((g) => g.id === scelto) : undefined
   const nuovo = scelto === NUOVO
 
+  useEffect(() => {
+    aperto.current = open
+    if (!open) generazione.current++
+  }, [open])
+
+  useEffect(() => () => {
+    aperto.current = false
+    generazione.current++
+    if (!inLettura.current) void chiudiLettore()
+  }, [])
+
   // coda di lettura: una foto alla volta (il lettore è uno solo)
   useEffect(() => {
-    if (inLettura.current) return
+    if (!open || inLettura.current) return
     const prossima = foto.find((f) => f.stato === 'attesa')
     if (!prossima) return
     inLettura.current = true
     setFoto((fs) => fs.map((f) => (f.id === prossima.id ? { ...f, stato: 'lettura' } : f)))
-    leggiFoto(prossima.file, (fase, percento) => setAvanzamento({ fase, percento }), { mrz: tipo === 'identita' })
-      .then((r) =>
-        setFoto((fs) =>
-          fs.map((f) => (f.id === prossima.id ? { ...f, stato: 'fatta', testo: r.testo, fiducia: r.fiducia } : f)),
-        ),
-      )
-      .catch((e) => {
+    const versione = generazione.current
+    void (async () => {
+      try {
+        const r = await leggiFoto(prossima.file, (fase, percento) => {
+          if (versione === generazione.current) setAvanzamento({ fase, percento })
+        }, { mrz: tipo === 'identita' })
+        if (versione !== generazione.current) return
+        setFoto((fs) => fs.map((f) =>
+          f.id === prossima.id ? { ...f, stato: 'fatta', testo: r.testo, fiducia: r.fiducia } : f,
+        ))
+      } catch (e) {
+        if (versione !== generazione.current) return
         console.error(e)
-        message.error('Non riesco a leggere la foto. Serve la connessione la prima volta (si scarica il lettore).')
-        setFoto((fs) => fs.map((f) => (f.id === prossima.id ? { ...f, stato: 'errore' } : f)))
-      })
-      .finally(() => {
+        message.error('Non riesco a leggere la foto. Riprova con una foto JPG o PNG nitida; al primo uso serve la connessione per scaricare il lettore.')
+        setFoto((fs) => fs.map((f) => f.id === prossima.id ? { ...f, stato: 'errore' } : f))
+      } finally {
         inLettura.current = false
-        setAvanzamento(null)
-      })
-  }, [foto, message, tipo])
+        if (versione === generazione.current) setAvanzamento(null)
+        // Riattiva la coda anche se il tipo è cambiato durante la lettura.
+        setFoto((fs) => [...fs])
+        // Terminare Tesseract durante recognize può lasciare la promessa
+        // in sospeso: libera il worker solo quando la lettura è finita.
+        if (!aperto.current) void chiudiLettore()
+      }
+    })()
+  }, [foto, message, tipo, open])
 
   // a ogni lettura nuova: riconosce il tesserato e riempie i campi non toccati a mano
   useEffect(() => {
@@ -148,8 +172,11 @@ export function ScansionaDocumento({
     const valori: Partial<Campi> = {}
     for (const k of Object.keys(NOMI_CAMPO) as (keyof Campi)[]) {
       const v = letti[k as keyof DatiLetti]
-      if (typeof v === 'string' && !form.isFieldTouched(k)) (valori as Record<string, string>)[k] = v
+      if (!campiModificati.current.has(k))
+        (valori as Record<string, string | undefined>)[k] = typeof v === 'string' ? v : undefined
     }
+    // setFieldsValue marca i campi come touched in Ant Design: le modifiche
+    // dell'utente sono tracciate separatamente da quelle automatiche.
     form.setFieldsValue(valori)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [letti])
@@ -172,15 +199,24 @@ export function ScansionaDocumento({
   }
 
   function cambiaTipo(t: TipoDocumento) {
+    if (t === tipo) return
+    generazione.current++
     setTipo(t)
-    // i campi del tipo di prima non valgono più: si ripartono dalla lettura
+    setAvanzamento(null)
+    campiModificati.current.clear()
+    if (!giocatore && !sceltoAMano.current) setScelto(undefined)
     form.resetFields()
+    // Cambia anche la modalità OCR: il testo letto come certificato potrebbe
+    // non contenere il codice MRZ necessario per la carta d'identità.
+    setFoto((fs) => fs.map((f) => ({ ...f, stato: 'attesa', testo: undefined, fiducia: undefined })))
   }
 
   function azzera() {
+    generazione.current++
+    campiModificati.current.clear()
     foto.forEach((f) => URL.revokeObjectURL(f.url))
     setFoto([])
-    setTipo('visita')
+    setTipo(giocatore ? 'visita' : 'identita')
     setScelto(giocatore?.id)
     sceltoAMano.current = !!giocatore
     setAvanzamento(null)
@@ -244,7 +280,6 @@ export function ScansionaDocumento({
     return pezzi.length ? pezzi.join(' · ') : undefined
   }
 
-  const tipoInfo = TIPI.find((t) => t.value === tipo)!
   const leggendo = foto.some((f) => f.stato === 'attesa' || f.stato === 'lettura')
   const nienteLetto = fatte.length > 0 && letti && !Object.keys(NOMI_CAMPO).some((k) => letti[k as keyof DatiLetti])
   // con la scheda già scelta, avvisa se il documento sembra di qualcun altro
@@ -260,7 +295,7 @@ export function ScansionaDocumento({
       onCancel={onClose}
       afterClose={() => {
         azzera()
-        void chiudiLettore()
+        if (!inLettura.current) void chiudiLettore()
       }}
       maskClosable={false}
       destroyOnHidden
@@ -276,11 +311,13 @@ export function ScansionaDocumento({
       <div className="scansione">
         <div>
           <Text strong>Che documento è?</Text>
-          <Segmented
-            block
+          <Radio.Group
+            aria-label="Tipo di documento"
             className="scansione-tipo"
+            optionType="button"
+            buttonStyle="solid"
             value={tipo}
-            onChange={(t) => cambiaTipo(t as TipoDocumento)}
+            onChange={(e) => cambiaTipo(e.target.value as TipoDocumento)}
             options={TIPI.map((t) => ({
               value: t.value,
               label: (
@@ -291,9 +328,18 @@ export function ScansionaDocumento({
               ),
             }))}
           />
-          <Text type="secondary" className="scansione-consiglio">
-            {tipoInfo.consiglio}
-          </Text>
+          <div className="scansione-consigli">
+            {TIPI.map((t) => (
+              <Text
+                key={t.value}
+                type="secondary"
+                aria-hidden={t.value !== tipo}
+                className={`scansione-consiglio${t.value === tipo ? ' attivo' : ''}`}
+              >
+                {t.consiglio}
+              </Text>
+            ))}
+          </div>
         </div>
 
         <input
@@ -414,7 +460,15 @@ export function ScansionaDocumento({
               </div>
             )}
 
-            <Form form={form} layout="vertical" requiredMark={false} className="scansione-campi">
+            <Form
+              form={form}
+              layout="vertical"
+              requiredMark={false}
+              className="scansione-campi"
+              onValuesChange={(cambiati) => {
+                for (const k of Object.keys(cambiati) as (keyof Campi)[]) campiModificati.current.add(k)
+              }}
+            >
               {nuovo && (
                 <div className="scansione-riga">
                   <Form.Item label="Nome" name="nome" rules={[{ required: true, whitespace: true, message: 'Inserisci il nome' }]}>
