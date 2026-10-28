@@ -140,7 +140,7 @@ try {
     const compressed = await preparaScontrino(file)
     const standard = await preparaCaricamento(file)
     const decoded = await createImageBitmap(await (await fetch(`data:image/jpeg;base64,${compressed.dataBase64}`)).blob())
-    if (decoded.width !== 900 || decoded.height !== 1200) throw Error('Dimensioni scontrino errate')
+    if (decoded.width > 750 || decoded.height > 1000 || decoded.width < 1 || decoded.height < 1) throw Error('Dimensioni scontrino errate')
     decoded.close()
     if (compressed.dataBase64.length >= standard.dataBase64.length) throw Error('Compressione scontrino non riduce il peso')
     const pdf = new File(['%PDF-test'], 'ricevuta.pdf', { type: 'application/pdf' })

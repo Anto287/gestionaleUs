@@ -73,13 +73,13 @@ export async function preparaLogo(file: File, latoMax = 512): Promise<LogoPronto
 export async function preparaScontrino(file: File): Promise<DaCaricare> {
   if (!file.type.startsWith('image/')) return comSuoi(file)
   try {
-    return await comprimiImmagine(file, 1200, 0.15)
+    return await comprimiImmagine(file, 1000, 0.10, true)
   } catch {
     throw new Error('Impossibile comprimere la foto dello scontrino. Prova con una foto JPEG o PNG.')
   }
 }
 
-async function comprimiImmagine(file: File, latoMax: number, qualita: number): Promise<DaCaricare> {
+async function comprimiImmagine(file: File, latoMax: number, qualita: number, scontrino = false): Promise<DaCaricare> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
     const scala = Math.min(1, latoMax / Math.max(bitmap.width, bitmap.height))
@@ -91,7 +91,30 @@ async function comprimiImmagine(file: File, latoMax: number, qualita: number): P
     ctx.fillStyle = '#fff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    const dataUrl = canvas.toDataURL('image/jpeg', qualita)
+    if (scontrino) {
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      for (let i = 0; i < pixels.data.length; i += 4) {
+        const grigio = Math.round(0.299 * pixels.data[i] + 0.587 * pixels.data[i + 1] + 0.114 * pixels.data[i + 2])
+        pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = grigio
+      }
+      ctx.putImageData(pixels, 0, 0)
+    }
+    let dataUrl = canvas.toDataURL('image/jpeg', qualita)
+    // Obiettivo 40 KB: riduce ancora solo le foto che ne hanno bisogno.
+    // Conserva almeno 640 px sul lato lungo, senza ingrandire gli originali piccoli.
+    while (scontrino && (dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75 > 40 * 1024 && Math.max(canvas.width, canvas.height) > 640) {
+      const reduced = document.createElement('canvas')
+      const ratio = Math.max(640, Math.round(Math.max(canvas.width, canvas.height) * 0.8)) / Math.max(canvas.width, canvas.height)
+      reduced.width = Math.max(1, Math.round(canvas.width * ratio))
+      reduced.height = Math.max(1, Math.round(canvas.height * ratio))
+      const context = reduced.getContext('2d')
+      if (!context) throw new Error('Canvas non disponibile')
+      context.drawImage(canvas, 0, 0, reduced.width, reduced.height)
+      canvas.width = reduced.width
+      canvas.height = reduced.height
+      ctx.drawImage(reduced, 0, 0)
+      dataUrl = canvas.toDataURL('image/jpeg', qualita)
+    }
     if (!dataUrl.startsWith('data:image/jpeg;base64,')) throw new Error('Compressione JPEG non disponibile')
     return { dataBase64: dataUrl.split(',')[1] ?? '', tipo: 'image/jpeg', estensione: '.jpg' }
   } finally {

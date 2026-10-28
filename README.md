@@ -213,7 +213,8 @@ pubblicare su Google è in [docs/apps-script.gs](docs/apps-script.gs), con gli
 ID e la chiave applicativa da ripristinare nella configurazione iniziale.
 
 Le foto degli scontrini nei Conti sono convertite in JPEG prima dell'invio,
-con lato massimo 1200 px e qualità 15%. L'anteprima apre il file compresso
+in scala di grigi, con lato massimo 1000 px e qualità 10%. Se superano
+40 KB vengono ridotte ancora, fino a 640 px sul lato lungo. L'anteprima apre il file compresso
 salvato su Drive. I PDF restano invariati; la compressione degli altri
 documenti mantiene le impostazioni precedenti. Se una foto non è decodificabile,
 il salvataggio viene fermato senza inviare l'originale pesante.
