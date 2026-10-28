@@ -59,7 +59,7 @@ try {
   })
   await page.waitForTimeout(500)
   assert.equal(await page.getByRole('button', { name: 'Sposta elementi', exact: true }).count(), 0)
-  await page.locator('.ed-toolbar').getByRole('button', { name: 'Testo', exact: true }).click()
+  await page.locator('.ed-toolbar').getByRole('button', { name: /Testo$/ }).click()
   await canvas.evaluate((c) => window.scrollTo(0, window.scrollY + c.getBoundingClientRect().top - 100))
   await page.waitForTimeout(300)
   const box = await canvas.boundingBox()
