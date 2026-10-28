@@ -2955,7 +2955,6 @@ body {
 .ant-picker-content {
   overscroll-behavior: contain;
 }
-.ed-stage-scroll, .ed-stage-scroll canvas { touch-action: pan-y pinch-zoom; }
-.ed-stage-move, .ed-stage-move canvas { touch-action: none; }
-.ed-touch-mode { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 12px; }
-.ed-touch-mode span { color: var(--testo-2); font-size: 13px; line-height: 1.4; flex: 1 1 180px; }
+
+/* Sulla tela il gesto touch modifica la grafica; fuori dalla tela scorre la pagina. */
+.ed-stage-wrap, .ed-stage-wrap canvas { touch-action: none; }
