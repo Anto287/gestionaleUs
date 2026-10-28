@@ -80,6 +80,7 @@ function useImg(src?: string) {
 
 /** Eventi comuni ai nodi selezionabili della tela. */
 interface EventiNodo {
+  preventDefault: boolean
   draggable: boolean
   onMouseDown: () => void
   onTap: () => void
@@ -198,6 +199,7 @@ export function Editor({
   const [salvando, setSalvando] = useState(false)
   const [perCanva, setPerCanva] = useState(false)
   const [drawer, setDrawer] = useState<'el' | 'design' | null>(null)
+  const [spostaTouch, setSpostaTouch] = useState(false)
   const [guide, setGuide] = useState<{ v?: number; h?: number }>({})
 
   const stageRef = useRef<Konva.Stage>(null)
@@ -265,6 +267,8 @@ export function Editor({
     () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches,
     [],
   )
+
+  const interazioneTela = !touch || spostaTouch
 
   // attende i font, poi disegna (così i testi hanno le misure giuste).
   // document.fonts.ready da solo non basta: ogni variante (es. Barlow 700)
@@ -342,10 +346,10 @@ export function Editor({
   useEffect(() => {
     const tr = trRef.current
     if (!tr) return
-    const node = selId ? nodiRef.current.get(selId) : null
+    const node = interazioneTela && selId ? nodiRef.current.get(selId) : null
     tr.nodes(node ? [node] : [])
     tr.getLayer()?.batchDraw()
-  }, [selId, scena.elementi, fontEpoca])
+  }, [selId, scena.elementi, fontEpoca, interazioneTela])
 
   const selElemento = scena.elementi.find((e) => e.id === selId)
 
@@ -531,7 +535,7 @@ export function Editor({
   }
 
   function allineaSel(a: Allineamento) {
-    const node = selId ? nodiRef.current.get(selId) : null
+    const node = interazioneTela && selId ? nodiRef.current.get(selId) : null
     const stage = stageRef.current
     if (!selElemento || !node || !stage) return
     const box = node.getClientRect({ relativeTo: stage as unknown as Konva.Container })
@@ -722,7 +726,8 @@ export function Editor({
   }
 
   const eventiNodo = (el: Elemento): EventiNodo => ({
-    draggable: true,
+    draggable: interazioneTela,
+    preventDefault: interazioneTela,
     onMouseDown: () => setSelId(el.id),
     onTap: () => setSelId(el.id),
     onDblClick: () => setSelId(el.id),
@@ -770,6 +775,12 @@ export function Editor({
 
   return (
     <div ref={editorRef} className={mobile ? "ed-wrap ed-wrap-compatto" : "ed-wrap"}>
+      {touch && <div className="ed-touch-mode">
+        <Button aria-pressed={spostaTouch} type={spostaTouch ? 'primary' : 'default'} onClick={() => setSpostaTouch((value) => !value)}>
+          {spostaTouch ? 'Fine spostamento' : 'Sposta elementi'}
+        </Button>
+        <span>{spostaTouch ? 'Trascina sulla grafica per spostare gli elementi.' : 'Scorri sulla grafica per muovere la pagina. Tocca per selezionare.'}</span>
+      </div>}
       {/* barra strumenti */}
       <div className="ed-toolbar">
         <Tooltip title="Annulla (Ctrl+Z)">
@@ -838,10 +849,11 @@ export function Editor({
           )}
 
           {/* tela */}
-          <div ref={wrapRef} className="ed-stage-wrap">
+          <div ref={wrapRef} className={`ed-stage-wrap${touch ? interazioneTela ? ' ed-stage-move' : ' ed-stage-scroll' : ''}`}>
             {pronto && larg > 0 && (
               <Stage
                 ref={stageRef}
+                preventDefault={interazioneTela}
                 width={W * scala}
                 height={H * scala}
                 scaleX={scala}
@@ -863,7 +875,8 @@ export function Editor({
                         y={fotoBox.y}
                         width={fotoBox.dw}
                         height={fotoBox.dh}
-                        draggable
+                        draggable={interazioneTela}
+                        preventDefault={interazioneTela}
                         onDragEnd={(e) =>
                           patchSfondo({
                             x: e.target.x() - (W - fotoBox.dw) / 2,

@@ -13,9 +13,11 @@ import { AuthProvider } from './auth/AuthContext'
 import { TemaProvider } from './theme/TemaProvider'
 import './styles/global.css'
 import App from './App.tsx'
+import { avviaScrollPopup } from './lib/scrollPopup'
 import { avviaSenzaAutofill } from './lib/senzaAutofill'
 
 avviaSenzaAutofill()
+avviaScrollPopup()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
