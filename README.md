@@ -162,8 +162,8 @@ raccolte si possono precaricare da console con
   prima di chiudere l'app o cambiare stagione: la coda di recupero vive nella
   sessione, non è una coda offline permanente. Modifiche contemporanee allo
   stesso record da dispositivi diversi restano soggette all'ultima scrittura.
-- Ogni movimento può avere fino a **10 ricevute** (immagini/PDF, massimo 10 MB
-  ciascuna), da fotocamera o file. Le foto sono ridimensionate e i file salvati
+- Ogni movimento può avere fino a **10 ricevute** (foto anche oltre 10 MB; PDF massimo 10 MB
+  ciascuno), da fotocamera o file. Le foto sono ridimensionate e i file salvati
   tramite l'azione `upload` già usata per le spese condivise. I metadati sono
   incorporati nel movimento, per mantenere il collegamento tra stagioni.
   Scollegare un allegato non elimina il documento originale dal Drive.

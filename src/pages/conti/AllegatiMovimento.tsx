@@ -35,7 +35,7 @@ export function AllegatiMovimento({
     for (const f of Array.from(lista ?? [])) {
       if (!f.type.startsWith('image/') && f.type !== 'application/pdf') {
         message.error(`${f.name}: scegli un’immagine o un PDF.`)
-      } else if (f.size > 10 * 1024 * 1024) {
+      } else if (f.type === 'application/pdf' && f.size > 10 * 1024 * 1024) {
         message.error(`${f.name}: dimensione massima 10 MB.`)
       } else if (
         allegati.length + files.length + validi.length >=
@@ -53,8 +53,8 @@ export function AllegatiMovimento({
     <div className="ricevute">
       <Typography.Text strong>Scontrini e ricevute</Typography.Text>
       <Typography.Paragraph type="secondary">
-        Immagini o PDF, fino a 10 MB per file. Quando salvi, le foto vengono
-        compresse a qualità molto bassa per caricarle più velocemente.
+        Foto anche oltre 10 MB: vengono compresse sul dispositivo prima
+        del caricamento. PDF fino a 10 MB.
         L’anteprima mostra il file compresso.
       </Typography.Paragraph>
       <input

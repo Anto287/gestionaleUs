@@ -156,12 +156,18 @@ try {
     .getByPlaceholder(spaced('es. Sponsor, Pagamento campo…'))
     .fill('Scontrino di prova')
   await page.getByLabel(spaced('Importo (€)'), { exact: true }).fill('12,30')
+  await page.locator('input[type=file][multiple]').setInputFiles({
+    name: 'troppo-grande.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(11 * 1024 * 1024),
+  })
+  await page.getByText('troppo-grande.pdf: dimensione massima 10 MB.', { exact: true }).waitFor()
   await page
     .locator('input[type=file][multiple]')
     .setInputFiles({
       name: 'ricevuta.png',
       mimeType: 'image/png',
-      buffer: Buffer.from(receipt.png, 'base64'),
+      // PNG valido con dati finali ignorati dal decoder: supera 10 MB senza
+      // richiedere una foto enorme in memoria al test.
+      buffer: Buffer.concat([Buffer.from(receipt.png, 'base64'), Buffer.alloc(11 * 1024 * 1024)]),
     })
   await page.getByRole('button', { name: /Registra/ }).click()
   await page.getByText('5 di 5 movimenti').waitFor()
@@ -170,6 +176,7 @@ try {
       ?.length
   )
     throw Error('Receipt not persisted')
+  if (docs.length !== 1) throw Error('Il PDF oltre il limite non deve essere caricato')
   if (docs[0].tipo !== 'image/jpeg' || docs[0].dataUrl !== `data:image/jpeg;base64,${receipt.compressed}`) throw Error('Il file caricato non corrisponde al JPEG compresso')
   console.log(JSON.stringify({ receiptStandardBytes: receipt.standardBytes, receiptCompressedBytes: receipt.compressedBytes }))
   // Preview and download printable PDF.
