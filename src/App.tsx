@@ -4,6 +4,8 @@ import { useAuth } from './auth/AuthContext'
 import { SeasonProvider } from './season/SeasonContext'
 import { Gate } from './components/Gate'
 import { Layout } from './components/Layout'
+import { ManagementProvider } from './management/ManagementContext'
+const Management = lazy(() => import('./pages/Management').then((m) => ({ default: m.Management })))
 const Dashboard = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
 )
@@ -85,33 +87,36 @@ function App() {
   if (!sbloccato) return <Gate />
 
   return (
-    <SeasonProvider>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/rosa" element={<Rosa />} />
-          <Route path="/rosa/:id" element={<GiocatoreDettaglio />} />
-          <Route path="/allenamenti" element={<Allenamenti />} />
-          <Route path="/partite" element={<Partite />} />
-          <Route path="/partite/:id" element={<PartitaDettaglio />} />
-          <Route path="/avversari" element={<Avversari />} />
-          <Route path="/avversari/:id" element={<AvversarioDettaglio />} />
-          <Route path="/formazione" element={<Formazione />} />
-          <Route path="/piazzati" element={<Piazzati />} />
-          <Route path="/calendario" element={<Calendario />} />
-          <Route path="/statistiche" element={<Statistiche />} />
-          <Route path="/distinte" element={<Distinte />} />
-          <Route path="/social" element={<Social />} />
-          <Route path="/magazzino" element={<Magazzino />} />
-          <Route path="/conti" element={<Conti />} />
-          <Route path="/spese" element={<Spese />} />
-          <Route path="/documenti" element={<Documenti />} />
-          <Route path="/archivio" element={<Archivio />} />
-          <Route path="/impostazioni" element={<Impostazioni />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </SeasonProvider>
+    <ManagementProvider>
+      <SeasonProvider>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/rosa" element={<Rosa />} />
+            <Route path="/rosa/:id" element={<GiocatoreDettaglio />} />
+            <Route path="/allenamenti" element={<Allenamenti />} />
+            <Route path="/partite" element={<Partite />} />
+            <Route path="/partite/:id" element={<PartitaDettaglio />} />
+            <Route path="/avversari" element={<Avversari />} />
+            <Route path="/avversari/:id" element={<AvversarioDettaglio />} />
+            <Route path="/formazione" element={<Formazione />} />
+            <Route path="/piazzati" element={<Piazzati />} />
+            <Route path="/calendario" element={<Calendario />} />
+            <Route path="/statistiche" element={<Statistiche />} />
+            <Route path="/distinte" element={<Distinte />} />
+            <Route path="/social" element={<Social />} />
+            <Route path="/magazzino" element={<Magazzino />} />
+            <Route path="/conti" element={<Conti />} />
+            <Route path="/spese" element={<Spese />} />
+            <Route path="/documenti" element={<Documenti />} />
+            <Route path="/archivio" element={<Archivio />} />
+            <Route path="/management" element={<Management />} />
+            <Route path="/impostazioni" element={<Impostazioni />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </SeasonProvider>
+    </ManagementProvider>
   )
 }
 

@@ -10,12 +10,14 @@ import {
 } from 'antd'
 import {
   LogoutOutlined,
+  SafetyOutlined,
   MenuOutlined,
   MoonOutlined,
   SunOutlined,
 } from '@ant-design/icons'
 import { config } from '../config'
 import { navItems } from '../nav'
+import { useManagement } from '../management/useManagement'
 import { useAuth } from '../auth/AuthContext'
 import { useSeason } from '../season/SeasonContext'
 import { useTema } from '../theme/TemaProvider'
@@ -36,11 +38,16 @@ function PaginaInArrivo() {
 }
 
 function Brand() {
+  const { logoClick } = useManagement()
   const { attiva } = useSeason()
   return (
     <div className="brand">
       <img
         className="brand-logo"
+        onClick={logoClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); logoClick() } }}
         src={`${import.meta.env.BASE_URL}logo.png`}
         alt={config.clubName}
       />
@@ -56,6 +63,8 @@ export function Layout() {
 
 function LayoutPronto() {
   const { esci } = useAuth()
+  const { sbloccato: admin, logoClick, chiudi } = useManagement()
+  const navigation = admin ? [...navItems, { to: '/management', label: 'Management', icon: SafetyOutlined, descrizione: 'Dispositivi e attività' }] : navItems
   const { tema, alterna } = useTema()
   const navigate = useNavigate()
   const location = useLocation()
@@ -63,13 +72,13 @@ function LayoutPronto() {
   const [drawer, setDrawer] = useState(false)
 
   const isDesktop = screens.lg
-  const sezione = navItems.find((n) => n.to !== '/' && (location.pathname === n.to || location.pathname.startsWith(n.to + '/'))) ?? navItems[0]
+  const sezione = navigation.find((n) => n.to !== '/' && (location.pathname === n.to || location.pathname.startsWith(n.to + '/'))) ?? navItems[0]
 
   const menu = (
     <Menu
       mode="inline"
       selectedKeys={[sezione.to]}
-      items={navItems.map((item) => ({
+      items={navigation.map((item) => ({
         key: item.to,
         icon: createElement(item.icon),
         label: item.label,
@@ -95,7 +104,7 @@ function LayoutPronto() {
         >
           {tema === 'scuro' ? 'Tema chiaro' : 'Tema scuro'}
         </Button>
-        <Button block icon={<LogoutOutlined />} onClick={esci}>
+        <Button block icon={<LogoutOutlined />} onClick={() => { chiudi(); void esci() }}>
           Esci
         </Button>
       </div>
@@ -136,6 +145,11 @@ function LayoutPronto() {
             />
             <img
               className="topbar-logo"
+              onClick={logoClick}
+              role="button"
+              tabIndex={0}
+              aria-label={config.clubName}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); logoClick() } }}
               src={`${import.meta.env.BASE_URL}logo.png`}
               alt=""
             />

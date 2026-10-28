@@ -259,17 +259,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const scritture = useRef(
     new Map<
       string,
-      { c: string; task: () => Promise<unknown>; fallita: boolean }
+      { c: string; task: (requestId: string) => Promise<unknown>; requestId: string; fallita: boolean }
     >(),
   )
   const [riprovando, setRiprovando] = useState(false)
   const scrivi = useCallback(
-    async (c: string, id: string, task: () => Promise<unknown>) => {
+    async (c: string, id: string, task: (requestId: string) => Promise<unknown>, requestId: string = crypto.randomUUID()) => {
       const key = `${c}/${id}`
-      const voce = { c, task, fallita: false }
+      const voce = { c, task, requestId, fallita: false }
       scritture.current.set(key, voce)
       try {
-        await guard.current.write(c, task)
+        await guard.current.write(c, () => task(requestId))
         if (scritture.current.get(key) === voce) scritture.current.delete(key)
       } catch (e) {
         voce.fallita = true
@@ -288,7 +288,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await store.attendiScritture()
       for (const [key, voce] of [...scritture.current]) {
         if (voce.fallita && scritture.current.get(key) === voce) {
-          await scrivi(voce.c, key.slice(voce.c.length + 1), voce.task)
+          await scrivi(voce.c, key.slice(voce.c.length + 1), voce.task, voce.requestId)
         }
       }
     } finally {
@@ -317,7 +317,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const record = { ...item, id } as { id: string }
       segnaModifica(c)
       cambia(c, (items) => [...items, record])
-      void scrivi(c, id, () => store.put(c, seasonDi(c, attiva), record))
+      void scrivi(c, id, (requestId) => store.put(c, seasonDi(c, attiva), record, requestId))
       return id
     },
     [attiva, scrivi, segnaModifica, cambia],
@@ -331,7 +331,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cambia(c, applica)
       const aggiornato = (dataRef.current[c] ?? []).find((i) => i.id === id)
       if (aggiornato)
-        void scrivi(c, id, () => store.put(c, seasonDi(c, attiva), aggiornato))
+        void scrivi(c, id, (requestId) => store.put(c, seasonDi(c, attiva), aggiornato, requestId))
     },
     [attiva, scrivi, segnaModifica, cambia],
   )
@@ -340,7 +340,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (c: string, id: string) => {
       segnaModifica(c)
       cambia(c, (items) => items.filter((i) => i.id !== id))
-      void scrivi(c, id, () => store.remove(c, seasonDi(c, attiva), id))
+      void scrivi(c, id, (requestId) => store.remove(c, seasonDi(c, attiva), id, requestId))
     },
     [attiva, scrivi, segnaModifica, cambia],
   )
@@ -352,7 +352,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cambia(c, (items) =>
         items.some((i) => i.id === item.id) ? items : [...items, item],
       )
-      void scrivi(c, item.id, () => store.put(c, seasonDi(c, attiva), item))
+      void scrivi(c, item.id, (requestId) => store.put(c, seasonDi(c, attiva), item, requestId))
     },
     [attiva, scrivi, segnaModifica, cambia],
   )
@@ -363,8 +363,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cambia(c, () => items)
       for (const [key, voce] of scritture.current)
         if (voce.c === c) scritture.current.delete(key)
-      void scrivi(c, '*', () =>
-        store.replaceAll(c, seasonDi(c, attiva), dataRef.current[c] ?? []),
+      const records = dataRef.current[c] ?? []
+      void scrivi(c, '*', (requestId) =>
+        store.replaceAll(c, seasonDi(c, attiva), records, requestId),
       )
     },
     [attiva, scrivi, segnaModifica, cambia],

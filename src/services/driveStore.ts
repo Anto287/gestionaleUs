@@ -6,6 +6,7 @@
  * browser (localStorage), così l'app resta usabile anche senza Drive.
  */
 import { config } from '../config'
+import { getDevice } from '../management/device'
 import {
   keysWithPrefix,
   loadCollection,
@@ -202,13 +203,13 @@ export function attendiScritture(): Promise<void> {
  * risposta così com'è, senza lanciare: usato da chi deve leggerne l'esito
  * (es. testSecret / seasonsConfig).
  */
-async function callDrive(body: Record<string, unknown>) {
+export async function callDrive(body: Record<string, unknown>) {
   const res = await fetch(DRIVE_URL, {
     method: 'POST',
     cache: 'no-store',
     signal: AbortSignal.timeout(45_000),
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, device: getDevice() }),
   })
   if (!res.ok) throw new Error(`Drive non disponibile (${res.status})`)
   return res.json()
@@ -216,12 +217,12 @@ async function callDrive(body: Record<string, unknown>) {
 
 /** Come callDrive, ma inietta la chiave salvata e lancia se il Drive risponde con errore. */
 async function post(body: Record<string, unknown>) {
-  const data = await callDrive({ ...body, secret: getSecret() })
+  const data = await callDrive({ requestId: crypto.randomUUID(), ...body, secret: getSecret() })
   if (!data.ok) throw new Error(data.error || 'Errore Drive')
   return data
 }
 
-export function put<T extends { id: string }>(collection: string, season: string, record: T): Promise<T> {
+export function put<T extends { id: string }>(collection: string, season: string, record: T, requestId: string = crypto.randomUUID()): Promise<T> {
   if (!DRIVE_URL) {
     const k = lsKey(collection, season)
     const arr = loadCollection<T>(k)
@@ -232,7 +233,7 @@ export function put<T extends { id: string }>(collection: string, season: string
     return Promise.resolve(record)
   }
   return inCoda(async () => {
-    await post({ action: 'put', collection, season: seasonKey(season), record })
+    await post({ action: 'put', collection, season: seasonKey(season), record, requestId })
     return record
   })
 }
@@ -242,24 +243,25 @@ export function replaceAll<T extends { id: string }>(
   collection: string,
   season: string,
   records: T[],
+  requestId: string = crypto.randomUUID(),
 ): Promise<void> {
   if (!DRIVE_URL) {
     saveCollection(lsKey(collection, season), records)
     return Promise.resolve()
   }
   return inCoda(async () => {
-    await post({ action: 'putAll', collection, season: seasonKey(season), records })
+    await post({ action: 'putAll', collection, season: seasonKey(season), records, requestId })
   })
 }
 
-export function remove(collection: string, season: string, id: string): Promise<void> {
+export function remove(collection: string, season: string, id: string, requestId: string = crypto.randomUUID()): Promise<void> {
   if (!DRIVE_URL) {
     const k = lsKey(collection, season)
     saveCollection(k, loadCollection<{ id: string }>(k).filter((x) => x.id !== id))
     return Promise.resolve()
   }
   return inCoda(async () => {
-    await post({ action: 'delete', collection, season: seasonKey(season), id })
+    await post({ action: 'delete', collection, season: seasonKey(season), id, requestId })
   })
 }
 
@@ -353,7 +355,7 @@ export function createDoc(
 export function renameDoc(fileId: string, nome: string): Promise<void> {
   if (!DRIVE_URL) return Promise.resolve()
   return inCoda(async () => {
-    const data = await callDrive({ action: 'renameDoc', id: fileId, nome, secret: getSecret() })
+    const data = await callDrive({ action: 'renameDoc', id: fileId, nome, requestId: crypto.randomUUID(), secret: getSecret() })
     if (!data.ok && !String(data.error || '').toLowerCase().includes('sconosciuta')) {
       throw new Error(data.error || 'Errore Drive')
     }

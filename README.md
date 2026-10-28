@@ -201,3 +201,13 @@ schermate sono disabilitate, ma restano tutti i controlli geometrici.
 - Il test prestazionale usa 300 movimenti, controlla il caricamento differito,
   verifica che la riapertura con cache aspetti il Drive e che i successivi
   aggiornamenti non blocchino i comandi. Non misura la latenza del backend Google reale.
+
+## Management riservato
+
+Cinque click sul logo entro tre secondi aprono l’accesso amministratore.
+La sezione offre dispositivi rinominabili e registro condiviso delle attività,
+con filtri, dettagli delle modifiche e sessioni da 30 minuti. Richiede lo
+script aggiornato e la proprietà script `ADMIN_PASSWORD` (almeno 12 caratteri).
+Vedi [attivazione, uso e limiti](docs/management.md). Il codice completo da
+pubblicare su Google è in [docs/apps-script.gs](docs/apps-script.gs), con gli
+ID e la chiave applicativa da ripristinare nella configurazione iniziale.
