@@ -390,7 +390,7 @@ export function Conti() {
       const caricati = [...allegati]
       for (let i = 0; i < files.length; i++) {
         const nome = `Scontrino-${v.data}-${crypto.randomUUID()}`
-        const meta = await uploadDoc(files[i], nome)
+        const meta = await uploadDoc(files[i], nome, 'scontrino')
         if (!meta) {
           // Conserva i caricamenti riusciti: riprovando non si duplicano.
           setFiles(files.slice(i))

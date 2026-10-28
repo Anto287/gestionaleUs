@@ -53,8 +53,9 @@ export function AllegatiMovimento({
     <div className="ricevute">
       <Typography.Text strong>Scontrini e ricevute</Typography.Text>
       <Typography.Paragraph type="secondary">
-        Immagini o PDF, fino a 10 MB per file. I file vengono caricati quando
-        salvi.
+        Immagini o PDF, fino a 10 MB per file. Quando salvi, le foto vengono
+        compresse a qualità molto bassa per caricarle più velocemente.
+        L’anteprima mostra il file compresso.
       </Typography.Paragraph>
       <input
         ref={foto}

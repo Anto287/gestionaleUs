@@ -68,25 +68,41 @@ export async function preparaLogo(file: File, latoMax = 512): Promise<LogoPronto
   }
 }
 
+/** JPEG molto leggero per le ricevute dei Conti. Non invia originali pesanti
+ * se la decodifica fallisce: il chiamante mostra l'errore e conserva il file. */
+export async function preparaScontrino(file: File): Promise<DaCaricare> {
+  if (!file.type.startsWith('image/')) return comSuoi(file)
+  try {
+    return await comprimiImmagine(file, 1200, 0.15)
+  } catch {
+    throw new Error('Impossibile comprimere la foto dello scontrino. Prova con una foto JPEG o PNG.')
+  }
+}
+
+async function comprimiImmagine(file: File, latoMax: number, qualita: number): Promise<DaCaricare> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  try {
+    const scala = Math.min(1, latoMax / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scala))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scala))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas non disponibile')
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const dataUrl = canvas.toDataURL('image/jpeg', qualita)
+    if (!dataUrl.startsWith('data:image/jpeg;base64,')) throw new Error('Compressione JPEG non disponibile')
+    return { dataBase64: dataUrl.split(',')[1] ?? '', tipo: 'image/jpeg', estensione: '.jpg' }
+  } finally {
+    bitmap.close()
+  }
+}
+
 export async function preparaCaricamento(file: File, latoMax = 2000): Promise<DaCaricare> {
   if (!file.type.startsWith('image/')) return comSuoi(file)
   try {
-    // 'from-image': tiene conto dell'orientamento EXIF, altrimenti le foto
-    // scattate in verticale arrivano coricate
-    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
-    const scala = Math.min(1, latoMax / Math.max(bitmap.width, bitmap.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(bitmap.width * scala)
-    canvas.height = Math.round(bitmap.height * scala)
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      bitmap.close()
-      return comSuoi(file)
-    }
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    bitmap.close()
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-    return { dataBase64: dataUrl.split(',')[1] ?? '', tipo: 'image/jpeg', estensione: '.jpg' }
+    return await comprimiImmagine(file, latoMax, 0.85)
   } catch {
     return comSuoi(file)
   }

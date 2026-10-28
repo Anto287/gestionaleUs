@@ -17,7 +17,7 @@ import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
 import { COLLECTIONS } from '../collections'
 import * as store from '../services/driveStore'
-import { preparaCaricamento } from '../lib/immagine'
+import { preparaCaricamento, preparaScontrino } from '../lib/immagine'
 import { useChiudiUndoAlloSmontaggio } from '../hooks/useEliminaUndo'
 
 type Store = Record<string, Array<{ id: string }>>
@@ -35,6 +35,7 @@ interface DataValue {
   uploadDoc: (
     file: File,
     nomeBase?: string,
+    profilo?: 'scontrino',
   ) => Promise<store.DocMeta | undefined>
   /** Crea un Documento o Foglio Google nella cartella Documenti. */
   createDoc: (
@@ -383,9 +384,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     async (
       file: File,
       nomeBase?: string,
+      profilo?: 'scontrino',
     ): Promise<store.DocMeta | undefined> => {
       try {
-        const pronto = nomeBase
+        const pronto = profilo === 'scontrino'
+          ? await preparaScontrino(file)
+          : nomeBase
           ? await preparaCaricamento(file)
           : {
               dataBase64: await leggiBase64(file),

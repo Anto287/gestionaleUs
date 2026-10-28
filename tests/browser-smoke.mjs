@@ -126,6 +126,30 @@ try {
   ]
   await page.getByRole('button', { name: /Aggiorna/ }).click()
   await page.getByText('4 di 4 movimenti').waitFor()
+  // Una foto grande viene ridotta prima della richiesta; PDF e errori restano distinti.
+  const receipt = await page.evaluate(async () => {
+    const { preparaScontrino, preparaCaricamento } = await import('/src/lib/immagine.ts')
+    const canvas = document.createElement('canvas')
+    canvas.width = 2400; canvas.height = 3200
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 2400, 3200)
+    ctx.fillStyle = 'black'; ctx.font = '32px sans-serif'
+    for (let y = 50; y < 3200; y += 55) ctx.fillText(`Scontrino: articolo di prova ${y} - importo 12,30 euro`, 40, y)
+    const png = canvas.toDataURL('image/png').split(',')[1]
+    const file = new File([await (await fetch(`data:image/png;base64,${png}`)).blob()], 'ricevuta.png', { type: 'image/png' })
+    const compressed = await preparaScontrino(file)
+    const standard = await preparaCaricamento(file)
+    const decoded = await createImageBitmap(await (await fetch(`data:image/jpeg;base64,${compressed.dataBase64}`)).blob())
+    if (decoded.width !== 900 || decoded.height !== 1200) throw Error('Dimensioni scontrino errate')
+    decoded.close()
+    if (compressed.dataBase64.length >= standard.dataBase64.length) throw Error('Compressione scontrino non riduce il peso')
+    const pdf = new File(['%PDF-test'], 'ricevuta.pdf', { type: 'application/pdf' })
+    if ((await preparaScontrino(pdf)).dataBase64 !== btoa('%PDF-test')) throw Error('PDF alterato')
+    let rejected = false
+    try { await preparaScontrino(new File(['non immagine'], 'rotta.jpg', { type: 'image/jpeg' })) } catch { rejected = true }
+    if (!rejected) throw Error('Foto non comprimibile inviata come originale')
+    return { png, compressed: compressed.dataBase64, standardBytes: standard.dataBase64.length, compressedBytes: compressed.dataBase64.length }
+  })
   // Receipt upload and persistence in the movement.
   await page.getByRole('button', { name: /Nuovo movimento/ }).click()
   await page
@@ -137,10 +161,7 @@ try {
     .setInputFiles({
       name: 'ricevuta.png',
       mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aFCkAAAAASUVORK5CYII=',
-        'base64',
-      ),
+      buffer: Buffer.from(receipt.png, 'base64'),
     })
   await page.getByRole('button', { name: /Registra/ }).click()
   await page.getByText('5 di 5 movimenti').waitFor()
@@ -149,6 +170,8 @@ try {
       ?.length
   )
     throw Error('Receipt not persisted')
+  if (docs[0].tipo !== 'image/jpeg' || docs[0].dataUrl !== `data:image/jpeg;base64,${receipt.compressed}`) throw Error('Il file caricato non corrisponde al JPEG compresso')
+  console.log(JSON.stringify({ receiptStandardBytes: receipt.standardBytes, receiptCompressedBytes: receipt.compressedBytes }))
   // Preview and download printable PDF.
   await page.getByRole('button', { name: /Esporta PDF/ }).click()
   await page.getByRole('button', { name: /Genera PDF/ }).click()
