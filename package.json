@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --test tests/*.test.ts tests/management-script.test.mjs",
-    "test:browser": "node tests/startup-smoke.mjs && node tests/browser-smoke.mjs && node tests/performance-smoke.mjs",
+    "test:browser": "node tests/startup-smoke.mjs && node tests/browser-smoke.mjs && node tests/performance-smoke.mjs && node tests/management-browser.mjs",
     "test:layout": "node tests/layout-audit.mjs && node tests/overlays-audit.mjs && node tests/variants-audit.mjs",
     "test:management": "node tests/management-browser.mjs"
   },

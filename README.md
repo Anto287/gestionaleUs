@@ -206,7 +206,7 @@ schermate sono disabilitate, ma restano tutti i controlli geometrici.
 
 Cinque click sul logo entro tre secondi aprono l’accesso amministratore.
 La sezione offre dispositivi rinominabili e registro condiviso delle attività,
-con filtri, dettagli delle modifiche e sessioni da 30 minuti. Richiede lo
+con filtri, dettagli delle modifiche e accesso persistente fino alla disconnessione. Richiede lo
 script aggiornato e la proprietà script `ADMIN_PASSWORD` (almeno 12 caratteri).
 Vedi [attivazione, uso e limiti](docs/management.md). Il codice completo da
 pubblicare su Google è in [docs/apps-script.gs](docs/apps-script.gs), con gli

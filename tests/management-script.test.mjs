@@ -60,19 +60,23 @@ function setup() {
   const call = (body) => JSON.parse(context.route({ secret: 'app-test-secret', device, ...body }).getContent())
   const login = () => call({ action: 'managementLogin', password: 'admin-test-123456' })
   const logs = () => (ss.getSheetByName('Attivita')?.rows.slice(1) || []).map((r) => JSON.parse(r[1]))
-  return { context, call, login, logs, records, device, props, ss, writes: () => writes, advance: (ms) => { now += ms } }
+  return { context, call, login, logs, records, device, props, cache, ss, writes: () => writes, advance: (ms) => { now += ms } }
 }
 
-test('management: password separata, token obbligatorio, scadenza e revoca', () => {
+test('management: password separata, sessione persistente legata al browser e revoca', () => {
   const s = setup()
   assert.equal(s.call({ action: 'managementDevices' }).code, 'ADMIN_AUTH')
   assert.equal(s.call({ action: 'managementLogin', password: 'app-test-secret' }).ok, false)
   const session = s.login()
   assert.equal(session.ok, true)
   assert.equal(s.call({ action: 'managementDevices', adminToken: session.token }).devices.length, 1)
-  s.advance(1800001)
-  assert.equal(s.call({ action: 'managementDevices', adminToken: session.token }).code, 'ADMIN_AUTH')
+  s.advance(366 * 24 * 60 * 60 * 1000)
+  s.cache.clear()
+  assert.equal(s.call({ action: 'managementSession', adminToken: session.token }).persistent, true)
+  assert.equal(s.call({ action: 'managementDevices', adminToken: session.token, device: { id: randomUUID() } }).code, 'ADMIN_AUTH')
+  assert.equal(JSON.stringify([...s.props.values()]).includes(session.token), false, 'sul server solo hash del token')
   const next = s.login()
+  assert.equal(s.call({ action: 'managementDevices', adminToken: session.token }).code, 'ADMIN_AUTH', 'il nuovo accesso sostituisce il precedente sullo stesso browser')
   assert.equal(s.call({ action: 'managementLogout', adminToken: next.token }).ok, true)
   assert.equal(s.call({ action: 'managementDevices', adminToken: next.token }).code, 'ADMIN_AUTH')
 })

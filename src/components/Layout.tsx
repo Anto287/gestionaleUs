@@ -64,7 +64,7 @@ export function Layout() {
 function LayoutPronto() {
   const { esci } = useAuth()
   const { sbloccato: admin, logoClick, chiudi } = useManagement()
-  const navigation = admin ? [...navItems, { to: '/management', label: 'Management', icon: SafetyOutlined, descrizione: 'Dispositivi e attività' }] : navItems
+  const navigation = admin ? [navItems[0], { to: '/management', label: 'Management', icon: SafetyOutlined, descrizione: 'Dispositivi e attività' }, ...navItems.slice(1)] : navItems
   const { tema, alterna } = useTema()
   const navigate = useNavigate()
   const location = useLocation()

@@ -16,7 +16,7 @@ Lo script crea automaticamente un file **Management - U.S. Riolunato** nel Drive
 - Accedi normalmente all’app.
 - Fai **5 click o tocchi sul logo entro 3 secondi**. Funziona sul logo laterale desktop e sul logo della barra superiore mobile; da tastiera il logo riceve focus e accetta Invio o Spazio.
 - Inserisci la password amministratore. Compare la voce **Management** nel menu e si apre la pagina.
-- La sessione dura al massimo **30 minuti** e resta solo in memoria. Ricaricando la pagina devi sbloccarla di nuovo. Il pulsante **Chiudi Management** e l’uscita dall’app revocano la sessione sul server, quando la connessione è disponibile; in ogni caso il token scade automaticamente.
+- L’accesso resta attivo **fino alla disconnessione esplicita**, anche ricaricando la pagina o riaprendo l’app. La voce **Management** rimane nel menu, subito sotto **Panoramica**. Il pulsante **Disconnetti Management** e l’uscita dall’app cancellano il token da questo browser e lo revocano sul server, quando la connessione è disponibile. Le altre schede aperte nello stesso browser ricevono la disconnessione. Il token viene memorizzato nel browser; la password amministratore non viene salvata.
 - Dopo cinque password amministratore errate, i nuovi tentativi vengono bloccati per cinque minuti. Il limite è condiviso per il progetto.
 
 ## Dispositivi e attività
@@ -50,7 +50,9 @@ Lo storico inizia dall’attivazione dello script. Non include modifiche dirette
 
 L’identificativo distingue il browser/profilo, non certifica il computer fisico o la persona. Cancellando i dati del browser o usando un altro profilo compare un nuovo dispositivo. Non viene raccolto un fingerprint hardware. Il registro serve alla gestione quotidiana e non è un sistema forense non alterabile: il proprietario del Drive può comunque modificare il file.
 
-Le sessioni amministratore usano la cache di Apps Script: un’eventuale espulsione anticipata richiede semplicemente un nuovo accesso. Cambiare `ADMIN_PASSWORD` invalida anche i token già emessi.
+Le sessioni amministratore persistenti sono registrate nelle Proprietà script come `MANAGEMENT_SESSION_<id_dispositivo>`, conservando soltanto l’impronta del token e della password. Non usano la cache e non hanno una scadenza temporale. Ogni browser ha una sola sessione attiva: un nuovo login sostituisce il token precedente su quel browser. Cambiare `ADMIN_PASSWORD` invalida i token già emessi; cancellare la relativa proprietà revoca la sessione del dispositivo. Cancellando i dati del browser sarà necessario accedere di nuovo.
+
+Se provieni dalla versione con sessioni di 30 minuti, aggiorna nuovamente lo script e il deployment esistente mantenendo i tuoi ID, `SECRET` e `ADMIN_PASSWORD`, poi effettua un nuovo accesso Management. Il frontend segnala esplicitamente se lo script pubblicato non supporta ancora la persistenza.
 
 ## Verifica locale
 

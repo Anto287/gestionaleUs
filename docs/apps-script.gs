@@ -1073,7 +1073,6 @@ function autorizza() {
 // Impostare ADMIN_PASSWORD (almeno 12 caratteri) nelle Proprietà script.
 // Il file Management resta nel Drive privato del proprietario, fuori dalle
 // cartelle della società, per non ereditare eventuali condivisioni.
-var MGMT_SESSION_SECONDS = 1800;
 var MGMT_MUTATIONS = ['put', 'putAll', 'delete', 'upload', 'createDoc', 'renameDoc', 'uploadGrafica', 'setSeasons', 'archivioUpload', 'archivioDelete'];
 var mgmtLockHeld_ = false;
 
@@ -1147,13 +1146,17 @@ function mgmtTouch_(p) {
 function mgmtSession_(p) {
   var token = String(p.adminToken || ''), password = mgmtPassword_();
   if (!/^[a-f0-9-]{72}$/i.test(token) || password.length < 12) return false;
-  var raw = CacheService.getScriptCache().get('mgmt-session-' + mgmtDigest_(token));
+  var deviceId = mgmtDeviceId_(p);
+  if (deviceId === 'legacy') return false;
+  var raw = mgmtProps_().getProperty('MANAGEMENT_SESSION_' + deviceId);
   if (!raw) return false;
   var data = JSON.parse(raw);
-  return data.expiresAt > Date.now() && data.passwordHash === mgmtDigest_(password);
+  return data.tokenHash === mgmtDigest_(token) && data.passwordHash === mgmtDigest_(password);
 }
 function mgmtLogin_(p) {
   return withLock_(function () {
+    var deviceId = mgmtDeviceId_(p);
+    if (deviceId === 'legacy') return json({ ok: false, error: 'Aggiorna il frontend per identificare questo browser.' });
     var password = mgmtPassword_();
     if (password.length < 12) return json({ ok: false, error: 'Configura ADMIN_PASSWORD nelle Proprietà script (almeno 12 caratteri).' });
     var props = mgmtProps_(), attempts = JSON.parse(props.getProperty('MANAGEMENT_LOGIN_ATTEMPTS') || '{}');
@@ -1168,9 +1171,10 @@ function mgmtLogin_(p) {
     }
     props.deleteProperty('MANAGEMENT_LOGIN_ATTEMPTS');
     var token = Utilities.getUuid() + Utilities.getUuid();
-    CacheService.getScriptCache().put('mgmt-session-' + mgmtDigest_(token), JSON.stringify({ expiresAt: now + MGMT_SESSION_SECONDS * 1000, passwordHash: mgmtDigest_(password) }), MGMT_SESSION_SECONDS);
+    // Un solo token attivo per browser; conserva soltanto impronte, senza scadenza.
+    props.setProperty('MANAGEMENT_SESSION_' + deviceId, JSON.stringify({ tokenHash: mgmtDigest_(token), passwordHash: mgmtDigest_(password) }));
     mgmtSimpleEvent_(p, 'Accesso Management', 'management', 'riuscita');
-    return json({ ok: true, token: token, expiresIn: MGMT_SESSION_SECONDS });
+    return json({ ok: true, token: token, persistent: true });
   });
 }
 function mgmtSimpleEvent_(p, action, section, status) {
@@ -1333,11 +1337,15 @@ function route(p) {
     if (managementFile && String(p.id || '') === managementFile || /^(management|attivita|dispositivi|__)/i.test(String(p.collection || ''))) throw new Error('Operazione riservata');
     if (p.action === 'managementLogin') { mgmtTouch_(p); return mgmtLogin_(p); }
     if (String(p.action || '').indexOf('management') === 0) {
-      if (!mgmtSession_(p)) return json({ ok: false, code: 'ADMIN_AUTH', error: 'Sessione amministratore scaduta. Ripeti l’accesso dal logo.' });
+      if (!mgmtSession_(p)) return json({ ok: false, code: 'ADMIN_AUTH', error: 'Accesso Management revocato. Ripeti l’accesso dal logo.' });
       if (p.action === 'managementLogout') {
-        CacheService.getScriptCache().remove('mgmt-session-' + mgmtDigest_(p.adminToken));
-        return json({ ok: true });
+        return withLock_(function () {
+          // Un logout in ritardo non deve revocare un accesso più recente.
+          if (mgmtSession_(p)) mgmtProps_().deleteProperty('MANAGEMENT_SESSION_' + mgmtDeviceId_(p));
+          return json({ ok: true });
+        });
       }
+      if (p.action === 'managementSession') return json({ ok: true, persistent: true });
       if (p.action === 'managementDevices') return json({ ok: true, devices: mgmtDevices_() });
       if (p.action === 'managementActivities') return json(mgmtActivities_(p.filters));
       if (p.action === 'managementRenameDevice') return mgmtRename_(p);

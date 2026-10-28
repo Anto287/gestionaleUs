@@ -102,7 +102,7 @@ function ManagementPronto() {
   return <>
     <PageHeader titolo="Management" sottotitolo="Dispositivi e registro delle attività" azioni={<Space wrap>
       <Button icon={<ReloadOutlined />} loading={busy} onClick={() => setRefresh((n) => n + 1)}>Aggiorna</Button>
-      <Button icon={<LockOutlined />} onClick={chiudi}>Chiudi Management</Button>
+      <Button icon={<LockOutlined />} onClick={chiudi}>Disconnetti Management</Button>
     </Space>} />
     <div className="management-overview">
       <Text strong>{devices.length} {devices.length === 1 ? 'dispositivo registrato' : 'dispositivi registrati'}</Text>
@@ -125,6 +125,6 @@ function ManagementPronto() {
         ]} />
       </> },
     ]} />}
-    <Paragraph type="secondary" className="management-note">Lo storico parte dall’attivazione dello script aggiornato. Registra le operazioni passate dall’app; le modifiche dirette ai fogli Google e le esportazioni locali non sono incluse. La sessione amministratore scade dopo 30 minuti.</Paragraph>
+    <Paragraph type="secondary" className="management-note">Lo storico parte dall’attivazione dello script aggiornato. Registra le operazioni passate dall’app; le modifiche dirette ai fogli Google e le esportazioni locali non sono incluse. L’accesso al Management resta attivo su questo browser fino alla disconnessione.</Paragraph>
   </>
 }
