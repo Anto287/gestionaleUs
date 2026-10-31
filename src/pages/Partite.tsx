@@ -201,7 +201,7 @@ export function Partite() {
       sorter: (a: Partita, b: Partita) =>
         a.golFatti - a.golSubiti - (b.golFatti - b.golSubiti),
       render: (_: unknown, p: Partita) => {
-        if (inProgramma(p)) return <Tag color="gold">In programma</Tag>
+        if (inProgramma(p)) return <Tag color={p.rinviata ? "orange" : "gold"}>{p.rinviata ? "Rinviata" : "In programma"}</Tag>
         const e = esito(p)
         return (
           <span>
@@ -396,7 +396,7 @@ export function Partite() {
                     </div>
                     <div className="lista-card-meta">
                       {programma ? (
-                        <Tag color="gold">In programma</Tag>
+                        <Tag color={p.rinviata ? "orange" : "gold"}>{p.rinviata ? "Rinviata" : "In programma"}</Tag>
                       ) : (
                         <>
                           <span className="lista-card-num" style={{ fontSize: 16, color: 'var(--inchiostro)' }}>

@@ -565,3 +565,20 @@ export function archivioDelete(id: string): Promise<void> {
     await post({ action: 'archivioDelete', id })
   })
 }
+
+/** Scrittura con confronto revisione: una modifica vecchia non sovrascrive quella altrui. */
+export function putVersioned<T extends { id: string; revisione?: number }>(collection: string, record: T): Promise<T> {
+  const expectedRevision = record.revisione || 0
+  const next = { ...record, revisione: expectedRevision + 1 }
+  return inCoda(async () => {
+    if (!DRIVE_URL) {
+      const key = lsKey(collection, 'globale'), records = loadCollection<T>(key)
+      const previous = records.find(r => r.id === record.id)
+      if ((previous?.revisione || 0) !== expectedRevision) throw new Error('La riga è stata modificata da un’altra persona. Riaprila per vedere gli aggiornamenti.')
+      saveCollection(key, [...records.filter(r => r.id !== next.id), next])
+      return next
+    }
+    await post({ action: 'listaSalva', collection, record: next, expectedRevision })
+    return next
+  })
+}

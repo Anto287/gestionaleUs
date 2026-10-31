@@ -145,6 +145,7 @@ function caricaManifesto(): Promise<void> {
 
 const NOMI_KIND: Record<BuildInput['kind'], string> = {
   annuncio: 'Partita del giorno',
+  rinvio: 'Partita rinviata',
   risultato: 'Risultato',
   mese: 'Mese',
   formazione: 'Formazione',

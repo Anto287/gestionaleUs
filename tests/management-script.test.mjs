@@ -163,3 +163,79 @@ test('management: paginazione senza filtri e crescita del foglio oltre le righe 
   s.context.mgmtWrite_(sheet, 1001, randomUUID(), { activity: {} })
   assert.equal(sheet.getMaxRows(), 1500)
 })
+
+test('campionato: configurazione e importazione protette anche chiamando direttamente gli endpoint', () => {
+  const s = setup()
+  for (const action of ['managementCampionatoConfigura','managementCampionatoImporta','managementCampionatoAggiorna']) assert.equal(s.call({ action, season:'2026-27', dati:{} }).code,'ADMIN_AUTH')
+  assert.equal(s.call({action:'campionato',season:'2026-27'}).dati,null)
+  const session = s.login(), auth = { adminToken:session.token, season:'2026-27' }
+  assert.equal(s.call({...auth,action:'managementCampionatoConfigura',url:'https://standings.example.com/api',apiKey:'SECRET_API_TEST'}).ok,true)
+  assert.equal(s.props.get('CAMPIONATO_API_2026-27').includes('SECRET_API_TEST'),true)
+  for(const url of ['http://example.com','https://127.0.0.1/data','https://user:password@example.com/data','https://example.com:8080/','https://localhost/data']) assert.equal(s.call({...auth,action:'managementCampionatoConfigura',url}).ok,false,url)
+  assert.equal(s.call({...auth,action:'managementCampionatoImporta',dati:{titolo:'Girone B',classifica:[{squadra:'Riolunato',punti:12,giocate:5}],partite:[],apiKey:'NON PUBBLICARE'}}).ok,true)
+  const publicData = s.call({action:'campionato',season:'2026-27'})
+  assert.equal(publicData.dati.classifica[0].punti,12)
+  assert.equal(JSON.stringify(publicData).includes('SECRET_API_TEST'),false)
+  assert.equal(JSON.stringify(publicData).includes('NON PUBBLICARE'),false)
+  assert.equal(JSON.stringify(s.logs()).includes('SECRET_API_TEST'),false)
+  assert.equal(s.call({action:'campionato',season:'2025-26'}).dati,null)
+  assert.equal(s.call({...auth,action:'managementCampionatoConfigura',url:'https://other.example.com/api'}).ok,true)
+  assert.equal(JSON.parse(s.props.get('CAMPIONATO_API_2026-27')).apiKey,'','chiavi non inoltrate a un host diverso')
+})
+
+test('liste: due persone aggiungono righe indipendenti e una revisione vecchia non sovrascrive quella nuova', () => {
+  const s = setup(), other = {id:randomUUID()}, columns = [{id:'negozio',nome:'Negozio',tipo:'testo',obbligatoria:true},{id:'premio',nome:'Valore',tipo:'euro'}]
+  const save = (collection,record,expectedRevision=0,device=s.device) => s.call({action:'listaSalva',collection,record,expectedRevision,device,requestId:randomUUID()})
+  assert.equal(save('liste',{id:'tombola',nome:'Tombola',colonne:columns,revisione:1}).ok,true)
+  const row = {id:'r1',listaId:'tombola',valori:{negozio:'Bar',premio:50},revisione:1}
+  assert.equal(save('righeListe',row).ok,true)
+  assert.equal(save('righeListe',{...row,id:'r2',valori:{negozio:'Forno',premio:25}},0,other).ok,true)
+  assert.equal(s.records.get('righeListe/globale').length,2)
+  assert.equal(save('righeListe',{...row,valori:{negozio:'Bar',premio:75},revisione:2},1,other).ok,true)
+  assert.match(save('righeListe',{...row,valori:{negozio:'Bar',premio:30},revisione:2},1).error,/modificata/)
+  assert.equal(s.records.get('righeListe/globale')[0].valori.premio,75)
+  assert.equal(save('righeListe',{...row,id:'r3',valori:{premio:10}}).ok,false,'campi obbligatori sul server')
+  assert.equal(save('giocatori',row).ok,false)
+  const list = s.records.get('liste/globale')[0]
+  assert.equal(save('liste',{...list,archiviata:true,revisione:2},1).ok,true)
+  assert.equal(save('righeListe',{...row,id:'r3'}).ok,false,'lista archiviata')
+})
+
+test('liste: i retry con lo stesso requestId non duplicano righe e le righe eliminate non risorgono da editor vecchi', () => {
+  const s = setup()
+  const call = body => s.call({action:'listaSalva',expectedRevision:0,requestId:randomUUID(),...body})
+  assert.equal(call({collection:'liste',record:{id:'l',nome:'Lista',colonne:[{id:'n',nome:'Nome',tipo:'testo'}],revisione:1}}).ok,true)
+  const body = {collection:'righeListe',requestId:randomUUID(),record:{id:'r',listaId:'l',valori:{n:'Mario'},revisione:1}}
+  assert.equal(call(body).ok,true);assert.equal(call(body).ok,true)
+  assert.equal(s.records.get('righeListe/globale').length,1)
+  assert.equal(s.call({action:'delete',collection:'righeListe',season:'globale',id:'r',requestId:randomUUID()}).ok,true)
+  assert.equal(call({...body,requestId:randomUUID(),expectedRevision:1,record:{...body.record,revisione:2}}).ok,false)
+  assert.equal(s.records.get('righeListe/globale').length,0)
+})
+
+test('campionato: richieste al provider solo dal server, nessun redirect e snapshot valido conservato in caso di errore', () => {
+  const s = setup(), auth = { adminToken:s.login().token,season:'2026-27' }
+  assert.equal(s.call({...auth,action:'managementCampionatoConfigura',url:'https://standings.example.com/api',header:'X-API-Key',apiKey:'server-key'}).ok,true)
+  let code=200, payload=JSON.stringify({titolo:'Girone B',classifica:[{squadra:'Riolunato',punti:9,giocate:3}],partite:[]}), calls=0
+  s.context.UrlFetchApp={fetch:(url,options)=>{calls++;assert.equal(url,'https://standings.example.com/api');assert.equal(options.headers['X-API-Key'],'server-key');assert.equal(options.followRedirects,false);return {getResponseCode:()=>code,getContentText:()=>payload}}}
+  assert.equal(s.call({action:'managementCampionatoAggiorna',season:'2026-27'}).code,'ADMIN_AUTH')
+  assert.equal(calls,0)
+  assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,true)
+  assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.classifica[0].punti,9)
+  code=302;assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,false)
+  code=200;payload='<html>non è una API JSON</html>';assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,false)
+  assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.classifica[0].punti,9)
+})
+
+
+test('classifica TuttoCampo: configurazione solo Admin, lettura per tutti e widget validato', () => {
+ const s=setup(), auth={adminToken:s.login().token,season:'2026-27'}
+ const url='https://www.tuttocampo.it/WidgetV2/Classifica/2720a2d7-997c-43e2-b728-0ff49e1d97bf'
+ assert.equal(s.call({action:'managementCampionatoConfigura',season:'2026-27',tipo:'tuttocampo',url}).code,'ADMIN_AUTH')
+ assert.equal(s.call({...auth,action:'managementCampionatoConfigura',tipo:'tuttocampo',url:`<iframe src="${url}"></iframe>`}).ok,true)
+ assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.widgetUrl,url)
+ for (const bad of ['https://example.com/Widget/Classifica/x',url+'.evil','https://www.tuttocampo.it/EmiliaRomagna/Classifica']) assert.equal(s.call({...auth,action:'managementCampionatoConfigura',tipo:'tuttocampo',url:bad}).ok,false)
+ assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.widgetUrl,url,'fonte valida preservata')
+ assert.equal(s.call({...auth,action:'managementCampionatoConfigura',clear:true}).ok,true)
+ assert.equal(s.call({action:'campionato',season:'2026-27'}).dati,null)
+})

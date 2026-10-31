@@ -5,7 +5,7 @@
  * Resta nel browser di questo dispositivo (localStorage). Il contenuto
  * (testi/posizioni di una singola grafica) NON si salva qui.
  */
-export type KindGrafica = 'annuncio' | 'risultato' | 'mese' | 'formazione'
+export type KindGrafica = 'annuncio' | 'risultato' | 'mese' | 'formazione' | 'rinvio'
 
 export interface GraficaPrefs {
   tema?: 'carta' | 'notte'

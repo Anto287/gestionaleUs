@@ -139,6 +139,7 @@ export function PartitaDettaglio() {
     update(p!.id, {
       ...v,
       giocata,
+      rinviata: giocata ? false : !!v.rinviata,
       ora: v.ora?.trim() || undefined,
       avversario: (v.avversario ?? p!.avversario).trim(),
       torneoId: v.torneoId || undefined,
@@ -204,6 +205,8 @@ export function PartitaDettaglio() {
             {p.amichevole ? ' · Amichevole' : ''}
           </Text>
           <Space wrap>
+            {programma && <Button onClick={() => navigate(`/social?kind=rinvio&partita=${p.id}`)}>Grafica rinvio</Button>}
+            {p.rinviata && <Tag color="orange">Rinviata{p.dataRecupero ? ` · recupero ${formatData(p.dataRecupero)}` : ''}</Tag>}
             <Button icon={<AimOutlined />} onClick={apriScheda}>
               Scheda avversario
             </Button>
@@ -410,6 +413,11 @@ export function PartitaDettaglio() {
           >
             <Switch />
           </Form.Item>
+          {giocataForm === false && <>
+            <Form.Item label="Partita rinviata" name="rinviata" valuePropName="checked"><Switch /></Form.Item>
+            <Form.Item label="Motivo del rinvio" name="motivoRinvio"><Input maxLength={120} /></Form.Item>
+            <Form.Item label="Data recupero" name="dataRecupero" {...propsCampoData}><DataPicker /></Form.Item>
+          </>}
           {giocataForm !== false && (
             <Row gutter={12}>
               <Col span={12}>

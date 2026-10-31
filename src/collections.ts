@@ -28,6 +28,9 @@ export const COLLECTIONS = [
   'speseCondivise',
   'avversari',
   'documenti',
+  'loghi',
+  'liste',
+  'righeListe',
 ] as const
 
 export type CollectionName = (typeof COLLECTIONS)[number]

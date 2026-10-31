@@ -81,6 +81,10 @@ const Impostazioni = lazy(() =>
   import('./pages/Impostazioni').then((m) => ({ default: m.Impostazioni })),
 )
 
+const Loghi = lazy(() => import('./pages/Loghi').then(m => ({ default: m.Loghi })))
+const Liste = lazy(() => import('./pages/Liste').then(m => ({ default: m.Liste })))
+const Campionato = lazy(() => import('./pages/Campionato').then(m => ({ default: m.Campionato })))
+
 function App() {
   const { sbloccato } = useAuth()
 
@@ -110,6 +114,9 @@ function App() {
             <Route path="/spese" element={<Spese />} />
             <Route path="/documenti" element={<Documenti />} />
             <Route path="/archivio" element={<Archivio />} />
+            <Route path="/loghi" element={<Loghi />} />
+            <Route path="/liste" element={<Liste />} />
+            <Route path="/campionato" element={<Campionato />} />
             <Route path="/management" element={<Management />} />
             <Route path="/impostazioni" element={<Impostazioni />} />
             <Route path="*" element={<Navigate to="/" replace />} />

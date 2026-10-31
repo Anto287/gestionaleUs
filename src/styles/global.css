@@ -2958,3 +2958,18 @@ body {
 
 /* Sulla tela il gesto touch modifica la grafica; fuori dalla tela scorre la pagina. */
 .ed-stage-wrap, .ed-stage-wrap canvas { touch-action: none; }
+
+/* Archivio loghi: stessa griglia su telefono, tablet e desktop. */
+.loghi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+.loghi-grid h3 { overflow-wrap:anywhere; }
+@media(max-width:480px) { .loghi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } }
+
+.liste-schema .ant-space, .campionato-editor .ant-space { max-width:100%; }
+.liste-schema .ant-space-item, .campionato-editor .ant-space-item { max-width:100%; }
+@media (max-width:575px) {
+  .liste-schema .ant-form-item-control-input-content > *, .campionato-editor .ant-form-item-control-input-content > * { max-width:100%; }
+  .campionato-editor .ant-space { display:flex; flex-wrap:wrap; }
+}
+
+.liste-scelta { display:flex; flex-wrap:wrap; align-items:center; gap:12px; width:100%; margin-bottom:16px; }
+.liste-scelta > .ant-select { width:min(280px, 100%); min-width:0; }
