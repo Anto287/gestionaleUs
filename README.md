@@ -218,3 +218,7 @@ in scala di grigi, con lato massimo 1000 px e qualità 10%. Se superano
 salvato su Drive. I PDF restano invariati; la compressione degli altri
 documenti mantiene le impostazioni precedenti. Se una foto non è decodificabile,
 il salvataggio viene fermato senza inviare l'originale pesante.
+
+### Loghi, campionato, rinvii e liste
+
+Le nuove sezioni e il passaggio per aggiornare la distribuzione Google Apps Script sono descritti in [docs/loghi-liste-campionato.md](docs/loghi-liste-campionato.md). La fonte automatica del campionato va configurata dall’Admin; è disponibile anche l’editor manuale.

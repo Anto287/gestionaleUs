@@ -31,6 +31,7 @@ interface DataValue {
   restore: (collection: string, item: { id: string }) => void
   /** Sostituisce l'intera raccolta (usato dall'import dei conti). */
   replaceAll: <T extends { id: string }>(collection: string, items: T[]) => void
+  salvaConVersione: <T extends { id: string; revisione?: number }>(c: string, record: T) => Promise<T>
   /** Carica un file nella cartella Documenti della stagione (vedi sotto). */
   uploadDoc: (
     file: File,
@@ -59,7 +60,7 @@ export function useDataSyncVersion(): number {
 // raccolte NON divise per stagione: la cassa è continua nel tempo, e così
 // anche i conti in sospeso con le altre società e le schede degli avversari
 // (si ritrovano l'anno dopo)
-const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari'])
+const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi', 'liste', 'righeListe'])
 const SEASON_GLOBALE = 'globale'
 function seasonDi(collection: string, attiva: string): string {
   return COLLEZIONI_GLOBALI.has(collection) ? SEASON_GLOBALE : attiva
@@ -358,6 +359,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [attiva, scrivi, segnaModifica, cambia],
   )
 
+  const salvaConVersione = useCallback(async <T extends { id: string; revisione?: number }>(c: string, record: T): Promise<T> => {
+    segnaModifica(c)
+    try {
+      return await guard.current.write(c, async () => {
+        const next = await store.putVersioned(c, record)
+        cambia(c, items => [...items.filter(i => i.id !== next.id), next])
+        return next
+      })
+    } catch (e) {
+      // Rilegge la versione condivisa anche dopo una risposta persa.
+      try { const fresh = await store.list<{ id: string }>(c, 'globale'); cambia(c, () => fresh) } catch { /* la UI conserva l'errore originale */ }
+      throw e
+    } finally { guard.current.confirmed(c) }
+  }, [cambia, segnaModifica])
+
   const replaceAll = useCallback(
     <T extends { id: string }>(c: string, items: T[]) => {
       segnaModifica(c)
@@ -437,6 +453,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const valore = useMemo<DataValue>(
     () => ({
       getItems,
+      salvaConVersione,
       add,
       update,
       remove,
@@ -448,6 +465,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }),
     [
       getItems,
+      salvaConVersione,
       add,
       update,
       remove,

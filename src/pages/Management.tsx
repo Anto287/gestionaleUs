@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Alert, App, Button, Empty, Form, Input, Select, Skeleton, Space, Table, Tabs, Tag, Typography } from 'antd'
 import { LockOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageHeader } from '../components/PageHeader'
@@ -9,7 +9,7 @@ import type { Activity, ActivityFilters, Device } from '../management/types'
 
 const { Text, Paragraph } = Typography
 const date = (value: string) => value ? new Date(value).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : 'Mai'
-const sectionNames: Record<string, string> = { giocatori: 'Rosa', allenamenti: 'Allenamenti', partite: 'Partite', appuntamenti: 'Calendario', promemoria: 'Promemoria', distinte: 'Distinte', calciPiazzati: 'Calci piazzati', magazzino: 'Bar', materiale: 'Materiale', manutenzione: 'Manutenzione', borsaMedica: 'Borsa medica', divise: 'Divise', tornei: 'Tornei', conti: 'Conti', speseCondivise: 'Spese condivise', avversari: 'Avversari', documenti: 'Documenti', archivio: 'Archivio', stagioni: 'Stagioni', grafica: 'Grafiche', accessi: 'Accessi', management: 'Management' }
+const sectionNames: Record<string, string> = { giocatori: 'Rosa', allenamenti: 'Allenamenti', partite: 'Partite', appuntamenti: 'Calendario', promemoria: 'Promemoria', distinte: 'Distinte', calciPiazzati: 'Calci piazzati', magazzino: 'Bar', materiale: 'Materiale', manutenzione: 'Manutenzione', borsaMedica: 'Borsa medica', divise: 'Divise', tornei: 'Tornei', conti: 'Conti', speseCondivise: 'Spese condivise', avversari: 'Avversari', documenti: 'Documenti', archivio: 'Archivio', stagioni: 'Stagioni', grafica: 'Grafiche', accessi: 'Accessi', management: 'Management', loghi: 'Loghi squadre', liste: 'Liste', righeListe: 'Righe delle liste', campionato: 'Campionato' }
 
 export function Management() {
   const { sbloccato } = useManagement()
@@ -100,6 +100,7 @@ function ManagementPronto() {
   </>
 
   return <>
+    <p><Link to="/campionato">Configura classifica e API del campionato</Link></p>
     <PageHeader titolo="Management" sottotitolo="Dispositivi e registro delle attività" azioni={<Space wrap>
       <Button icon={<ReloadOutlined />} loading={busy} onClick={() => setRefresh((n) => n + 1)}>Aggiorna</Button>
       <Button icon={<LockOutlined />} onClick={chiudi}>Disconnetti Management</Button>

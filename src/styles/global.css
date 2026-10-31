@@ -2958,3 +2958,8 @@ body {
 
 /* Sulla tela il gesto touch modifica la grafica; fuori dalla tela scorre la pagina. */
 .ed-stage-wrap, .ed-stage-wrap canvas { touch-action: none; }
+
+/* Archivio loghi: stessa griglia su telefono, tablet e desktop. */
+.loghi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+.loghi-grid h3 { overflow-wrap:anywhere; }
+@media(max-width:480px) { .loghi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } }

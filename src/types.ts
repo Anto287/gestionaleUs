@@ -100,6 +100,9 @@ export interface EventoGol {
 
 /** Il risultato e gli eventi di una partita. Da qui derivano le statistiche. */
 export interface Partita {
+  rinviata?: boolean
+  motivoRinvio?: string
+  dataRecupero?: string
   id: string
   data: string
   /** orario di inizio, es. "15:30" (facoltativo; usato per calendario e annunci) */

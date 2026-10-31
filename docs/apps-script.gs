@@ -80,6 +80,10 @@ function routeOriginal_(p) {
       return json({ ok: false, error: 'non autorizzato' });
     }
     switch (p.action) {
+      case 'logoUpload':    return json(logoUpload_(p));
+      case 'logoFile':      return json(logoFile_(p.id));
+      case 'campionato':    return json({ ok: true, dati: campionatoLeggi_(p.season) });
+      case 'listaSalva':    return json({ ok: true, item: listaSalva_(p) });
       case 'list':          return json({ ok: true, items: listItems(p.collection, p.season) });
       case 'put':           return json({ ok: true, item: putItem(p.collection, p.season, p.record) });
       case 'putAll':        return json({ ok: true, count: putAllItems(p.collection, p.season, p.records) });
@@ -1073,7 +1077,7 @@ function autorizza() {
 // Impostare ADMIN_PASSWORD (almeno 12 caratteri) nelle Proprietà script.
 // Il file Management resta nel Drive privato del proprietario, fuori dalle
 // cartelle della società, per non ereditare eventuali condivisioni.
-var MGMT_MUTATIONS = ['put', 'putAll', 'delete', 'upload', 'createDoc', 'renameDoc', 'uploadGrafica', 'setSeasons', 'archivioUpload', 'archivioDelete'];
+var MGMT_MUTATIONS = ['logoUpload', 'listaSalva', 'put', 'putAll', 'delete', 'upload', 'createDoc', 'renameDoc', 'uploadGrafica', 'setSeasons', 'archivioUpload', 'archivioDelete'];
 var mgmtLockHeld_ = false;
 
 function mgmtDigest_(s) {
@@ -1261,7 +1265,7 @@ function mgmtSnapshot_(p) {
   var labels = { put: 'Modifica', putAll: 'Importazione / sostituzione', delete: 'Eliminazione', upload: 'Caricamento documento', createDoc: 'Creazione documento', renameDoc: 'Rinomina documento', uploadGrafica: 'Caricamento grafica', setSeasons: 'Aggiornamento stagioni', archivioUpload: 'Caricamento archivio', archivioDelete: 'Eliminazione archivio' };
   a.azione = labels[p.action] || p.action;
   a.elemento = String(p.nome || p.id || p.record && (p.record.descrizione || p.record.nome || p.record.avversario || p.record.id) || '').slice(0, 160);
-  if (p.action === 'put' || p.action === 'delete') {
+  if (p.action === 'put' || p.action === 'listaSalva' || p.action === 'delete') {
     if (p.collection !== 'documenti') {
       var id = p.record ? p.record.id : p.id;
       // Lettura fresca sotto lo stesso lock della scrittura, senza cache.
@@ -1270,7 +1274,7 @@ function mgmtSnapshot_(p) {
       var before = items.filter(function (r) { return r.id === id; })[0];
       var label = p.record || before;
       if (label) a.elemento = String(label.descrizione || (label.nome ? label.nome + (label.cognome ? ' ' + label.cognome : '') : '') || label.avversario || label.id || '').slice(0, 160);
-      if (p.action === 'put') a.azione = before ? 'Modifica' : 'Creazione';
+      if (p.action === 'put' || p.action === 'listaSalva') a.azione = before ? 'Modifica' : 'Creazione';
       a.dettagli = mgmtDiff_(before, p.action === 'delete' ? null : p.record);
     } else if (p.action === 'delete') a.elemento = DriveApp.getFileById(p.id).getName();
   } else if (p.action === 'putAll') {
@@ -1283,7 +1287,7 @@ function mgmtSnapshot_(p) {
       { campo: 'Stagione attiva', prima: String(configBefore.attiva || ''), dopo: String(p.attiva || '') }
     ];
   } else {
-    a.sezione = p.action.indexOf('archivio') === 0 ? 'archivio' : p.action === 'uploadGrafica' ? 'grafica' : 'documenti';
+    a.sezione = p.action.indexOf('archivio') === 0 ? 'archivio' : p.action === 'uploadGrafica' ? 'grafica' : p.action === 'logoUpload' ? 'loghi' : 'documenti';
     if (p.action === 'archivioDelete') a.elemento = archivioFileById_(p.id).getName();
     if (p.action === 'renameDoc') {
       a.dettagli = [{ campo: 'Nome', prima: DriveApp.getFileById(p.id).getName(), dopo: String(p.nome || '').slice(0, 240) }];
@@ -1321,7 +1325,7 @@ function mgmtMutation_(p) {
     if (!response.ok) activity.errore = 'Operazione non completata. Consultare il messaggio restituito dall’app; per operazioni sui file verificare anche il Drive.';
     // Le risposte delle scritture sono metadati, mai contenuti dei file.
     // Non archivia record personali completi restituiti da put.
-    entry.response = p.action === 'put' ? { ok: response.ok } : response;
+    entry.response = (p.action === 'put' || p.action === 'listaSalva') ? { ok: response.ok } : response;
     mgmtWrite_(sheet, row, p.requestId, entry);
     SpreadsheetApp.flush();
     return json(response);
@@ -1335,6 +1339,8 @@ function route(p) {
     // nemmeno conoscendo l'id del suo file.
     var managementFile = mgmtProps_().getProperty('MANAGEMENT_FILE_ID');
     if (managementFile && String(p.id || '') === managementFile || /^(management|attivita|dispositivi|__)/i.test(String(p.collection || ''))) throw new Error('Operazione riservata');
+    if (['liste', 'righeListe'].indexOf(p.collection) >= 0 && ['put', 'putAll'].indexOf(p.action) >= 0) throw new Error('Usa il salvataggio con controllo revisione');
+    if (p.action === 'listaSalva') p.season = 'globale';
     if (p.action === 'managementLogin') { mgmtTouch_(p); return mgmtLogin_(p); }
     if (String(p.action || '').indexOf('management') === 0) {
       if (!mgmtSession_(p)) return json({ ok: false, code: 'ADMIN_AUTH', error: 'Accesso Management revocato. Ripeti l’accesso dal logo.' });
@@ -1345,6 +1351,9 @@ function route(p) {
           return json({ ok: true });
         });
       }
+      if (p.action === 'managementCampionatoConfigura') return json(campionatoConfigura_(p));
+      if (p.action === 'managementCampionatoImporta') return json(campionatoPubblica_(p.season, p.dati, p));
+      if (p.action === 'managementCampionatoAggiorna') return json(campionatoAggiorna_(p));
       if (p.action === 'managementSession') return json({ ok: true, persistent: true });
       if (p.action === 'managementDevices') return json({ ok: true, devices: mgmtDevices_() });
       if (p.action === 'managementActivities') return json(mgmtActivities_(p.filters));
@@ -1361,4 +1370,129 @@ function route(p) {
     if (MGMT_MUTATIONS.indexOf(p.action) >= 0) return mgmtMutation_(p);
     return routeOriginal_(p);
   } catch (err) { return json({ ok: false, error: String(err) }); }
+}
+
+
+// ===== Loghi condivisi, liste e campionato =====
+function logoUpload_(p) {
+  return withLock_(function () {
+    var base64 = String(p.dataBase64 || '');
+    if (base64.length > 1400000 || base64.indexOf('iVBORw0KGgo') !== 0) throw new Error('Logo PNG non valido o troppo grande (massimo 1 MB)');
+    var folder = ensureChildFolder_(parentFolder_(), 'Loghi');
+    var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(base64), 'image/png', Utilities.getUuid() + '.png'));
+    // Nessuna condivisione pubblica: le immagini passano da logoFile.
+    return { ok: true, fileId: file.getId() };
+  });
+}
+function logoFile_(id) {
+  var folder = findChildFolder_(parentFolder_(), 'Loghi');
+  if (!folder) throw new Error('Logo non trovato');
+  var file = DriveApp.getFileById(String(id)), parents = file.getParents(), valid = false;
+  while (parents.hasNext()) if (parents.next().getId() === folder.getId()) valid = true;
+  if (!valid || file.isTrashed() || file.getMimeType() !== 'image/png') throw new Error('Logo non trovato');
+  return { ok: true, dataBase64: Utilities.base64Encode(file.getBlob().getBytes()) };
+}
+function listaSalva_(p) {
+  return withLock_(function () {
+    if (p.collection !== 'liste' && p.collection !== 'righeListe') throw new Error('Raccolta lista non valida');
+    var record = p.record && JSON.parse(JSON.stringify(p.record)), revision = Number(p.expectedRevision);
+    if (!record || !record.id || !Number.isInteger(revision) || revision < 0 || record.revisione !== revision + 1 || JSON.stringify(record).length > 40000) throw new Error('Dati lista non validi o troppo grandi');
+    var records = listDalFoglio_(p.collection, 'globale'), index = -1;
+    for (var i = 0; i < records.length; i++) if (records[i].id === record.id) { index = i; break; }
+    var previous = index >= 0 ? records[index] : null;
+    if (revision > 0 && !previous || (previous && previous.revisione || 0) !== revision) throw new Error('La riga o la lista è stata modificata da un’altra persona. Riaprila per vedere gli aggiornamenti.');
+    if (p.collection === 'liste') {
+      if (!String(record.nome || '').trim() || !Array.isArray(record.colonne) || !record.colonne.length || record.colonne.length > 30) throw new Error('Inserisci nome e da 1 a 30 colonne');
+      var seen = {};
+      record.colonne.forEach(function (c) {
+        if (!c.id || seen[c.id] || !String(c.nome || '').trim() || ['testo','numero','euro','data','siNo','scelta','persona'].indexOf(c.tipo) < 0) throw new Error('Colonna non valida');
+        seen[c.id] = true;
+        if (c.tipo === 'scelta' && (!Array.isArray(c.opzioni) || !c.opzioni.length)) throw new Error('Inserisci le opzioni della colonna');
+      });
+    } else {
+      var parent = listDalFoglio_('liste', 'globale').filter(function (r) { return r.id === record.listaId; })[0];
+      if (!parent || parent.archiviata) throw new Error('Lista mancante o archiviata');
+      var values = record.valori || {};
+      parent.colonne.forEach(function (c) {
+        var v = values[c.id], empty = v === undefined || v === null || v === '';
+        if (empty) { if (c.obbligatoria) throw new Error('Compila ' + c.nome); return; }
+        if ((c.tipo === 'euro' || c.tipo === 'numero') && (typeof v !== 'number' || !isFinite(v))) throw new Error('Numero non valido: ' + c.nome);
+        if (c.tipo === 'siNo' && typeof v !== 'boolean') throw new Error('Sì/No non valido: ' + c.nome);
+        if (c.tipo === 'scelta' && c.opzioni.indexOf(String(v)) < 0) throw new Error('Scelta non valida: ' + c.nome);
+        if (['testo','persona','data'].indexOf(c.tipo) >= 0 && typeof v !== 'string') throw new Error('Testo non valido: ' + c.nome);
+      });
+      record.aggiornatoIl = new Date().toISOString();
+    }
+    if (index >= 0) records[index] = record; else records.push(record);
+    rebuildSheet_(p.collection, 'globale', records);
+    return record;
+  });
+}
+function campionatoKey_(season) { return 'CAMPIONATO_API_' + seasonKey_(season); }
+function campionatoLeggi_(season) {
+  var sheet = mgmtSheet_('Campionato', false);
+  return mgmtRead_(sheet, mgmtRow_(sheet, seasonKey_(season))) || null;
+}
+function campionatoValida_(d) {
+  if (!d || !Array.isArray(d.classifica) || !Array.isArray(d.partite) || d.classifica.length > 100 || d.partite.length > 1000) throw new Error('Formato JSON: servono classifica e partite');
+  var dati = { titolo: String(d.titolo || 'Campionato').slice(0, 240), fonte: String(d.fonte || '').slice(0, 300), note: String(d.note || '').slice(0, 3000), aggiornatoIl: new Date().toISOString() };
+  dati.classifica = d.classifica.map(function (r) {
+    if (!r || !String(r.squadra || '').trim() || typeof r.punti !== 'number' || !isFinite(r.punti) || !Number.isInteger(r.giocate) || r.giocate < 0) throw new Error('Riga classifica non valida');
+    var row = { squadra: String(r.squadra).slice(0, 160), punti: r.punti, giocate: r.giocate };
+    ['vinte','pareggiate','perse','golFatti','golSubiti'].forEach(function(k) { if (r[k] !== undefined) { if (!Number.isInteger(r[k]) || r[k] < 0) throw new Error('Statistica non valida'); row[k] = r[k]; } });
+    return row;
+  });
+  dati.partite = d.partite.map(function (r) {
+    if (!r || typeof r.casa !== 'string' || typeof r.ospite !== 'string' || typeof r.data !== 'string') throw new Error('Partita non valida');
+    var row = {};
+    ['data','casa','ospite','risultato','stato','giornata'].forEach(function(k) { if (r[k] !== undefined) row[k] = String(r[k]).slice(0, 160); });
+    return row;
+  });
+  if (JSON.stringify(dati).length > 45000) throw new Error('Troppi dati: riduci il calendario a poche giornate');
+  return dati;
+}
+function campionatoPubblica_(season, raw, p) {
+  var dati = campionatoValida_(raw);
+  return withLock_(function () {
+    var sheet = mgmtSheet_('Campionato', true), key = seasonKey_(season);
+    mgmtWrite_(sheet, mgmtRow_(sheet, key), key, dati);
+    mgmtSimpleEvent_(p, 'Aggiornamento campionato', 'campionato', 'riuscita');
+    return { ok: true };
+  });
+}
+function campionatoUrl_(url) {
+  // Solo HTTPS pubblico, nessun redirect e nessuna credenziale nell’URL.
+  var match = /^https:\/\/([a-z0-9.-]+)(?::443)?(\/[^\s#]*)?$/i.exec(String(url || ''));
+  if (!match || match[1].indexOf('.') < 0 || /(^|\.)(localhost|local|internal|test|invalid)$|^\d|\.localhost$/i.test(match[1]) || /[@]/.test(match[1])) throw new Error('Usa un URL HTTPS pubblico senza credenziali o porta personalizzata');
+  return String(url);
+}
+function campionatoConfigura_(p) {
+  return withLock_(function () {
+    var key = campionatoKey_(p.season), props = mgmtProps_();
+    if (p.clear) { props.deleteProperty(key); return { ok: true }; }
+    var previous = JSON.parse(props.getProperty(key) || '{}');
+    var header = String(p.header || 'Authorization');
+    if (!/^[a-z][a-z0-9-]{0,63}$/i.test(header) || /^(host|cookie|content-length|connection)$/i.test(header)) throw new Error('Header API non valido');
+    var url = campionatoUrl_(p.url);
+    // Cambiando host non si inoltra implicitamente una chiave già salvata.
+    var sameHost = previous.url && previous.url.split('/')[2] === url.split('/')[2];
+    var apiKey = String(p.apiKey || (sameHost ? previous.apiKey : '') || '');
+    if (apiKey.length > 2000 || /[\r\n]/.test(apiKey)) throw new Error('Chiave API non valida');
+    props.setProperty(key, JSON.stringify({ url: url, header: header, apiKey: apiKey }));
+    mgmtSimpleEvent_(p, 'Configurazione API campionato', 'campionato', 'riuscita');
+    return { ok: true }; // Mai URL/chiave nei log o nella risposta.
+  });
+}
+function campionatoAggiorna_(p) {
+  var cfg = JSON.parse(mgmtProps_().getProperty(campionatoKey_(p.season)) || '{}');
+  if (!cfg.url) throw new Error('Configura prima la fonte JSON');
+  var headers = {}; if (cfg.apiKey) headers[cfg.header] = cfg.apiKey;
+  var response;
+  try { response = UrlFetchApp.fetch(campionatoUrl_(cfg.url), { headers: headers, followRedirects: false, muteHttpExceptions: true, validateHttpsCertificates: true }); }
+  catch (err) { throw new Error('Fonte non raggiungibile'); }
+  if (response.getResponseCode() !== 200) throw new Error('La fonte ha restituito HTTP ' + response.getResponseCode());
+  var text = response.getContentText();
+  if (text.length > 250000) throw new Error('Risposta della fonte troppo grande');
+  var dati; try { dati = JSON.parse(text); } catch (err) { throw new Error('La fonte non restituisce JSON valido'); }
+  return campionatoPubblica_(p.season, dati, p);
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import dayjs from 'dayjs'
 import {
@@ -44,6 +44,8 @@ import { useSeason } from '../season/SeasonContext'
 import { useAppuntamenti, type Appuntamento } from '../lib/appuntamenti'
 import { leggiPrefs } from '../lib/graficaPrefs'
 import { graficaDaPartita } from '../lib/formazioneGrafica'
+import { leggiLogo, type LogoSquadra } from '../lib/loghi'
+import { normalizzaNome } from '../lib/avversari'
 import { preparaLogo } from '../lib/immagine'
 import { driveAttivo, uploadGrafica } from '../services/driveStore'
 import type { Giocatore, Partita } from '../types'
@@ -97,10 +99,10 @@ function chiaveVoce(v: { data: string; avversario: string }) {
   return `${v.data}|${v.avversario.trim().toLowerCase()}`
 }
 
-type Kind = 'annuncio' | 'risultato' | 'mese' | 'formazione'
+type Kind = 'annuncio' | 'risultato' | 'mese' | 'formazione' | 'rinvio'
 
 export function Social() {
-  const { items: partite } = useCollection<Partita>('partite')
+  const { items: partite, update: aggiornaPartita } = useCollection<Partita>('partite')
   const { items: giocatori } = useCollection<Giocatore>('giocatori')
   const { list: appuntamenti, aggiungi, rimuovi } = useAppuntamenti()
   const { message } = App.useApp()
@@ -111,7 +113,7 @@ export function Social() {
 
   const [kind, setKind] = useState<Kind>(() => {
     const k = searchParams.get('kind')
-    return k === 'risultato' || k === 'mese' || k === 'formazione' ? k : 'annuncio'
+    return k === 'rinvio' || k === 'risultato' || k === 'mese' || k === 'formazione' ? k : 'annuncio'
   })
   const [formatoChiave, setFormatoChiave] = useState<FormatoIG['chiave']>('post')
   const formazioneGenerata = useMemo(() => leggiFormazioneGrafica(), [])
@@ -149,9 +151,11 @@ export function Social() {
   const [inCasaG, setInCasaG] = useState(true)
   const [luogoG, setLuogoG] = useState('')
   const [notaG, setNotaG] = useState('')
+  const [recuperoG, setRecuperoG] = useState('')
+  const [rinvioId, setRinvioId] = useState<string>()
 
   // stemma della squadra avversaria (caricato a mano, vale per la grafica in corso)
-  const [crestAvv, setCrestAvv] = useState<{ src: string; rapporto: number }>()
+  const [crestManuale, setCrestAvv] = useState<{ src: string; rapporto: number }>()
   // mister e cambi della grafica formazione: la panchina arriva dalla pagina
   // Formazione (undefined = \"quella vera\"), ma si può riscrivere qui
   const [allenatore, setAllenatore] = useState('')
@@ -190,7 +194,7 @@ export function Social() {
     const luogoDi = new Map(apptOrdinati.map((a) => [chiave(a.data, a.avversario), a.luogo]))
     const inProgramma = partite
       .filter((p) => p.giocata === false)
-      .map((p) => ({ id: p.id, data: p.data, ora: p.ora, avversario: p.avversario, inCasa: p.inCasa, luogo: luogoDi.get(chiave(p.data, p.avversario)) }))
+      .map((p) => ({ rinviata: p.rinviata, id: p.id, data: p.data, ora: p.ora, avversario: p.avversario, inCasa: p.inCasa, luogo: luogoDi.get(chiave(p.data, p.avversario)) }))
     const gia = new Set(inProgramma.map((p) => chiave(p.data, p.avversario)))
     const soloImpegni = apptOrdinati.filter((a) => !gia.has(chiave(a.data, a.avversario)))
     return [...soloImpegni, ...inProgramma].sort((a, b) =>
@@ -214,6 +218,18 @@ export function Social() {
   )
   const partitaResIdEff = partitaResId ?? partiteGiocate[0]?.id
   const partitaRes = partiteGiocate.find((p) => p.id === partitaResIdEff)
+  const { items: loghi } = useCollection<LogoSquadra>('loghi')
+  const [logoId, setLogoId] = useState<string>()
+  const [logoLetto, setLogoLetto] = useState<{id:string;fileId?:string;src:string;rapporto:number}>()
+  const nomeAvversario = kind === 'risultato' ? partitaRes?.avversario : kind === 'formazione' ? partitaFormazione?.avversario : avversario
+  const logoSelezionato = logoId === '' ? undefined : loghi.find(l => l.id === logoId) ?? loghi.find(l => normalizzaNome(l.nome) === normalizzaNome(nomeAvversario || ''))
+  useEffect(() => {
+    let active = true
+    if(logoSelezionato) void leggiLogo(logoSelezionato).then(src => { if(active) setLogoLetto({...logoSelezionato,src}) }).catch(() => { if(active) message.error('Impossibile caricare il logo selezionato') })
+    return () => { active = false }
+  },[logoSelezionato,message])
+  const crestAvv = crestManuale ?? (logoLetto && logoLetto.id === logoSelezionato?.id && logoLetto.fileId === logoSelezionato?.fileId ? logoLetto : undefined)
+
 
   // la panchina come arriva dalla pagina Formazione, una per riga
   const panchinaDefault = useMemo(() => (formazioneGrafica?.panchina ?? []).join('\n'), [formazioneGrafica])
@@ -234,6 +250,7 @@ export function Social() {
       vociDelMese.map((a) => {
         const r = ritocchi[chiaveVoce(a)]
         return {
+          rinviata: 'rinviata' in a ? !!a.rinviata : false,
           dow: giornoBreve(a.data),
           gg: giornoNum(a.data),
           mmm: meseBreve(a.data),
@@ -260,10 +277,10 @@ export function Social() {
       crestAvversarioSrc: crestAvv?.src,
       crestAvversarioRapporto: crestAvv?.rapporto,
     }
-    if (kind === 'annuncio') {
+    if (kind === 'annuncio' || kind === 'rinvio') {
       const inp: BuildInput = {
         ...base,
-        kind: 'annuncio',
+        kind,
         giorno: {
           avversario: avversario.trim() || 'AVVERSARIO',
           dataTxt: etichettaGiorno(dataG),
@@ -272,12 +289,13 @@ export function Social() {
           ora: oraG.trim() || undefined,
           dove: doveLabel(inCasaG, luogoG),
           nota: notaG.trim() || undefined,
+          recupero: recuperoG ? etichettaGiorno(recuperoG) : undefined,
         },
       }
       return {
         input: inp,
-        seedKey: `annuncio|${formatoChiave}|${avversario}|${dataG}|${oraG}|${inCasaG}|${luogoG}|${notaG}`,
-        nomeFile: `riolunato-${dataG}-${slug(avversario || 'annuncio')}.png`,
+        seedKey: `${kind}|${recuperoG}|${formatoChiave}|${avversario}|${dataG}|${oraG}|${inCasaG}|${luogoG}|${notaG}`,
+        nomeFile: `riolunato-${kind}-${dataG}-${slug(avversario || 'annuncio')}.png`,
       }
     }
     if (kind === 'risultato') {
@@ -334,7 +352,7 @@ export function Social() {
       input: inp,
       // il contenuto delle righe, non solo gli id: così un aggiornamento dal Drive si vede
       seedKey: `mese|${formatoChiave}|${meseAttivo}|${fixtures
-        .map((f) => `${f.gg}${f.mmm}|${f.ora ?? ''}|${f.avversario}|${f.inCasa}|${f.luogo ?? ''}`)
+        .map((f) => `${f.rinviata || false}|${f.gg}${f.mmm}|${f.ora ?? ''}|${f.avversario}|${f.inCasa}|${f.luogo ?? ''}`)
         .join(',')}`,
       nomeFile: `riolunato-appuntamenti-${meseAttivo}.png`,
     }
@@ -350,6 +368,7 @@ export function Social() {
     inCasaG,
     luogoG,
     notaG,
+    recuperoG,
     partitaRes,
     marcatoriDefault,
     marcatoriNoi,
@@ -433,6 +452,7 @@ export function Social() {
           onChange={(v) => setKind(v as Kind)}
           options={[
             { value: 'annuncio', label: 'Partita del giorno' },
+            { value: 'rinvio', label: 'Rinviata' },
             { value: 'risultato', label: 'Risultato' },
             { value: 'mese', label: 'Mese' },
             { value: 'formazione', label: 'Formazione' },
@@ -454,7 +474,17 @@ export function Social() {
 
   const campiDati = (
     <>
-      {kind === 'annuncio' && (
+      {kind === 'rinvio' && <div className="social-campo">
+        <span className="social-label">Prendi una partita in programma</span>
+        <Select style={{width:'100%'}} aria-label="Partita da rinviare" allowClear value={rinvioId} placeholder="Oppure compila i dati a mano" options={partite.filter(p => p.giocata === false).map(p => ({value:p.id,label:labelAppuntamento(p)}))} onChange={id => {
+          setRinvioId(id); const p = partite.find(p => p.id === id)
+          if(p) {setAvversario(p.avversario);setDataG(p.data);setOraG(p.ora || '');setInCasaG(p.inCasa);setNotaG(p.motivoRinvio || '');setRecuperoG(p.dataRecupero || '')}
+        }} />
+        <span className="social-label" style={{marginTop:12}}>Data del recupero (facoltativa)</span>
+        <Input type="date" value={recuperoG} onChange={e => setRecuperoG(e.target.value)} />
+        {rinvioId && <Button style={{marginTop:12}} onClick={() => {aggiornaPartita(rinvioId,{rinviata:true,motivoRinvio:notaG.trim(),dataRecupero:recuperoG || undefined});message.success('Rinvio registrato nella partita')}}>Registra rinvio nella partita</Button>}
+      </div>}
+      {(kind === 'annuncio' || kind === 'rinvio') && (
         <>
           <div className="social-campo">
             <span className="social-label">Avversario</span>
@@ -492,9 +522,10 @@ export function Social() {
             </div>
           </div>
           <div className="social-campo">
-            <span className="social-label">Riga in fondo</span>
+            <span className="social-label">{kind === 'rinvio' ? 'Motivo del rinvio' : 'Riga in fondo'}</span>
             <Input
               value={notaG}
+              maxLength={120}
               onChange={(e) => setNotaG(e.target.value)}
               placeholder="es. Amichevole Pre-Campionato"
             />
@@ -502,9 +533,11 @@ export function Social() {
         </>
       )}
 
-      {(kind === 'risultato' || kind === 'formazione') && (
+      {kind !== 'mese' && (
         <div className="social-campo">
           <span className="social-label">Stemma avversario</span>
+          <Select style={{width:'100%',marginBottom:12}} aria-label="Logo dall’archivio" showSearch allowClear optionFilterProp="label" value={logoSelezionato?.id} placeholder="Scegli dall’archivio loghi" options={loghi.map(l => ({value:l.id,label:l.nome}))} onChange={id => {setLogoId(id ?? '');setCrestAvv(undefined)}} />
+          <Link to="/loghi">Gestisci archivio loghi squadre</Link>
           <Space wrap>
             <Upload accept="image/*" showUploadList={false} beforeUpload={caricaCrestAvversario}>
               <Button icon={<PictureOutlined />}>{crestAvv ? 'Cambia logo' : 'Carica logo'}</Button>
@@ -512,7 +545,7 @@ export function Social() {
             {crestAvv && (
               <>
                 <img src={crestAvv.src} alt="" className="social-logo-avv" />
-                <Button type="text" onClick={() => setCrestAvv(undefined)}>
+                <Button type="text" onClick={() => { setCrestAvv(undefined); setLogoId(''); setLogoLetto(undefined) }}>
                   Togli
                 </Button>
               </>
@@ -751,7 +784,7 @@ export function Social() {
         <div className="social-editor">
           <Editor
             input={input}
-            seedKey={seedKey}
+            seedKey={`${seedKey}|${crestAvv?.src || ''}`}
             nomeFile={nomeFile}
             onSalvaDrive={driveAttivo() ? salvaSuDrive : undefined}
           />

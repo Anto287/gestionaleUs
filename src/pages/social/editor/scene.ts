@@ -206,6 +206,7 @@ function nid(): string {
 export interface DatiGiorno {
   avversario: string
   dataTxt: string
+  recupero?: string
   /** true = si gioca in casa: decide da che parte stanno stemma e punteggio */
   inCasa?: boolean
   /** giorno del mese per il riquadro del manifesto, es. "19" */
@@ -231,6 +232,7 @@ export interface FixtureRiga {
   inCasa: boolean
   ora?: string
   luogo?: string
+  rinviata?: boolean
 }
 
 /** L'undici titolare per la grafica "Formazione" (dal generatore). */
@@ -246,7 +248,7 @@ export interface FormazioneGrafica {
 }
 
 export interface BuildInput {
-  kind: 'annuncio' | 'risultato' | 'mese' | 'formazione'
+  kind: 'annuncio' | 'risultato' | 'mese' | 'formazione' | 'rinvio'
   formato: { w: number; h: number }
   crestSrc: string
   piede: string
@@ -368,7 +370,23 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
 
   const stagioneTxt = `STAGIONE ${input.stagione ?? '2026/27'}`
 
-  if (input.kind === 'annuncio') {
+  if (input.kind === 'rinvio') {
+    const g = input.giorno!, H = input.formato.h
+    const sy = (v: number) => Math.round(v * H / 1350)
+    push({ id:nid(),tipo:'rett',x:50,y:sy(65),rotation:0,larghezza:980,altezza:sy(1210),cornerRadius:32,strokeRuolo:'accento',strokeWidth:3,fill:'rgba(0,0,0,0)' })
+    push(testo(90,sy(110),'COMUNICATO UFFICIALE',30,'accento',{width:900,letterSpacing:6}))
+    push(crest(250,sy(220),160))
+    const avv = crestAvv(670,sy(220),160); if(avv) push(avv)
+    push(testo(440,sy(270),'VS',50,'sub',{width:200}))
+    push(testo(100,sy(455),'PARTITA',86,'titolo',{width:880,letterSpacing:8}))
+    push({id:nid(),tipo:'rett',x:90,y:sy(565),rotation:0,larghezza:900,altezza:sy(150),cornerRadius:12,ruoloFill:'accento'})
+    push(testo(110,sy(583),'RINVIATA',112,'inverso',{width:860,letterSpacing:4}))
+    push(testo(110,sy(765),`U.S. RIOLUNATO\n${g.avversario.toUpperCase()}`,54,'titolo',{width:860,interlinea:1.25}))
+    push(testo(110,sy(935),g.dataTxt,28,'sub',{width:860,fontFamily:BASE}))
+    if(g.nota) push(testo(110,sy(1000),g.nota,28,'testo',{width:860,bold:false,fontFamily:BASE}))
+    push(testo(110,sy(1110),g.recupero ? `RECUPERO: ${g.recupero}` : 'NUOVA DATA DA DEFINIRE',30,'accento',{width:860,fontFamily:BASE}))
+    push(testo(110,sy(1210),input.piede,27,'sub',{width:860,chiave:'piede'}))
+  } else if (input.kind === 'annuncio') {
     // Manifesto del giorno partita: foto a tutta tela, banda rossa a destra
     // con l'hashtag in verticale, il riquadro della data in alto a sinistra e
     // il MATCHDAY in grande, con DAY in corsivo che si accavalla a MATCH.
@@ -401,6 +419,7 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
 
     // stemma in alto, appoggiato alla banda
     push(crest(bandaX - 174, sy(62), 152))
+    const stemmaAvversario = crestAvv(620, sy(70), 120); if (stemmaAvversario) push(stemmaAvversario)
 
     // ora a sinistra; a destra la sfida, con il tondo del "Vs" in mezzo.
     // La sfida sta alta: sotto deve restare l'aria per il MATCHDAY
@@ -652,7 +671,7 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
         ),
       )
       // l'ora sta sulla riga dell'avversario: sotto, il campo ha tutta la larghezza
-      push(testo(W - 60 - 190, oy + z(2), f.ora || '\u2014', z(54), 'titolo', { bold: false, fontFamily: BASE, align: 'right', width: 190 }))
+      push(testo(W - 60 - 190, oy + z(2), f.rinviata ? 'RINVIATA' : f.ora || '\u2014', z(f.rinviata ? 30 : 54), 'titolo', { bold: false, fontFamily: BASE, align: 'right', width: 190 }))
     })
 
     fasciaInFondo(W, H, stagioneTxt, input.piede).forEach(push)
@@ -664,6 +683,7 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
   // formazione deve far leggere undici nomi.
   const velo: Record<BuildInput['kind'], number> = {
     annuncio: 0.22,
+    rinvio: 0.7,
     risultato: 0.38,
     formazione: 0.46,
     mese: 0.55,
