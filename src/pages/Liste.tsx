@@ -63,10 +63,10 @@ export function Liste() {
   }
   return <>
     <PageHeader titolo="Liste" sottotitolo="Uscite, partecipanti, premi e incarichi. Ogni lista ha le sue colonne e si aggiorna fra i dispositivi." azioni={<Button type="primary" icon={<PlusOutlined />} onClick={() => apriSchema()}>Nuova lista</Button>} />
-    <Space wrap style={{ marginBottom:16 }}>
-      <Select aria-label="Scegli lista" style={{ width:280, maxWidth:'100%' }} placeholder="Scegli una lista" value={selected} onChange={id => { setSelected(id); setQ('') }} options={liste.items.filter(l => !!l.archiviata === archiviate).map(l => ({ value:l.id, label:l.nome }))} />
+    <div className="liste-scelta">
+      <Select aria-label="Scegli lista" placeholder="Scegli una lista" value={selected} onChange={id => { setSelected(id); setQ('') }} options={liste.items.filter(l => !!l.archiviata === archiviate).map(l => ({ value:l.id, label:l.nome }))} />
       <Checkbox checked={archiviate} onChange={e => { setArchiviate(e.target.checked); setSelected(undefined) }}>Archiviate</Checkbox>
-    </Space>
+    </div>
     {!lista ? <Empty description="Scegli una lista oppure creane una con il modello Mare, Tombola o Libera." /> : <Card>
       <h2>{lista.nome}</h2><p>{lista.descrizione}</p>
       <Space wrap style={{ marginBottom:16 }}>

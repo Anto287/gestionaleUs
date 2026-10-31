@@ -42,7 +42,7 @@ try {
   await visit(path)
   if(path==='/campionato') {await page.getByRole('cell',{name:'U.S. Riolunato',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Modifica classifica e calendario'}).count(),0)}
   if(path.startsWith('/social')) {await page.locator('canvas').first().waitFor();await page.getByRole('combobox',{name:'Partita da rinviare'}).waitFor()}
-  for(const width of [320,768,1440]) {await page.setViewportSize({width,height:1000});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} overflow ${width}`)}
+  for(const width of [320,768,1440]) {await page.setViewportSize({width,height:1000});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('.app-container *')].map(e=>({tag:e.tagName,cls:String(e.className).slice(0,100),right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width})).filter(r=>r.right>innerWidth+1&&r.width>0).slice(0,20)}));assert.ok(layout.scroll<=layout.width+1,`${path} overflow ${width}: ${JSON.stringify(layout)}`)}
  }
  assert.deepEqual(errors,[])
  console.log('Club features: creazione lista, riga persistente, campionato non Admin, grafica rinvio e layout a 320/768/1440 verificati.')

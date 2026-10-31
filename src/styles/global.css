@@ -2970,3 +2970,6 @@ body {
   .liste-schema .ant-form-item-control-input-content > *, .campionato-editor .ant-form-item-control-input-content > * { max-width:100%; }
   .campionato-editor .ant-space { display:flex; flex-wrap:wrap; }
 }
+
+.liste-scelta { display:flex; flex-wrap:wrap; align-items:center; gap:12px; width:100%; margin-bottom:16px; }
+.liste-scelta > .ant-select { width:min(280px, 100%); min-width:0; }
