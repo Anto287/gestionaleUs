@@ -10,6 +10,7 @@ export const TIPI_COLONNA: { value: TipoColonna; label: string }[] = [
 export function colonneModello(modello: string): ColonnaLista[] {
   const c = (id: string, nome: string, tipo: TipoColonna, opzioni?: string[], obbligatoria = false): ColonnaLista => ({ id, nome, tipo, opzioni, obbligatoria })
   if (modello === 'tombola') return [c('negozio', 'Negozio', 'testo', undefined, true), c('volantino', 'Volantino portato', 'siNo'), c('incaricato', 'Chi deve andare', 'persona'), c('visitatoDa', 'Chi è andato', 'persona'), c('premio', 'Premio offerto', 'testo'), c('valore', 'Valore premio', 'euro'), c('ritirato', 'Premio ritirato', 'siNo'), c('stato', 'Stato', 'scelta', ['Da contattare', 'Da confermare', 'Confermato', 'Non aderisce']), c('note', 'Note', 'testo')]
+  if (modello === 'cena') return [c('nome', 'Prenotazione a nome di', 'persona', undefined, true), c('adulti', 'Adulti', 'numero'), c('bambini', 'Bambini', 'numero'), c('confermato', 'Confermato', 'siNo'), c('pagato', 'Pagato', 'euro'), c('note', 'Note / esigenze alimentari', 'testo')]
   if (modello === 'mare') return [c('nome', 'Nome', 'persona', undefined, true), c('presente', 'Confermato', 'siNo'), c('persone', 'Numero persone', 'numero'), c('quota', 'Quota versata', 'euro'), c('note', 'Note', 'testo')]
   return [c('nome', 'Nome', 'testo', undefined, true), c('incaricato', 'Incaricato', 'persona'), c('fatto', 'Fatto', 'siNo'), c('note', 'Note', 'testo')]
 }

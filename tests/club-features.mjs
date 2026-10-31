@@ -5,6 +5,7 @@ import { fixtures } from './fixtures.mjs'
 const server = await createServer({server:{host:'127.0.0.1',port:5185,strictPort:true}})
 await server.listen()
 let browser
+let widget = false
 try {
  browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,args:['--no-sandbox','--disable-dev-shm-usage'],headless:true})
  const spaced = t => t.split(/(\s+)/).map(p => /\s/.test(p) ? p : [...p].join('\u2060')).join('')
@@ -17,7 +18,8 @@ try {
   if(b.action==='listAll')res.liste=b.richieste.map(r=>({collection:r.collection,items:data[r.collection] || []}))
   if(b.action==='list')res.items=data[b.collection] || []
   if(b.action==='archivioList')Object.assign(res,{documenti:[],foto:[]})
-  if(b.action==='campionato')res.dati={titolo:'Girone B',classifica:[{squadra:'U.S. Riolunato',punti:12,giocate:5}],partite:[]}
+  if(b.action==='campionato' && widget) res.dati={titolo:'Classifica',widgetUrl:'https://www.tuttocampo.it/WidgetV2/Classifica/2720a2d7-997c-43e2-b728-0ff49e1d97bf',classifica:[],partite:[]}
+  if(b.action==='campionato' && !widget)res.dati={titolo:'Girone B',classifica:[{squadra:'U.S. Riolunato',punti:12,giocate:5}],partite:[]}
   if(b.action==='listaSalva') {data[b.collection] ||= [];data[b.collection]=[...data[b.collection].filter(r=>r.id!==b.record.id),b.record];res.item=b.record}
   await route.fulfill({json:res})
  })
@@ -41,9 +43,15 @@ try {
  for(const path of ['/liste','/loghi','/campionato','/social?kind=rinvio']) {
   await visit(path)
   if(path==='/campionato') {await page.getByRole('cell',{name:'U.S. Riolunato',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Modifica classifica e calendario'}).count(),0)}
-  if(path.startsWith('/social')) {await page.locator('canvas').first().waitFor();await page.getByRole('combobox',{name:'Partita da rinviare'}).waitFor()}
+  if(path.startsWith('/social')) {assert.equal(await page.getByText('Motivo del rinvio',{exact:true}).count(),0);assert.equal(await page.getByText('Data del recupero (facoltativa)',{exact:true}).count(),0);await page.locator('canvas').first().waitFor();await page.getByRole('combobox',{name:'Partita da rinviare'}).waitFor()}
   for(const width of [320,768,1440]) {await page.setViewportSize({width,height:1000});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('.app-container *')].map(e=>({tag:e.tagName,cls:String(e.className).slice(0,100),right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width})).filter(r=>r.right>innerWidth+1&&r.width>0).slice(0,20)}));assert.ok(layout.scroll<=layout.width+1,`${path} overflow ${width}: ${JSON.stringify(layout)}`)}
  }
+ widget=true
+ await page.route('https://www.tuttocampo.it/**',route=>route.fulfill({contentType:'text/html',body:'<p>Classifica del girone (fixture)</p>'}))
+ await visit('/campionato')
+ await page.locator('iframe[title="Classifica TuttoCampo"]').waitFor()
+ assert.equal(await page.getByText('Fonte della classifica · solo Admin',{exact:true}).count(),0)
+ assert.equal(await page.getByRole('tab',{name:'Risultati e calendario'}).count(),0)
  assert.deepEqual(errors,[])
  console.log('Club features: creazione lista, riga persistente, campionato non Admin, grafica rinvio e layout a 320/768/1440 verificati.')
 } finally {await browser?.close();await server.close()}

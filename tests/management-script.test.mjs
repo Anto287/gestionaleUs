@@ -226,3 +226,16 @@ test('campionato: richieste al provider solo dal server, nessun redirect e snaps
   code=200;payload='<html>non è una API JSON</html>';assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,false)
   assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.classifica[0].punti,9)
 })
+
+
+test('classifica TuttoCampo: configurazione solo Admin, lettura per tutti e widget validato', () => {
+ const s=setup(), auth={adminToken:s.login().token,season:'2026-27'}
+ const url='https://www.tuttocampo.it/WidgetV2/Classifica/2720a2d7-997c-43e2-b728-0ff49e1d97bf'
+ assert.equal(s.call({action:'managementCampionatoConfigura',season:'2026-27',tipo:'tuttocampo',url}).code,'ADMIN_AUTH')
+ assert.equal(s.call({...auth,action:'managementCampionatoConfigura',tipo:'tuttocampo',url:`<iframe src="${url}"></iframe>`}).ok,true)
+ assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.widgetUrl,url)
+ for (const bad of ['https://example.com/Widget/Classifica/x',url+'.evil','https://www.tuttocampo.it/EmiliaRomagna/Classifica']) assert.equal(s.call({...auth,action:'managementCampionatoConfigura',tipo:'tuttocampo',url:bad}).ok,false)
+ assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.widgetUrl,url,'fonte valida preservata')
+ assert.equal(s.call({...auth,action:'managementCampionatoConfigura',clear:true}).ok,true)
+ assert.equal(s.call({action:'campionato',season:'2026-27'}).dati,null)
+})

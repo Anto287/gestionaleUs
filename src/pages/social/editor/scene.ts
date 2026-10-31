@@ -374,7 +374,6 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     const g = input.giorno!, H = input.formato.h
     const sy = (v: number) => Math.round(v * H / 1350)
     push({ id:nid(),tipo:'rett',x:50,y:sy(65),rotation:0,larghezza:980,altezza:sy(1210),cornerRadius:32,strokeRuolo:'accento',strokeWidth:3,fill:'rgba(0,0,0,0)' })
-    push(testo(90,sy(110),'COMUNICATO UFFICIALE',30,'accento',{width:900,letterSpacing:6}))
     push(crest(250,sy(220),160))
     const avv = crestAvv(670,sy(220),160); if(avv) push(avv)
     push(testo(440,sy(270),'VS',50,'sub',{width:200}))
@@ -382,9 +381,6 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     push({id:nid(),tipo:'rett',x:90,y:sy(565),rotation:0,larghezza:900,altezza:sy(150),cornerRadius:12,ruoloFill:'accento'})
     push(testo(110,sy(583),'RINVIATA',112,'inverso',{width:860,letterSpacing:4}))
     push(testo(110,sy(765),`U.S. RIOLUNATO\n${g.avversario.toUpperCase()}`,54,'titolo',{width:860,interlinea:1.25}))
-    push(testo(110,sy(935),g.dataTxt,28,'sub',{width:860,fontFamily:BASE}))
-    if(g.nota) push(testo(110,sy(1000),g.nota,28,'testo',{width:860,bold:false,fontFamily:BASE}))
-    push(testo(110,sy(1110),g.recupero ? `RECUPERO: ${g.recupero}` : 'NUOVA DATA DA DEFINIRE',30,'accento',{width:860,fontFamily:BASE}))
     push(testo(110,sy(1210),input.piede,27,'sub',{width:860,chiave:'piede'}))
   } else if (input.kind === 'annuncio') {
     // Manifesto del giorno partita: foto a tutta tela, banda rossa a destra

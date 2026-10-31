@@ -68,7 +68,7 @@ export function Liste() {
       <Select aria-label="Scegli lista" placeholder="Scegli una lista" value={selected} onChange={id => { setSelected(id); setQ('') }} options={liste.items.filter(l => !!l.archiviata === archiviate).map(l => ({ value:l.id, label:l.nome }))} />
       <Checkbox checked={archiviate} onChange={e => { setArchiviate(e.target.checked); setSelected(undefined) }}>Archiviate</Checkbox>
     </div>
-    {!lista ? <Empty description="Scegli una lista oppure creane una con il modello Mare, Tombola o Libera." /> : <Card>
+    {!lista ? <Empty description="Scegli una lista oppure creane una con colonne libere o un modello personalizzabile." /> : <Card>
       <h2>{lista.nome}</h2><p>{lista.descrizione}</p>
       <Space wrap style={{ marginBottom:16 }}>
         <Button type="primary" onClick={() => apriRiga()} disabled={lista.archiviata}>Aggiungi riga</Button>
@@ -89,7 +89,7 @@ export function Liste() {
     </Card>}
     <Modal className="liste-schema" width={800} title={schema ? 'Personalizza lista' : 'Nuova lista'} open={schemaOpen} onCancel={() => !busy && setSchemaOpen(false)} onOk={() => form.submit()} confirmLoading={busy} okText="Salva lista" cancelText="Annulla" destroyOnHidden>
       <Form form={form} layout="vertical" onFinish={salvaSchema}>
-        {!schema && <Form.Item label="Parti da un modello"><Select defaultValue="libera" onChange={v => form.setFieldValue('colonne', colonneModello(v))} options={[{value:'libera',label:'Lista libera'},{value:'mare',label:'Mare / partecipanti'},{value:'tombola',label:'Tombola / premi commercianti'}]} /></Form.Item>}
+        {!schema && <Form.Item label="Parti da un modello"><Select defaultValue="libera" onChange={v => form.setFieldValue('colonne', colonneModello(v))} options={[{value:'libera',label:'Lista libera'},{value:'mare',label:'Mare / partecipanti'},{value:'cena',label:'Cena / prenotazioni'},{value:'tombola',label:'Tombola / premi commercianti'}]} /></Form.Item>}
         <Form.Item name="nome" label="Nome lista" rules={[{required:true,whitespace:true,message:'Scrivi un nome'}]}><Input maxLength={120} /></Form.Item>
         <Form.Item name="descrizione" label="Descrizione"><Input.TextArea /></Form.Item>
         <p>Puoi rinominare, riordinare e aggiungere colonne. Le colonne rimosse restano conservate nei dati, ma non saranno più visibili. Cambiare tipo può richiedere di correggere le righe esistenti.</p>

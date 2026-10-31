@@ -33,7 +33,7 @@ export const navItems: NavItem[] = [
   { to: '/allenamenti', label: 'Allenamenti', icon: ScheduleOutlined, descrizione: 'Presenze alle sedute.' },
   { to: '/partite', label: 'Partite', icon: TrophyOutlined, descrizione: 'Risultati, marcatori e cartellini.' },
   { to: '/loghi', label: 'Loghi squadre', icon: FlagOutlined, descrizione: 'Archivio condiviso degli stemmi.' },
-  { to: '/campionato', label: 'Campionato', icon: TrophyOutlined, descrizione: 'Classifica, risultati e calendario del girone.' },
+  { to: '/campionato', label: 'Classifica', icon: TrophyOutlined, descrizione: 'La classifica del girone, visibile a tutti.' },
   { to: '/liste', label: 'Liste', icon: SolutionOutlined, descrizione: 'Partecipanti, incarichi, premi e raccolte personalizzate.' },
   { to: '/avversari', label: 'Avversari', icon: AimOutlined, descrizione: 'Le squadre affrontate e come giocano.' },
   { to: '/calendario', label: 'Calendario', icon: CalendarOutlined, descrizione: 'Tutti gli impegni, mese per mese.' },

@@ -488,9 +488,7 @@ export function Social() {
           setRinvioId(id); const p = partite.find(p => p.id === id)
           if(p) {setAvversario(p.avversario);setDataG(p.data);setOraG(p.ora || '');setInCasaG(p.inCasa);setNotaG(p.motivoRinvio || '');setRecuperoG(p.dataRecupero || '')}
         }} />
-        <span className="social-label" style={{marginTop:12}}>Data del recupero (facoltativa)</span>
-        <Input type="date" value={recuperoG} onChange={e => setRecuperoG(e.target.value)} />
-        {rinvioId && <Button style={{marginTop:12}} onClick={() => {aggiornaPartita(rinvioId,{rinviata:true,motivoRinvio:notaG.trim(),dataRecupero:recuperoG || undefined});message.success('Rinvio registrato nella partita')}}>Registra rinvio nella partita</Button>}
+        {rinvioId && <Button style={{marginTop:12}} onClick={() => {aggiornaPartita(rinvioId,{rinviata:true});message.success('Rinvio registrato nella partita')}}>Registra rinvio nella partita</Button>}
       </div>}
       {(kind === 'annuncio' || kind === 'rinvio') && (
         <>
@@ -498,6 +496,7 @@ export function Social() {
             <span className="social-label">Avversario</span>
             <Input value={avversario} onChange={(e) => setAvversario(e.target.value)} placeholder="es. Pievepelago" />
           </div>
+          {kind === 'annuncio' && <>
           <div className="social-campo social-due">
             <div>
               <span className="social-label">Data</span>
@@ -530,7 +529,7 @@ export function Social() {
             </div>
           </div>
           <div className="social-campo">
-            <span className="social-label">{kind === 'rinvio' ? 'Motivo del rinvio' : 'Riga in fondo'}</span>
+            <span className="social-label">Riga in fondo</span>
             <Input
               value={notaG}
               maxLength={120}
@@ -538,6 +537,7 @@ export function Social() {
               placeholder="es. Amichevole Pre-Campionato"
             />
           </div>
+          </>}
         </>
       )}
 

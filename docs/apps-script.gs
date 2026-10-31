@@ -1429,7 +1429,15 @@ function listaSalva_(p) {
   });
 }
 function campionatoKey_(season) { return 'CAMPIONATO_API_' + seasonKey_(season); }
+function campionatoWidget_(input) {
+  var value = String(input || '').trim(), src = /<iframe\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i.exec(value);
+  var match = /^https:\/\/(?:www\.)?tuttocampo\.it\/(Widget(?:V2)?)\/Classifica\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\/?$/i.exec(src ? src[1] : value);
+  if (!match) throw new Error('Usa il link o il codice del widget Classifica ufficiale di TuttoCampo, non il normale link del girone');
+  return 'https://www.tuttocampo.it/' + match[1] + '/Classifica/' + match[2];
+}
 function campionatoLeggi_(season) {
+  var cfg = JSON.parse(mgmtProps_().getProperty(campionatoKey_(season)) || '{}');
+  if (cfg.tipo === 'tuttocampo') return { titolo: 'Classifica', fonte: 'TuttoCampo', widgetUrl: campionatoWidget_(cfg.url), classifica: [], partite: [] };
   var sheet = mgmtSheet_('Campionato', false);
   return mgmtRead_(sheet, mgmtRow_(sheet, seasonKey_(season))) || null;
 }
@@ -1470,6 +1478,12 @@ function campionatoConfigura_(p) {
   return withLock_(function () {
     var key = campionatoKey_(p.season), props = mgmtProps_();
     if (p.clear) { props.deleteProperty(key); return { ok: true }; }
+    if (p.tipo === 'tuttocampo') {
+      var widget = campionatoWidget_(p.url);
+      props.setProperty(key, JSON.stringify({ tipo: 'tuttocampo', url: widget }));
+      mgmtSimpleEvent_(p, 'Configurazione classifica TuttoCampo', 'campionato', 'riuscita');
+      return { ok: true };
+    }
     var previous = JSON.parse(props.getProperty(key) || '{}');
     var header = String(p.header || 'Authorization');
     if (!/^[a-z][a-z0-9-]{0,63}$/i.test(header) || /^(host|cookie|content-length|connection)$/i.test(header)) throw new Error('Header API non valido');
@@ -1485,6 +1499,7 @@ function campionatoConfigura_(p) {
 }
 function campionatoAggiorna_(p) {
   var cfg = JSON.parse(mgmtProps_().getProperty(campionatoKey_(p.season)) || '{}');
+  if (cfg.tipo === 'tuttocampo') return { ok: true }; // Il widget carica i dati direttamente dal fornitore.
   if (!cfg.url) throw new Error('Configura prima la fonte JSON');
   var headers = {}; if (cfg.apiKey) headers[cfg.header] = cfg.apiKey;
   var response;
