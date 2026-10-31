@@ -16,11 +16,12 @@ export function Liste() {
   const [schemaOpen, setSchemaOpen] = useState(false), [schema, setSchema] = useState<Lista>(), [rowOpen, setRowOpen] = useState(false), [row, setRow] = useState<RigaLista>()
   const [busy, setBusy] = useState(false), [autore, setAutore] = useState(() => loadValue('__liste_autore') || '')
   const [form] = Form.useForm(), [rowForm] = Form.useForm()
+  const [draftListaId, setDraftListaId] = useState(''), [draftRigaId, setDraftRigaId] = useState('')
   const lista = liste.items.find(l => l.id === selected)
   const elenco = righe.items.filter(r => r.listaId === lista?.id)
   const visibili = elenco.filter(r => Object.values(r.valori).some(v => String(v).toLocaleLowerCase().includes(q.toLocaleLowerCase())))
   const persone = [...new Set([autore, ...rosa.items.map(g => `${g.nome} ${g.cognome}`), ...righe.items.map(r => r.aggiornatoDa)].filter(Boolean))].map(value => ({ value }))
-  function apriSchema(l?: Lista) { setSchema(l); form.setFieldsValue(l || { nome: '', descrizione: '', colonne: colonneModello('libera') }); setSchemaOpen(true) }
+  function apriSchema(l?: Lista) { setDraftListaId(l?.id || crypto.randomUUID()); setSchema(l); form.setFieldsValue(l || { nome: '', descrizione: '', colonne: colonneModello('libera') }); setSchemaOpen(true) }
   async function salvaSchema(v: Lista) {
     if (!v.colonne?.length || v.colonne.length > 30) { message.error('Usa da 1 a 30 colonne'); return }
     if (new Set(v.colonne.map(c => c.nome.trim().toLowerCase())).size !== v.colonne.length) { message.error('I nomi delle colonne devono essere diversi'); return }
@@ -28,18 +29,18 @@ export function Liste() {
     if (colonne.some(c => c.tipo === 'scelta' && !c.opzioni?.length)) { message.error('Inserisci le opzioni delle colonne a scelta'); return }
     setBusy(true)
     try {
-      const next = await salvaConVersione<Lista>('liste', { ...schema, ...v, id: schema?.id || crypto.randomUUID(), nome: v.nome.trim(), colonne, revisione: schema?.revisione || 0 })
+      const next = await salvaConVersione<Lista>('liste', { ...schema, ...v, id: schema?.id || draftListaId, nome: v.nome.trim(), colonne, revisione: schema?.revisione || 0 })
       setSelected(next.id); setSchemaOpen(false)
     } catch(e) { message.error((e as Error).message) } finally { setBusy(false) }
   }
-  function apriRiga(r?: RigaLista) { setRow(r); rowForm.resetFields(); rowForm.setFieldsValue({ valori: r?.valori || {} }); setRowOpen(true) }
+  function apriRiga(r?: RigaLista) { setDraftRigaId(r?.id || crypto.randomUUID()); setRow(r); rowForm.resetFields(); rowForm.setFieldsValue({ valori: r?.valori || {} }); setRowOpen(true) }
   async function salvaRiga(v: { valori: RigaLista['valori'] }) {
     if (!lista) return
     const err = validaValori(lista.colonne, v.valori || {})
     if (err) { message.error(err); return }
     setBusy(true)
     try {
-      await salvaConVersione<RigaLista>('righeListe', { id: row?.id || crypto.randomUUID(), revisione: row?.revisione || 0, listaId: lista.id, valori: { ...row?.valori, ...v.valori }, aggiornatoIl: new Date().toISOString(), aggiornatoDa: autore.trim() || `Dispositivo ${getDevice().id.slice(0, 6)}` })
+      await salvaConVersione<RigaLista>('righeListe', { id: row?.id || draftRigaId, revisione: row?.revisione || 0, listaId: lista.id, valori: { ...row?.valori, ...v.valori }, aggiornatoIl: new Date().toISOString(), aggiornatoDa: autore.trim() || `Dispositivo ${getDevice().id.slice(0, 6)}` })
       setRowOpen(false)
     } catch(e) { message.error((e as Error).message + ' I dati inseriti restano aperti: copiali prima di riaprire la riga aggiornata.'); } finally { setBusy(false) }
   }
