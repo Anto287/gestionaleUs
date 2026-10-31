@@ -86,7 +86,7 @@ export function Liste() {
         { title:'Azioni', key:'azioni', width:160, render:(_,r) => <Space><Button size="small" disabled={lista.archiviata} onClick={() => apriRiga(r)}>Modifica</Button><Popconfirm title="Eliminare questa riga?" onConfirm={() => righe.remove(r.id)} okText="Elimina" cancelText="Annulla"><Button size="small" disabled={lista.archiviata} danger icon={<DeleteOutlined />} aria-label="Elimina riga" /></Popconfirm></Space> },
       ]} />
     </Card>}
-    <Modal width={800} title={schema ? 'Personalizza lista' : 'Nuova lista'} open={schemaOpen} onCancel={() => !busy && setSchemaOpen(false)} onOk={() => form.submit()} confirmLoading={busy} okText="Salva lista" cancelText="Annulla" destroyOnHidden>
+    <Modal className="liste-schema" width={800} title={schema ? 'Personalizza lista' : 'Nuova lista'} open={schemaOpen} onCancel={() => !busy && setSchemaOpen(false)} onOk={() => form.submit()} confirmLoading={busy} okText="Salva lista" cancelText="Annulla" destroyOnHidden>
       <Form form={form} layout="vertical" onFinish={salvaSchema}>
         {!schema && <Form.Item label="Parti da un modello"><Select defaultValue="libera" onChange={v => form.setFieldValue('colonne', colonneModello(v))} options={[{value:'libera',label:'Lista libera'},{value:'mare',label:'Mare / partecipanti'},{value:'tombola',label:'Tombola / premi commercianti'}]} /></Form.Item>}
         <Form.Item name="nome" label="Nome lista" rules={[{required:true,whitespace:true,message:'Scrivi un nome'}]}><Input maxLength={120} /></Form.Item>

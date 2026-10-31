@@ -153,6 +153,14 @@ export function Social() {
   const [notaG, setNotaG] = useState('')
   const [recuperoG, setRecuperoG] = useState('')
   const [rinvioId, setRinvioId] = useState<string>()
+  const partitaDaRinviare = partite.find(p => p.id === searchParams.get('partita') && p.giocata === false)
+  useEffect(() => {
+    if (!partitaDaRinviare) return
+    setRinvioId(partitaDaRinviare.id); setAvversario(partitaDaRinviare.avversario); setDataG(partitaDaRinviare.data)
+    setOraG(partitaDaRinviare.ora || '');setInCasaG(partitaDaRinviare.inCasa)
+    setNotaG(partitaDaRinviare.motivoRinvio || '');setRecuperoG(partitaDaRinviare.dataRecupero || '')
+  }, [partitaDaRinviare])
+
 
   // stemma della squadra avversaria (caricato a mano, vale per la grafica in corso)
   const [crestManuale, setCrestAvv] = useState<{ src: string; rapporto: number }>()

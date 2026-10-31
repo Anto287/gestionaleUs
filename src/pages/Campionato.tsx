@@ -62,7 +62,7 @@ export function Campionato() {
       ]} />
     </Card> : !busy && <Empty description="Il campionato non è ancora stato configurato dall’amministratore." />}
     {admin && <Button style={{marginTop:20}} onClick={() => {editorForm.setFieldsValue(data || {titolo:'Campionato',fonte:'Aggiornamento manuale',classifica:[],partite:[]});setEditorOpen(true)}}>Modifica classifica e calendario</Button>}
-    {admin && <Modal title="Gestisci campionato" width={1000} open={editorOpen} onCancel={() => !busy && setEditorOpen(false)} onOk={() => editorForm.submit()} okText="Pubblica" cancelText="Annulla" confirmLoading={busy} destroyOnHidden>
+    {admin && <Modal className="campionato-editor" title="Gestisci campionato" width={1000} open={editorOpen} onCancel={() => !busy && setEditorOpen(false)} onOk={() => editorForm.submit()} okText="Pubblica" cancelText="Annulla" confirmLoading={busy} destroyOnHidden>
       <Form form={editorForm} layout="vertical" onFinish={pubblica}>
         <Form.Item name="titolo" label="Campionato / girone" rules={[{required:true}]}><Input /></Form.Item>
         <Form.Item name="fonte" label="Fonte dei dati"><Input /></Form.Item>

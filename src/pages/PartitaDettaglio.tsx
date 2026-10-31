@@ -205,7 +205,7 @@ export function PartitaDettaglio() {
             {p.amichevole ? ' · Amichevole' : ''}
           </Text>
           <Space wrap>
-            {programma && <Button onClick={() => navigate('/social?kind=rinvio')}>Grafica rinvio</Button>}
+            {programma && <Button onClick={() => navigate(`/social?kind=rinvio&partita=${p.id}`)}>Grafica rinvio</Button>}
             {p.rinviata && <Tag color="orange">Rinviata{p.dataRecupero ? ` · recupero ${formatData(p.dataRecupero)}` : ''}</Tag>}
             <Button icon={<AimOutlined />} onClick={apriScheda}>
               Scheda avversario

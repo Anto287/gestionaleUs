@@ -7,6 +7,7 @@ await server.listen()
 let browser
 try {
  browser = await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,args:['--no-sandbox','--disable-dev-shm-usage'],headless:true})
+ const spaced = t => t.split(/(\s+)/).map(p => /\s/.test(p) ? p : [...p].join('\u2060')).join('')
  const page = await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}), data = fixtures(), errors=[]
  page.on('pageerror',e=>errors.push(e.message))
  await page.addInitScript(()=>localStorage.setItem('usriolunato:__secret','test-only'))
@@ -22,14 +23,14 @@ try {
  })
  const visit = async path => {await page.goto(`http://127.0.0.1:5185/#${path}`);await page.locator('.app-container').waitFor();await page.locator('.pagina-in-arrivo').waitFor({state:'hidden'})}
  await visit('/liste')
- await page.getByRole('button',{name:'Nuova lista',exact:true}).click()
+ await page.getByRole('button',{name:/Nuova lista/}).click()
  let modal=page.getByRole('dialog')
- await modal.getByLabel('Nome lista',{exact:true}).fill('Tombola del paese')
+ await modal.getByLabel(spaced('Nome lista'),{exact:true}).fill('Tombola del paese')
  await modal.getByRole('button',{name:'Salva lista',exact:true}).click()
  await modal.waitFor({state:'hidden'})
  await page.getByRole('button',{name:'Aggiungi riga',exact:true}).click()
  modal=page.getByRole('dialog')
- await modal.getByLabel('Nome',{exact:true}).fill('Forno di prova')
+ await modal.getByLabel(spaced('Nome'),{exact:true}).fill('Forno di prova')
  await modal.getByRole('button',{name:'Salva riga',exact:true}).click()
  await modal.waitFor({state:'hidden'})
  assert.equal(data.righeListe.length,1)

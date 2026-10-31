@@ -212,3 +212,17 @@ test('liste: i retry con lo stesso requestId non duplicano righe e le righe elim
   assert.equal(call({...body,requestId:randomUUID(),expectedRevision:1,record:{...body.record,revisione:2}}).ok,false)
   assert.equal(s.records.get('righeListe/globale').length,0)
 })
+
+test('campionato: richieste al provider solo dal server, nessun redirect e snapshot valido conservato in caso di errore', () => {
+  const s = setup(), auth = { adminToken:s.login().token,season:'2026-27' }
+  assert.equal(s.call({...auth,action:'managementCampionatoConfigura',url:'https://standings.example.com/api',header:'X-API-Key',apiKey:'server-key'}).ok,true)
+  let code=200, payload=JSON.stringify({titolo:'Girone B',classifica:[{squadra:'Riolunato',punti:9,giocate:3}],partite:[]}), calls=0
+  s.context.UrlFetchApp={fetch:(url,options)=>{calls++;assert.equal(url,'https://standings.example.com/api');assert.equal(options.headers['X-API-Key'],'server-key');assert.equal(options.followRedirects,false);return {getResponseCode:()=>code,getContentText:()=>payload}}}
+  assert.equal(s.call({action:'managementCampionatoAggiorna',season:'2026-27'}).code,'ADMIN_AUTH')
+  assert.equal(calls,0)
+  assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,true)
+  assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.classifica[0].punti,9)
+  code=302;assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,false)
+  code=200;payload='<html>non è una API JSON</html>';assert.equal(s.call({...auth,action:'managementCampionatoAggiorna'}).ok,false)
+  assert.equal(s.call({action:'campionato',season:'2026-27'}).dati.classifica[0].punti,9)
+})
