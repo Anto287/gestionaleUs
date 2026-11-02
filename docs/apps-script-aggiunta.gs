@@ -1,7 +1,5 @@
-// AGGIUNTA ALLA VERSIONE CON MANAGEMENT PERSISTENTE
-// Incollare UNA VOLTA in fondo allo stesso file dello script esistente.
-// Non serve cambiare gli ID o SECRET. In alternativa usare apps-script.gs completo.
-// Gli override assegnano le funzioni aggiornate senza duplicare le dichiarazioni.
+// BLOCCO COMPLETO: Management persistente, LOG, API e UISP Modena.
+// Incollare una volta in fondo allo stesso file esistente. Non cambiare ID o SECRET.
 
 mgmtMutation_ = function(p) {
   return withLock_(function () {
@@ -83,7 +81,7 @@ route = function(p) {
       });
       if (p.action === 'managementStandingsConfig') {
         var c = standingsConfig_(p.season);
-        return json({ ok: true, config: { tipo: c.tipo, url: c.url, hasApiKey: !!c.apiKey } });
+        return json({ ok: true, config: { tipo: c.tipo, url: c.url, categoria: c.categoria, girone: c.girone, hasApiKey: !!c.apiKey } });
       }
       if (p.action === 'managementSaveStandings') return standingsSave_(p);
       if (p.action === 'managementRenameDevice') return mgmtRename_(p);
@@ -91,6 +89,7 @@ route = function(p) {
     }
     // I lettori non devono fermarsi se il solo aggiornamento ultimo accesso fallisce.
     try { mgmtTouch_(p); } catch (err) { console.error('Management: ultimo contatto non aggiornato'); }
+    if (p.action === 'standingsPdf') return uispPdf_(p.season);
     if (p.action === 'standings') return standingsRead_(p.season);
     if (p.action === 'deviceHello') {
       withLock_(function () { mgmtSimpleEvent_(p, 'Apertura app', 'accessi', 'riuscita'); });
@@ -122,17 +121,22 @@ function standingsUrl_(url, widget) {
 function standingsSave_(p) {
   return withLock_(function () {
     var key = standingsKey_(p.season), old = standingsConfig_(p.season), c = p.config || {};
-    if (['nessuna', 'widget', 'api'].indexOf(c.tipo) < 0) throw new Error('Fonte non valida');
+    if (['nessuna', 'widget', 'api', 'uisp'].indexOf(c.tipo) < 0) throw new Error('Fonte non valida');
     var url = String(c.url || '').trim(), token = String(c.apiKey || '').trim();
     if (url.length > 2000 || token.length > 500 || /[\r\n]/.test(token)) throw new Error('Configurazione non valida');
-    if (c.tipo !== 'nessuna') standingsUrl_(url, c.tipo === 'widget');
+    if (c.tipo !== 'nessuna' && c.tipo !== 'uisp') standingsUrl_(url, c.tipo === 'widget');
     var saved = { tipo: c.tipo, url: c.tipo === 'nessuna' ? '' : url, apiKey: c.tipo === 'api' ? (token === 'RIMUOVI' ? '' : token || (old.tipo === 'api' && old.url === url ? old.apiKey : '') || '') : '' };
+    if (c.tipo === 'uisp') {
+      if (!/^[1-9]$/.test(String(c.categoria || '')) || !/^[A-Z]$/.test(String(c.girone || ''))) throw new Error('Categoria o girone UISP non validi');
+      saved = { tipo: 'uisp', categoria: String(c.categoria), girone: String(c.girone) };
+    }
     mgmtProps_().setProperty(key, JSON.stringify(saved));
     return json({ ok: true });
   });
 }
 function standingsRead_(season) {
   var c = standingsConfig_(season);
+  if (c.tipo === 'uisp') { var meta = uispLatest_(season); return json({ ok: true, tipo: 'uisp', categoria: c.categoria, girone: c.girone, pdfUrl: meta.pdfUrl, comunicato: meta.comunicato, fonte: meta.fonte }); }
   if (c.tipo !== 'api') return json({ ok: true, tipo: c.tipo, url: c.url });
   standingsUrl_(c.url, false);
   var cache = CacheService.getScriptCache(), key = standingsKey_(season) + '_' + mgmtDigest_(JSON.stringify(c)), hit = cache.get(key);
@@ -165,4 +169,50 @@ function standingsRead_(season) {
   var result = { ok: true, tipo: 'api', righe: clean, aggiornato: new Date().toISOString() };
   cache.put(key, JSON.stringify(result), 300);
   return json(result);
+}
+
+// Fonte gratuita: comunicati ufficiali settimanali UISP Modena.
+function uispText_(url) {
+  var r;
+  try { r = UrlFetchApp.fetch(url, { followRedirects: false, muteHttpExceptions: true, validateHttpsCertificates: true }); }
+  catch (e) { throw new Error('UISP Modena non raggiungibile'); }
+  if (r.getResponseCode() !== 200) throw new Error('UISP Modena: HTTP ' + r.getResponseCode());
+  return r;
+}
+function uispLatest_(season) {
+  var normalized = String(season).replace(/-/g, '/');
+  var m = normalized.match(/^(\d{4})\/(\d{2}|\d{4})$/);
+  if (!m) throw new Error('Stagione UISP non valida');
+  var year = Number(m[1]), end = m[2].length === 2 ? Math.floor(year / 100) * 100 + Number(m[2]) : Number(m[2]);
+  if (end !== year + 1) throw new Error('La stagione UISP deve coprire due anni consecutivi');
+  var cache = CacheService.getScriptCache(), key = 'UISP_INDEX_' + year, hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  var home = uispText_('https://calcio.uispmodena.it/').getContentText();
+  var anchors = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, a, directory = '';
+  while ((a = anchors.exec(home))) {
+    var label = a[2].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    if (label.toUpperCase() === 'COMUNICATI ' + year + '/' + end) { directory = a[1]; break; }
+  }
+  if (directory.charAt(0) === '/') directory = 'https://calcio.uispmodena.it' + directory;
+  if (!/^https:\/\/calcio\.uispmodena\.it\/comunicati-[a-z0-9%/-]+$/i.test(directory)) throw new Error('Archivio comunicati UISP non trovato per questa stagione');
+  var html = uispText_(directory).getContentText();
+  var ids = /id=["']allegato_(\d+)["']/g, item, documents = [];
+  while ((item = ids.exec(html))) {
+    var block = html.slice(item.index, html.indexOf('</li>', item.index));
+    var date = block.match(/COMUNICATO[^<]*?(\d{2})\/(\d{2})\/(\d{4})/i);
+    var expected = 'https://calcio.uispmodena.it/upload/c_allegati/file/1/' + item[1] + '.pdf';
+    if (date && html.indexOf(expected) >= 0) documents.push({ pdfUrl: expected, comunicato: date[3] + '-' + date[2] + '-' + date[1] });
+  }
+  documents.sort(function (a, b) { return b.comunicato.localeCompare(a.comunicato); });
+  if (!documents.length) throw new Error('Nessun comunicato settimanale UISP trovato');
+  var result = documents[0]; result.fonte = directory;
+  cache.put(key, JSON.stringify(result), 300);
+  return result;
+}
+function uispPdf_(season) {
+  var c = standingsConfig_(season);
+  if (c.tipo !== 'uisp') throw new Error('Fonte UISP non configurata');
+  var meta = uispLatest_(season), response = uispText_(meta.pdfUrl), bytes = response.getBlob().getBytes();
+  if (bytes.length > 10000000 || bytes.length < 5 || bytes.slice(0, 5).map(function (b) { return String.fromCharCode((b + 256) % 256); }).join('') !== '%PDF-') throw new Error('Comunicato UISP PDF non valido o troppo grande');
+  return json({ ok: true, dataBase64: Utilities.base64Encode(bytes), pdfUrl: meta.pdfUrl });
 }

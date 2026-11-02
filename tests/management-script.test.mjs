@@ -232,3 +232,42 @@ test('blocco aggiuntivo Apps Script: autenticazione, API e LOG operativi', () =>
   assert.equal(s.call({ action: 'standings', season: '2040/41' }).tipo, 'widget')
   assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
 })
+
+test('UISP: configurazione riservata, archivio per stagione, ultimo comunicato e PDF controllato', () => {
+  const s = setup(), session = s.login()
+  const save = { action: 'managementSaveStandings', season: '2026/27', config: { tipo: 'uisp', categoria: '3', girone: 'B' } }
+  assert.equal(s.call(save).code, 'ADMIN_AUTH')
+  assert.equal(s.call({ ...save, adminToken: session.token }).ok, true)
+  assert.equal(s.call({ ...save, adminToken: session.token, config: { tipo: 'uisp', categoria: '3', girone: '*' } }).ok, false)
+  const c = s.call({ action: 'managementStandingsConfig', season: '2026/27', adminToken: session.token })
+  assert.equal(c.config.categoria, '3')
+  assert.equal(c.config.girone, 'B')
+  let pdf = '%PDF-1.7\ntest', calls = 0
+  s.context.Utilities.base64Encode = (bytes) => Buffer.from(bytes).toString('base64')
+  s.context.UrlFetchApp = { fetch: (url, options) => {
+    calls++
+    assert.equal(options.followRedirects, false)
+    const text = url.endsWith('/') ? '<a href="https://calcio.uispmodena.it/comunicati-2026%252F2027">COMUNICATI 2026/2027</a>'
+      : url.includes('comunicati-') ? '<li id="allegato_993"><h4>COMUNICATO SETTIMANALE N.07 DEL 21/10/2026</h4></li><li id="allegato_995"><h4>COMUNICATO SETTIMANALE N.08 DEL 28/10/2026</h4></li>https://calcio.uispmodena.it/upload/c_allegati/file/1/993.pdf https://calcio.uispmodena.it/upload/c_allegati/file/1/995.pdf' : pdf
+    return { getResponseCode: () => 200, getContentText: () => text, getBlob: () => ({ getBytes: () => Array.from(Buffer.from(text)) }) }
+  } }
+  const r = s.call({ action: 'standings', season: '2026/27' })
+  assert.equal(r.ok, true)
+  assert.equal(r.tipo, 'uisp')
+  assert.equal(r.comunicato, '2026-10-28')
+  assert.match(r.pdfUrl, /995.pdf$/)
+  assert.equal(s.call({ action: 'standingsPdf', season: '2026/27' }).dataBase64, Buffer.from(pdf).toString('base64'))
+  assert.equal(calls, 3, 'indice in cache, nessun accesso a API commerciali')
+  pdf = '<html>Errore</html>'
+  assert.equal(s.call({ action: 'standingsPdf', season: '2026/27' }).ok, false)
+  assert.equal(s.call({ action: 'standingsPdf', season: '2027/28' }).ok, false)
+})
+test('UISP: nessun ripiego sul campionato sbagliato o su un anno non disponibile', () => {
+  const s = setup()
+  s.context.UrlFetchApp = { fetch: () => ({ getResponseCode: () => 200, getContentText: () => '<a href="https://calcio.uispmodena.it/comunicati-2026%252F2027">COMUNICATI 2026/2027</a>' }) }
+  assert.throws(() => s.context.uispLatest_('2030/31'), /Archivio comunicati UISP non trovato/)
+  assert.throws(() => s.context.uispLatest_('2026/29'), /due anni consecutivi/)
+  vm.runInContext(readFileSync(new URL('../docs/apps-script-uisp.gs', import.meta.url), 'utf8'), s.context)
+  const session = s.login()
+  assert.equal(s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2030/31', config: { tipo: 'uisp', categoria: '2', girone: 'A' } }).ok, true)
+})

@@ -101,3 +101,25 @@ Nelle **Grafiche IG** il logo avversario viene scelto automaticamente per annunc
 La sezione Classifica mostra esclusivamente una tabella interna, con nomi, loghi della libreria e statistiche. In Management sono disponibili soltanto API JSON e Non configurata. Una vecchia fonte widget viene segnalata e non viene caricata in iframe; per convertirla occorre un vero endpoint API, non il suo URL widget.
 
 **Per questa modifica non occorre aggiungere altro ad Apps Script**: il blocco `apps-script-aggiunta.gs` già fornito include `standings`, `managementStandingsConfig` e `managementSaveStandings` per la modalità API. Se è già stato incollato e distribuito, non incollarlo nuovamente. Rimane da configurare la fonte API della stagione e la chiave eventualmente richiesta. Per un fornitore che restituisce un JSON diverso dal contratto documentato servirà un adattatore specifico; il solo link a una pagina Tuttocampo non consente di leggere automaticamente i dati.
+
+## Modalità gratuita UISP Modena: classifica e risultati
+
+Per il campionato del Riolunato scegli **Management → Classifica → UISP Modena · gratuita, settimanale → Categoria 3 → Girone B → Salva**. Non occorrono URL API, chiavi o account aggiuntivi. Il link Tuttocampo fornito contiene `GironeD` ma al momento della verifica mostra **Calcio a 11 Modena – Cat. 3 Girone B**: la configurazione usa il campionato effettivamente indicato nella pagina e nel comunicato UISP.
+
+La fonte è l’archivio pubblico ufficiale `https://calcio.uispmodena.it/`: l’app trova il menu dei comunicati della stagione selezionata, sceglie il comunicato settimanale più recente e legge esclusivamente la sezione **CAMPIONATO** della categoria e del girone configurati. Le coppe sono escluse. Le stagioni future non richiedono di cambiare il codice: quando UISP pubblica il nuovo archivio, si selezionano categoria e girone per la nuova stagione. Se anno, gruppo o formato non sono disponibili l’app mostra un errore, senza usare un altro girone o inventare la classifica.
+
+Sono mostrati la classifica e i risultati pubblicati nel comunicato, con data e collegamento al PDF ufficiale. **I dati sono settimanali e possono essere meno recenti di Tuttocampo.** I risultati sono quelli del periodo coperto dal singolo comunicato, non tutto lo storico del campionato e non una diretta live. Non vengono copiati nella raccolta Partite della società e non cambiano marcatori o statistiche interne. La classifica mantiene l’ordine UISP e i loghi vengono abbinati tramite nomi/alias della libreria (esempio: alias `RIOLUNATO U.S` sul logo U.S. Riolunato).
+
+Ogni cinque minuti viene controllata la presenza di un nuovo comunicato; l’indice del sito è in cache server per cinque minuti. Lo stesso PDF già letto è riutilizzato nel browser per un massimo di quindici minuti. **Aggiorna** forza anche la rilettura del PDF, utile quando UISP corregge un allegato mantenendo lo stesso indirizzo. Le immagini e i nominativi nelle altre sezioni del PDF non vengono importati. La lettura del documento avviene nel browser; lo script Google recupera soltanto i file dal dominio ufficiale fissato nel codice, senza inoltrare chiavi di altri servizi.
+
+### Aggiornamento Apps Script per UISP
+
+Questa nuova fonte richiede un aggiornamento rispetto al precedente blocco che supportava soltanto API JSON:
+
+- Se hai già applicato il blocco Classifica/LOG precedente, incolla **una sola volta in fondo allo stesso file** `docs/apps-script-uisp.gs`.
+- Se non lo hai ancora applicato, usa il nuovo `docs/apps-script-aggiunta.gs` completo, che include anche UISP. Non serve applicare entrambi.
+- In alternativa, sostituisci il sorgente completo con `docs/apps-script.gs`, mantenendo i tuoi ID e segreti.
+
+Salva e distribuisci una nuova versione del deployment esistente, mantenendo lo stesso URL `/exec`. Autorizza le richieste esterne se Google lo richiede. Non vengono attivate API commerciali o abbonamenti. La gratuità riguarda la fonte pubblica UISP e l’assenza di un servizio dati a pagamento; restano i normali limiti di utilizzo di Google Apps Script. Se UISP modifica la struttura del sito o dei PDF potrà essere necessario aggiornare il lettore.
+
+La pagina ufficiale `https://www.tuttocampo.it/WidgetApi` dichiara che le API Tuttocampo hanno un costo mensile, mentre i widget gratuiti usano iframe. Per questo la modalità gratuita senza iframe usa i comunicati UISP, non l’estrazione automatica delle pagine Tuttocampo.
