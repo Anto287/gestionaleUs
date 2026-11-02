@@ -40,7 +40,7 @@ try {
     await page.getByAltText('Logo U.S. Riolunato', { exact: true }).waitFor()
     await page.getByRole('cell', { name: 'Squadra senza logo', exact: true }).waitFor()
     await page.goto('http://127.0.0.1:5182/#/social')
-    await page.getByLabel('Logo dalla libreria', { exact: true }).waitFor()
+    await page.getByRole('combobox', { name: 'Logo dalla libreria', exact: true }).waitFor()
     await page.goto('http://127.0.0.1:5182/#/loghi')
     await page.getByRole('button', { name: 'Modifica', exact: true }).click()
     await page.getByLabel('Squadra del logo', { exact: true }).fill('Riolunato Calcio')
