@@ -11,6 +11,7 @@ class Sheet {
   getName() { return this.name }
   appendRow(row) { this.rows.push(row) }
   setFrozenRows() {}
+  deleteRows(start, count) { this.rows.splice(start - 1, count) }
   getLastRow() { return this.rows.length }
   getMaxRows() { return this.maxRows || 1000 }
   insertRowsAfter(_, count) { this.maxRows = this.getMaxRows() + count }
@@ -162,4 +163,61 @@ test('management: paginazione senza filtri e crescita del foglio oltre le righe 
   const sheet = s.ss.getSheetByName('Attivita')
   s.context.mgmtWrite_(sheet, 1001, randomUUID(), { activity: {} })
   assert.equal(sheet.getMaxRows(), 1500)
+})
+
+
+test('eliminazione log riservata e con conferma, dispositivi conservati', () => {
+  const s = setup(), session = s.login()
+  assert.equal(s.call({ action: 'managementClearActivities', conferma: 'ELIMINA LOG' }).code, 'ADMIN_AUTH')
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token }).ok, false)
+  assert.ok(s.logs().length > 0)
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
+  assert.equal(s.logs().length, 0)
+  assert.equal(s.call({ action: 'managementDevices', adminToken: session.token }).devices.length, 1)
+})
+test('fonti classifica per stagione e chiave mai restituita', () => {
+  const s = setup(), session = s.login()
+  const body = { action: 'managementSaveStandings', season: '2026/27', config: { tipo: 'api', url: 'https://api.example.com/table', apiKey: 'PRIVATE-KEY' } }
+  assert.equal(s.call(body).code, 'ADMIN_AUTH')
+  assert.equal(s.call({ ...body, adminToken: session.token }).ok, true)
+  const c = s.call({ action: 'managementStandingsConfig', season: '2026-27', adminToken: session.token })
+  assert.equal(c.config.hasApiKey, true)
+  assert.equal(JSON.stringify(c).includes('PRIVATE-KEY'), false)
+  assert.equal(s.call({ action: 'standings', season: '2027-28' }).tipo, 'nessuna')
+  for (const url of ['http://api.example.com', 'https://127.0.0.1/test', 'https://user:pass@example.com']) {
+    assert.equal(s.call({ ...body, adminToken: session.token, config: { tipo: 'api', url } }).ok, false)
+  }
+  assert.equal(s.call({ ...body, adminToken: session.token, config: { tipo: 'widget', url: 'https://evil.com/WidgetV2/Classifica/test' } }).ok, false)
+})
+test('API classifica normalizza i dati, cache, ordine ufficiale e errori senza credenziali', () => {
+  const s = setup(), session = s.login()
+  let count = 0
+  s.context.UrlFetchApp = { fetch: (url, options) => {
+    count++
+    assert.equal(options.followRedirects, false)
+    assert.equal(options.headers.Authorization, 'Bearer PRIVATE')
+    return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ righe: [{ squadra: 'B', punti: -1 }, { squadra: 'A', punti: 0 }] }) }
+  } }
+  s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2030/31', config: { tipo: 'api', url: 'https://api.example.com/table', apiKey: 'PRIVATE' } })
+  const r = s.call({ action: 'standings', season: '2030/31' })
+  assert.equal(r.ok, true)
+  assert.deepEqual(r.righe.map((r) => r.squadra), ['B', 'A'])
+  assert.equal(JSON.stringify(r).includes('PRIVATE'), false)
+  s.call({ action: 'standings', season: '2030/31' })
+  assert.equal(count, 1)
+  s.cache.clear()
+  s.context.UrlFetchApp.fetch = () => { throw new Error('PRIVATE') }
+  const failure = s.call({ action: 'standings', season: '2030/31' })
+  assert.equal(failure.ok, false)
+  assert.equal(failure.error.includes('PRIVATE'), false)
+})
+test('pulizia log conserva la protezione dai replay senza dettagli personali', () => {
+  const s = setup(), session = s.login(), requestId = randomUUID()
+  const write = { action: 'put', requestId, collection: 'allenamenti', season: '2026-27', record: { id: 's1', programma: 'DETTAGLIO PRIVATO', presenze: {} } }
+  assert.equal(s.call(write).ok, true)
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
+  assert.equal(s.logs().length, 0)
+  assert.equal(s.call(write).ok, true)
+  assert.equal(s.writes(), 1)
+  assert.equal(JSON.stringify(s.ss.getSheetByName('Ricevute').rows).includes('DETTAGLIO PRIVATO'), false)
 })

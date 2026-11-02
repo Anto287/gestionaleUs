@@ -187,6 +187,8 @@ export interface Allenamento {
   id: string
   data: string
   note?: string
+  programma?: string
+  svolto?: string
   /** id giocatore → presente */
   presenze: Record<string, boolean>
 }

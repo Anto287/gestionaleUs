@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Alert, App, Button, Empty, Form, Input, Select, Skeleton, Space, Table, Tabs, Tag, Typography } from 'antd'
+import { Alert, App, Button, Empty, Form, Input, Select, Skeleton, Space, Popconfirm, Table, Tabs, Tag, Typography } from 'antd'
 import { LockOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageHeader } from '../components/PageHeader'
 import { useManagement } from '../management/useManagement'
+import { ConfigClassifica } from './classifica/ConfigClassifica'
 import { getDevice } from '../management/device'
 import type { Activity, ActivityFilters, Device } from '../management/types'
 
@@ -66,7 +67,19 @@ function ManagementPronto() {
   }
 
   const deviceName = (id: string) => devices.find((d) => d.id === id)?.nome || (id === 'legacy' ? 'Dispositivo non identificato' : `Dispositivo ${id.slice(0, 8)}`)
+  async function eliminaLog() {
+    setSaving(true)
+    try {
+      await request('managementClearActivities', { conferma: 'ELIMINA LOG' })
+      setPage(1); setRefresh((n) => n + 1)
+      message.success('Registro attività eliminato')
+    } catch (e) { message.error((e as Error).message) }
+    finally { setSaving(false) }
+  }
   const activityTable = <>
+    <Popconfirm title="Eliminare tutti i LOG?" description="Elimina tutto il registro, anche le attività escluse dai filtri. Operazione irreversibile." onConfirm={eliminaLog} okText="Elimina tutti" cancelText="Annulla" okButtonProps={{ danger: true }}>
+      <Button danger loading={saving} disabled={busy}>Elimina tutti i LOG</Button>
+    </Popconfirm>
     <Form layout="vertical" className="management-filters" onFinish={(values) => { setPage(1); setFilters(values) }}>
       <Form.Item name="ricerca" label="Cerca attività"><Input placeholder="Operazione o elemento" allowClear maxLength={100} /></Form.Item>
       <Form.Item name="deviceId" label="Dispositivo"><Select allowClear placeholder="Tutti" options={devices.map((d) => ({ value: d.id, label: deviceName(d.id) }))} /></Form.Item>
@@ -109,7 +122,8 @@ function ManagementPronto() {
       <Text type="secondary">{updated ? `Aggiornato il ${date(updated)} · Orari di Roma` : 'Caricamento del registro'}</Text>
     </div>
     {error && <Alert type="error" showIcon message="Impossibile aggiornare il Management" description={error} action={<Button onClick={() => setRefresh((n) => n + 1)}>Riprova</Button>} style={{ marginBottom: 16 }} />}
-    {!ready && busy ? <Skeleton active paragraph={{ rows: 8 }} /> : <Tabs items={[
+    {!ready && busy ? <Skeleton active paragraph={{ rows: 8 }} /> : <Tabs defaultActiveKey="attivita" items={[
+      { key: 'classifica', label: 'Classifica', children: <ConfigClassifica /> },
       { key: 'attivita', label: 'Registro attività', children: activityTable },
       { key: 'dispositivi', label: 'Dispositivi', children: <>
         <Paragraph type="secondary">Ogni browser ha un identificativo proprio. Cancellando i dati del browser verrà registrato un nuovo dispositivo. L’ultimo contatto può aggiornarsi con alcuni minuti di ritardo.</Paragraph>

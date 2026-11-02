@@ -31,6 +31,7 @@ export const navItems: NavItem[] = [
   { to: '/', label: 'Panoramica', icon: DashboardOutlined, descrizione: 'Il colpo d’occhio sulla stagione.' },
   { to: '/rosa', label: 'Rosa', icon: TeamOutlined, descrizione: 'Giocatori e statistiche.' },
   { to: '/allenamenti', label: 'Allenamenti', icon: ScheduleOutlined, descrizione: 'Presenze alle sedute.' },
+  { to: '/classifica', label: 'Classifica', icon: TrophyOutlined, descrizione: 'La classifica online del campionato.' },
   { to: '/partite', label: 'Partite', icon: TrophyOutlined, descrizione: 'Risultati, marcatori e cartellini.' },
   { to: '/avversari', label: 'Avversari', icon: AimOutlined, descrizione: 'Le squadre affrontate e come giocano.' },
   { to: '/calendario', label: 'Calendario', icon: CalendarOutlined, descrizione: 'Tutti gli impegni, mese per mese.' },

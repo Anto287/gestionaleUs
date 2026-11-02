@@ -62,3 +62,24 @@ Se provieni dalla versione con sessioni di 30 minuti, aggiorna nuovamente lo scr
 - `npm run build` e `npm run lint`: compilazione e controllo statico.
 
 Per i test browser serve Chromium installato tramite Playwright; in alternativa specifica `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. I test non usano password o dati reali. Il deployment su Google e la prova finale contro il proprio Drive devono essere effettuati dopo la configurazione descritta sopra.
+
+## Eliminazione LOG e classifica online
+
+Il pulsante **Elimina tutti i LOG**, nel Registro attività, chiede conferma ed elimina tutte le attività, indipendentemente dai filtri. L’operazione richiede una sessione Management valida anche sul server. I dispositivi restano registrati. Nel foglio privato `Ricevute` restano soltanto ID, impronta, esito tecnico e risposta delle scritture, senza descrizioni o valori prima/dopo: servono a impedire che una richiesta già eseguita venga ripetuta dopo la pulizia.
+
+In **Management → Classifica**, scegli la fonte per la stagione attiva:
+
+- **Widget ufficiale Tuttocampo**: incolla l’URL HTTPS `https://www.tuttocampo.it/WidgetV2/Classifica/<identificativo>` fornito da Tuttocampo. Non incollare il codice HTML completo né una normale pagina del campionato. La nuova sezione Classifica incorpora il widget e offre un collegamento per aprirlo sul sito originale se il browser ne impedisce la visualizzazione.
+- **API JSON**: inserisci un endpoint HTTPS pubblico. La chiave facoltativa è trasmessa dal server come `Authorization: Bearer …`, conservata nelle Proprietà script e mai restituita al frontend. Campo vuoto mantiene la chiave solo se l’URL è invariato; `RIMUOVI` la cancella. Cambiare endpoint senza fornire una nuova chiave non inoltra la precedente al nuovo host. L’API deve restituire un array oppure `{ "righe": [...] }`. Ogni riga contiene `squadra` (testo), `punti` (numero, anche negativo per penalizzazioni), ed eventualmente `giocate`, `vinte`, `pareggiate`, `perse`, `golFatti`, `golSubiti` (interi non negativi). L’ordine ufficiale della fonte è conservato. Se il fornitore usa un formato diverso serve un adattatore, non basta incollare la sua chiave.
+
+Esempio: `{ "righe": [{ "squadra": "U.S. Riolunato", "punti": 12, "giocate": 6, "vinte": 4, "pareggiate": 0, "perse": 2, "golFatti": 10, "golSubiti": 5 }] }`.
+
+Le API vengono lette all’apertura e ogni cinque minuti mentre la pagina è visibile; una cache server di cinque minuti limita le chiamate al fornitore. **Aggiorna** rilegge la fonte rispettando questa cache. Gli errori sono mostrati senza usare dati inventati. Le nuove stagioni partono senza fonte: configurare il nuovo girone mantiene separati gli URL delle stagioni precedenti, senza anni fissati nel codice. Le classifiche storiche restano dipendenti dalla disponibilità dell’archivio del fornitore, non sono copie congelate.
+
+Per attivare questi endpoint è necessario aggiornare e ridistribuire **anche `docs/apps-script.gs`**, mantenendo le proprie configurazioni iniziali, e autorizzare le nuove chiamate esterne (`UrlFetchApp`, ambito `script.external_request`) se Google lo richiede. Il solo frontend non aggiorna lo script remoto. Nessun provider è preconfigurato e nessuna chiave è inclusa. Il servizio di widget/API è descritto da Tuttocampo: https://www.tuttocampo.it/Veneto/News/1818058.
+
+## Programmi e resoconti allenamento
+
+Aprendo una seduta, oltre alle presenze, puoi scrivere **Programma di allenamento** e **Attività svolta e osservazioni**. **Salva programma e resoconto** salva entrambi sulla stessa seduta e nella stessa stagione, con la sincronizzazione Drive già usata dalle presenze.
+
+**Genera esercizi** crea una proposta locale per possesso, finalizzazione o difesa, in base a durata (30–150 minuti) e numero previsto di giocatori (4–40). La somma delle fasi corrisponde alla durata scelta. È una libreria di esercizi, senza chiamate AI né costi; la proposta è modificabile e richiede il salvataggio esplicito. Prima di sostituire un programma esistente viene chiesta conferma. Le vecchie sedute senza questi campi continuano a funzionare.
