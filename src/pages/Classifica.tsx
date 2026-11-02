@@ -26,6 +26,7 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
       setBusy(true)
       try {
         const r = await callDrive({ action: 'standings', season: stagione, secret: getSecret() })
+        if (!active) return
         if (!r.ok) throw new Error(r.error || 'Classifica non disponibile')
         if (r.tipo === 'uisp') {
           const key = `${r.pdfUrl}|${r.categoria}|${r.girone}`

@@ -91,16 +91,16 @@ Se hai già la versione con Management persistente e preferisci conservare il fi
 
 La sezione **Loghi squadre** salva una libreria condivisa nella raccolta globale `loghi`, comune a tutte le stagioni e sincronizzata attraverso gli endpoint già esistenti. Accetta PNG, JPEG e WebP fino a 10 MB, mantiene la trasparenza e riduce le immagini prima del salvataggio per rispettare il limite delle celle Google Sheets. Puoi aggiungere un nome e fino a 20 alias, modificare o eliminare il logo. Nomi e alias non possono sovrapporsi tra loghi diversi.
 
-La classifica in modalità **API JSON** mostra i loghi della libreria accanto ai nomi, con confronto esatto normalizzato (spazi, maiuscole, punteggiatura e accenti sono ignorati). Se un fornitore usa un nome diverso aggiungilo come alias. Un logo assente non blocca la tabella. La visualizzazione è una tabella interna senza iframe, con i loghi caricati. Le vecchie configurazioni widget richiedono di essere sostituite con una fonte API JSON.
+La classifica in modalità **API JSON** e **UISP Modena** mostra i loghi della libreria accanto ai nomi, con confronto esatto normalizzato (spazi, maiuscole, punteggiatura e accenti sono ignorati). Se un fornitore usa un nome diverso aggiungilo come alias. Un logo assente non blocca la tabella. La visualizzazione è una tabella interna senza iframe, con i loghi caricati. Le vecchie configurazioni widget richiedono di essere sostituite con una fonte API JSON.
 
 Nelle **Grafiche IG** il logo avversario viene scelto automaticamente per annuncio, risultato e formazione con partita associata; è sempre possibile scegliere manualmente un logo salvato o caricarne uno per la sola grafica. Cambiare squadra evita di trascinare il logo manuale della squadra precedente. Il logo della propria società, se salvato con il nome U.S. Riolunato o un alias equivalente, sostituisce quello predefinito nelle grafiche. Le immagini mantengono le proporzioni. Le grafiche già esportate restano file indipendenti.
 
 
 ## Classifica interna senza iframe
 
-La sezione Classifica mostra esclusivamente una tabella interna, con nomi, loghi della libreria e statistiche. In Management sono disponibili soltanto API JSON e Non configurata. Una vecchia fonte widget viene segnalata e non viene caricata in iframe; per convertirla occorre un vero endpoint API, non il suo URL widget.
+La sezione Classifica mostra esclusivamente una tabella interna, con nomi, loghi della libreria e statistiche. In Management sono disponibili UISP Modena gratuita, API JSON avanzata e Non configurata. Una vecchia fonte widget viene segnalata e non viene caricata in iframe; per convertirla occorre un vero endpoint API, non il suo URL widget.
 
-**Per questa modifica non occorre aggiungere altro ad Apps Script**: il blocco `apps-script-aggiunta.gs` già fornito include `standings`, `managementStandingsConfig` e `managementSaveStandings` per la modalità API. Se è già stato incollato e distribuito, non incollarlo nuovamente. Rimane da configurare la fonte API della stagione e la chiave eventualmente richiesta. Per un fornitore che restituisce un JSON diverso dal contratto documentato servirà un adattatore specifico; il solo link a una pagina Tuttocampo non consente di leggere automaticamente i dati.
+**La modalità API JSON usa gli endpoint `standings`, `managementStandingsConfig` e `managementSaveStandings` già presenti nel precedente blocco Classifica/LOG.** Per attivare la nuova fonte UISP gratuita segui invece le istruzioni di aggiornamento UISP qui sotto. Per la modalità API resta da configurare la fonte della stagione e la chiave eventualmente richiesta. Per un fornitore che restituisce un JSON diverso dal contratto documentato servirà un adattatore specifico; il solo link a una pagina Tuttocampo non consente di leggere automaticamente i dati.
 
 ## Modalità gratuita UISP Modena: classifica e risultati
 
