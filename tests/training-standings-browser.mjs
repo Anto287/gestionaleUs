@@ -12,7 +12,7 @@ try {
   for (const width of [1440, 390]) {
     const context = await browser.newContext({ viewport: { width, height: 950 }, reducedMotion: 'reduce' })
     const page = await context.newPage(), data = fixtures(), errors = []
-    let saved, config = { tipo: 'nessuna', url: '' }, cleared = false
+    let saved, config = { tipo: 'api', url: '' }, cleared = false, legacy = false
     data.allenamenti = [{ id: 'seduta-test', data: '2026-10-30', presenze: {} }]
     page.on('pageerror', (e) => errors.push(e.message))
     await page.addInitScript(() => {
@@ -25,10 +25,10 @@ try {
       if (b.action === 'listAll') res.liste = b.richieste.map((r) => ({ collection: r.collection, items: data[r.collection] || [] }))
       if (b.action === 'list') res.items = data[b.collection] || []
       if (b.action === 'put' && b.collection === 'allenamenti') { saved = b.record; data.allenamenti = [saved] }
-      if (b.action === 'standings') Object.assign(res, { tipo: 'api', righe: [{ squadra: 'U.S. Riolunato', punti: 12 }], aggiornato: new Date().toISOString() })
+      if (b.action === 'standings') Object.assign(res, { tipo: legacy ? 'widget' : 'api', righe: [{ squadra: 'U.S. Riolunato', punti: 12 }], aggiornato: new Date().toISOString() })
       if (b.action === 'managementDevices') res.devices = []
       if (b.action === 'managementActivities') Object.assign(res, { activities: [], total: 0 })
-      if (b.action === 'managementStandingsConfig') res.config = config
+      if (b.action === 'managementStandingsConfig') res.config = legacy ? { tipo: 'widget', url: 'https://www.tuttocampo.it/WidgetV2/Classifica/demo' } : config
       if (b.action === 'managementSaveStandings') config = b.config
       if (b.action === 'managementClearActivities') cleared = true
       await route.fulfill({ json: res })
@@ -44,16 +44,25 @@ try {
     assert.equal(saved.svolto, 'Lavoro sul possesso eseguito')
     await page.goto('http://127.0.0.1:5181/#/classifica')
     await page.getByRole('cell', { name: 'U.S. Riolunato', exact: true }).waitFor()
+    assert.equal(await page.locator('iframe').count(), 0)
     await page.goto('http://127.0.0.1:5181/#/management')
     await page.getByRole('button', { name: 'Elimina tutti i LOG', exact: true }).click()
     await page.getByRole('button', { name: 'Elimina tutti', exact: true }).click()
     await page.waitForTimeout(500)
     assert.equal(cleared, true)
     await page.getByRole('tab', { name: 'Classifica', exact: true }).click()
-    await page.getByLabel('URL HTTPS del widget o dell’API', { exact: true }).fill('https://www.tuttocampo.it/WidgetV2/Classifica/demo')
+    await page.getByLabel('URL HTTPS dell’API', { exact: true }).fill('https://api.example.com/standings')
     await page.getByRole('button', { name: 'Salva fonte per 2026/27', exact: true }).click()
     await page.waitForTimeout(500)
-    assert.match(config.url, /tuttocampo/)
+    assert.match(config.url, /api.example.com/)
+    legacy = true
+    await page.goto('http://127.0.0.1:5181/#/classifica')
+    await page.getByText('La fonte di questa stagione usa ancora un widget', { exact: true }).waitFor()
+    assert.equal(await page.locator('iframe').count(), 0)
+    await page.goto('http://127.0.0.1:5181/#/management')
+    await page.getByRole('tab', { name: 'Classifica', exact: true }).click()
+    await page.getByText('Sostituisci il precedente widget con una fonte API JSON', { exact: true }).waitFor()
+    assert.equal(await page.getByLabel('URL HTTPS dell’API', { exact: true }).inputValue(), '')
     assert.deepEqual(errors, [])
     await page.screenshot({ path: join(tmpdir(), `training-standings-${width}.png`), fullPage: true })
     await context.close()

@@ -7,7 +7,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useSeason } from '../season/SeasonContext'
 import { callDrive, getSecret } from '../services/driveStore'
 type Riga = { squadra: string; punti: number; giocate?: number; vinte?: number; pareggiate?: number; perse?: number; golFatti?: number; golSubiti?: number }
-type Risposta = { tipo: string; url?: string; righe?: Riga[]; aggiornato?: string }
+type Risposta = { tipo: string; righe?: Riga[]; aggiornato?: string }
 export function Classifica() {
   const { attiva } = useSeason()
   return <ClassificaStagione key={attiva} stagione={attiva} />
@@ -35,10 +35,8 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
   }, [stagione, refresh])
   return <>
     <PageHeader titolo="Classifica" sottotitolo={`Campionato · ${stagione}`} azioni={<Button loading={busy} onClick={() => setRefresh((n) => n + 1)}>Aggiorna</Button>} />
-    {busy && !data ? <Skeleton active /> : error ? <Alert type="error" message="Impossibile caricare la classifica" description={error} /> : data?.tipo === 'widget' ? <>
-      <p><a href={data.url} target="_blank" rel="noopener noreferrer">Apri classifica su Tuttocampo</a></p>
-      <iframe key={refresh} title={`Classifica ${stagione}`} src={data.url} referrerPolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups" style={{ width: '100%', minHeight: 800, border: 0 }} />
-    </> : data?.tipo === 'api' ? <>
+    {busy && !data ? <Skeleton active /> : error ? <Alert type="error" message="Impossibile caricare la classifica" description={error} /> : data?.tipo === 'widget' ? <Alert type="warning" showIcon message="La fonte di questa stagione usa ancora un widget" description="Per visualizzare la classifica interna con i loghi, configura una fonte API JSON in Management → Classifica. Un collegamento al widget non fornisce i dati della tabella." />
+    : data?.tipo === 'api' ? <>
       <p>Ultima lettura: {new Date(data.aggiornato!).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} · Aggiornamento automatico ogni 5 minuti</p>
       <Table<Riga> rowKey="squadra" dataSource={data.righe} pagination={false} scroll={{ x: 650 }} columns={[
         { title: '#', render: (_, _r, i) => i + 1 }, { title: 'Squadra', dataIndex: 'squadra', render: (nome: string) => { const logo = logoSquadra(loghi, nome); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>{logo && <img src={logo.dataUrl} alt={`Logo ${nome}`} style={{ width: 32, height: 32, objectFit: 'contain' }} />}{nome}</span> } },
