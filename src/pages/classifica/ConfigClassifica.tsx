@@ -31,7 +31,7 @@ function Configurazione({ stagione }: { stagione: string }) {
       finally { setBusy(false) }
     }}>
       <Form.Item name="tipo" label="Fonte"><Select options={[{ value: 'nessuna', label: 'Non configurata' }, { value: 'widget', label: 'Widget ufficiale Tuttocampo' }, { value: 'api', label: 'API JSON' }]} /></Form.Item>
-      <Form.Item name="url" label="URL HTTPS del widget o dell’API" extra="Per Tuttocampo inserisci l’URL WidgetV2/Classifica fornito dal servizio. Per API: risposta { righe: [{ squadra, punti, giocate, vinte, pareggiate, perse, golFatti, golSubiti }] }. Sono accettati anche array di righe."><Input maxLength={2000} /></Form.Item>
+      <Form.Item name="url" label="URL HTTPS del widget o dell’API" extra="Per Tuttocampo inserisci l’URL WidgetV2/Classifica fornito dal servizio. Per API: risposta { righe: [{ squadra, punti, giocate, vinte, pareggiate, perse, golFatti, golSubiti }] }. Sono accettati anche array di righe."><Input aria-label="URL HTTPS del widget o dell’API" maxLength={2000} /></Form.Item>
       <Form.Item name="apiKey" label="Chiave API (facoltativa)" extra="Inviata come Authorization: Bearer dal server. Lascia vuoto per mantenere la chiave salvata; scrivi RIMUOVI per cancellarla. Non viene restituita al browser."><Input.Password autoComplete="new-password" maxLength={500} /></Form.Item>
       <Button type="primary" htmlType="submit" loading={busy}>Salva fonte per {stagione}</Button>
     </Form>}
