@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { createServer } from 'vite'
 import { fixtures } from './fixtures.mjs'
@@ -53,7 +55,7 @@ try {
     await page.waitForTimeout(500)
     assert.match(config.url, /tuttocampo/)
     assert.deepEqual(errors, [])
-    await page.screenshot({ path: `/private/tmp/training-standings-${width}.png`, fullPage: true })
+    await page.screenshot({ path: join(tmpdir(), `training-standings-${width}.png`), fullPage: true })
     await context.close()
   }
   console.log('Programma, resoconto, classifica, configurazione e pulizia log verificati su desktop e mobile')
