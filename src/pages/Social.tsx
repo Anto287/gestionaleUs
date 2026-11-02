@@ -252,7 +252,7 @@ export function Social() {
 
   const nomeSquadraLogo = kind === 'risultato' ? partitaRes?.avversario || '' : kind === 'formazione' ? partitaFormazione?.avversario || '' : avversario
   const logoAutomatico = logoSquadra(loghi, nomeSquadraLogo)
-  const crestAvv = crestScelto && crestScelto.squadra === nomeSquadraLogo ? crestScelto.logo : logoAutomatico ? { src: logoAutomatico.dataUrl, rapporto: logoAutomatico.rapporto } : undefined
+  const crestAvv = useMemo(() => crestScelto && crestScelto.squadra === nomeSquadraLogo ? crestScelto.logo : logoAutomatico ? { src: logoAutomatico.dataUrl, rapporto: logoAutomatico.rapporto } : undefined, [crestScelto, nomeSquadraLogo, logoAutomatico])
   const setCrestAvv = (logo?: { src: string; rapporto: number }) => setCrestScelto({ squadra: nomeSquadraLogo, logo })
 
   const piede = leggiPrefs(kind).piede ?? '#FORZARIOLUNATO'
