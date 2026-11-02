@@ -83,3 +83,15 @@ Per attivare questi endpoint è necessario aggiornare e ridistribuire **anche `d
 Aprendo una seduta, oltre alle presenze, puoi scrivere **Programma di allenamento** e **Attività svolta e osservazioni**. **Salva programma e resoconto** salva entrambi sulla stessa seduta e nella stessa stagione, con la sincronizzazione Drive già usata dalle presenze.
 
 **Genera esercizi** crea una proposta locale per possesso, finalizzazione o difesa, in base a durata (30–150 minuti) e numero previsto di giocatori (4–40). La somma delle fasi corrisponde alla durata scelta. È una libreria di esercizi, senza chiamate AI né costi; la proposta è modificabile e richiede il salvataggio esplicito. Prima di sostituire un programma esistente viene chiesta conferma. Le vecchie sedute senza questi campi continuano a funzionare.
+
+## Aggiornamento tramite blocco aggiuntivo
+
+Se hai già la versione con Management persistente e preferisci conservare il file esistente, incolla **una sola volta, in fondo allo stesso file**, l’intero contenuto di `docs/apps-script-aggiunta.gs`. Il blocco aggiorna le funzioni di smistamento e le scritture e aggiunge il supporto classifiche/LOG; non cambia gli ID né `SECRET`. È verificato anche contro la versione su main precedente a questa PR. Non usarlo su script precedenti al Management persistente. In alternativa sostituisci il file intero con `docs/apps-script.gs`, ripristinando i tuoi valori iniziali. Sono due alternative: non occorre applicarle entrambe. Salva e pubblica una nuova versione del deployment esistente, mantenendo l’URL `/exec`. Per l’API autorizza le richieste esterne se Google lo richiede.
+
+## Loghi squadre
+
+La sezione **Loghi squadre** salva una libreria condivisa nella raccolta globale `loghi`, comune a tutte le stagioni e sincronizzata attraverso gli endpoint già esistenti. Accetta PNG, JPEG e WebP fino a 10 MB, mantiene la trasparenza e riduce le immagini prima del salvataggio per rispettare il limite delle celle Google Sheets. Puoi aggiungere un nome e fino a 20 alias, modificare o eliminare il logo. Nomi e alias non possono sovrapporsi tra loghi diversi.
+
+La classifica in modalità **API JSON** mostra i loghi della libreria accanto ai nomi, con confronto esatto normalizzato (spazi, maiuscole, punteggiatura e accenti sono ignorati). Se un fornitore usa un nome diverso aggiungilo come alias. Un logo assente non blocca la tabella. La modalità widget rimane un iframe esterno: i loghi interni non possono modificarne il contenuto.
+
+Nelle **Grafiche IG** il logo avversario viene scelto automaticamente per annuncio, risultato e formazione con partita associata; è sempre possibile scegliere manualmente un logo salvato o caricarne uno per la sola grafica. Cambiare squadra evita di trascinare il logo manuale della squadra precedente. Il logo della propria società, se salvato con il nome U.S. Riolunato o un alias equivalente, sostituisce quello predefinito nelle grafiche. Le immagini mantengono le proporzioni. Le grafiche già esportate restano file indipendenti.

@@ -27,6 +27,7 @@ export const COLLECTIONS = [
   'conti',
   'speseCondivise',
   'avversari',
+  'loghi',
   'documenti',
 ] as const
 

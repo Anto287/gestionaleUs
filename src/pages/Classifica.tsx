@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Empty, Skeleton, Table } from 'antd'
+import { useCollection } from '../hooks/useCollection'
+import { logoSquadra } from '../lib/loghi'
+import type { LogoSquadra } from '../types'
 import { PageHeader } from '../components/PageHeader'
 import { useSeason } from '../season/SeasonContext'
 import { callDrive, getSecret } from '../services/driveStore'
@@ -10,6 +13,7 @@ export function Classifica() {
   return <ClassificaStagione key={attiva} stagione={attiva} />
 }
 function ClassificaStagione({ stagione }: { stagione: string }) {
+  const { items: loghi } = useCollection<LogoSquadra>('loghi')
   const [data, setData] = useState<Risposta>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(true)
@@ -37,7 +41,7 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
     </> : data?.tipo === 'api' ? <>
       <p>Ultima lettura: {new Date(data.aggiornato!).toLocaleString('it-IT', { timeZone: 'Europe/Rome' })} · Aggiornamento automatico ogni 5 minuti</p>
       <Table<Riga> rowKey="squadra" dataSource={data.righe} pagination={false} scroll={{ x: 650 }} columns={[
-        { title: '#', render: (_, _r, i) => i + 1 }, { title: 'Squadra', dataIndex: 'squadra' },
+        { title: '#', render: (_, _r, i) => i + 1 }, { title: 'Squadra', dataIndex: 'squadra', render: (nome: string) => { const logo = logoSquadra(loghi, nome); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>{logo && <img src={logo.dataUrl} alt={`Logo ${nome}`} style={{ width: 32, height: 32, objectFit: 'contain' }} />}{nome}</span> } },
         ...[['punti', 'Pt'], ['giocate', 'G'], ['vinte', 'V'], ['pareggiate', 'N'], ['perse', 'P'], ['golFatti', 'GF'], ['golSubiti', 'GS']].map(([dataIndex, title]) => ({ title, dataIndex, render: (v: number | undefined) => v ?? '—' })),
       ]} />
     </> : <Empty description="Fonte non configurata per questa stagione. Un amministratore può aggiungerla in Management → Classifica." />}

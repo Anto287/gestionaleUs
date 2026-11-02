@@ -51,8 +51,9 @@ function setup() {
       formatDate: (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d),
     },
   })
-  const source = readFileSync(new URL('../docs/apps-script.gs', import.meta.url), 'utf8').replace("const SECRET = '';", "const SECRET = 'app-test-secret';")
+  const source = readFileSync(process.env.APPS_SCRIPT_BASE || new URL('../docs/apps-script.gs', import.meta.url), 'utf8').replace("const SECRET = '';", "const SECRET = 'app-test-secret';")
   vm.runInContext(source, context)
+  if (process.env.APPS_SCRIPT_BASE) vm.runInContext(readFileSync(new URL('../docs/apps-script-aggiunta.gs', import.meta.url), 'utf8'), context)
   const records = new Map()
   context.listDalFoglio_ = context.listItems = (c, season) => structuredClone(records.get(`${c}/${season}`) || [])
   context.rebuildSheet_ = (c, season, items) => { writes++; records.set(`${c}/${season}`, structuredClone(items)) }
@@ -220,4 +221,14 @@ test('pulizia log conserva la protezione dai replay senza dettagli personali', (
   assert.equal(s.call(write).ok, true)
   assert.equal(s.writes(), 1)
   assert.equal(JSON.stringify(s.ss.getSheetByName('Ricevute').rows).includes('DETTAGLIO PRIVATO'), false)
+})
+
+test('blocco aggiuntivo Apps Script: autenticazione, API e LOG operativi', () => {
+  const s = setup()
+  vm.runInContext(readFileSync(new URL('../docs/apps-script-aggiunta.gs', import.meta.url), 'utf8'), s.context)
+  assert.equal(s.call({ action: 'managementStandingsConfig', season: '2026/27' }).code, 'ADMIN_AUTH')
+  const session = s.login()
+  assert.equal(s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2040/41', config: { tipo: 'widget', url: 'https://www.tuttocampo.it/WidgetV2/Classifica/demo' } }).ok, true)
+  assert.equal(s.call({ action: 'standings', season: '2040/41' }).tipo, 'widget')
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
 })

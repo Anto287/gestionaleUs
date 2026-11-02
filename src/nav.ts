@@ -39,6 +39,7 @@ export const navItems: NavItem[] = [
   { to: '/formazione', label: 'Formazione', icon: ClusterOutlined, descrizione: 'Genera titolari e panchina.' },
   { to: '/piazzati', label: 'Calci piazzati', icon: FlagOutlined, descrizione: 'Chi batte e chi va dove sulle palle ferme.' },
   { to: '/distinte', label: 'Distinte', icon: SolutionOutlined, descrizione: 'Genera la distinta per la partita.' },
+  { to: '/loghi', label: 'Loghi squadre', icon: TeamOutlined, descrizione: 'Loghi condivisi per grafiche e classifiche.' },
   { to: '/social', label: 'Grafiche IG', icon: InstagramOutlined, descrizione: 'Foto per Instagram dei match.' },
   { to: '/magazzino', label: 'Magazzino', icon: InboxOutlined, descrizione: 'Scorte del bar.' },
   { to: '/conti', label: 'Conti', icon: WalletOutlined, descrizione: 'Entrate, uscite e insoluti.' },

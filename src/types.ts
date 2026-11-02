@@ -379,3 +379,12 @@ export interface CalciPiazzati {
   /** ultima modifica ('YYYY-MM-DD') */
   aggiornato?: string
 }
+
+/** Logo condiviso tra tutte le stagioni, con alias per le fonti esterne. */
+export interface LogoSquadra {
+  id: string
+  nome: string
+  alias: string[]
+  dataUrl: string
+  rapporto: number
+}

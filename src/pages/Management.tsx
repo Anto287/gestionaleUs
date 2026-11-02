@@ -10,7 +10,7 @@ import type { Activity, ActivityFilters, Device } from '../management/types'
 
 const { Text, Paragraph } = Typography
 const date = (value: string) => value ? new Date(value).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : 'Mai'
-const sectionNames: Record<string, string> = { giocatori: 'Rosa', allenamenti: 'Allenamenti', partite: 'Partite', appuntamenti: 'Calendario', promemoria: 'Promemoria', distinte: 'Distinte', calciPiazzati: 'Calci piazzati', magazzino: 'Bar', materiale: 'Materiale', manutenzione: 'Manutenzione', borsaMedica: 'Borsa medica', divise: 'Divise', tornei: 'Tornei', conti: 'Conti', speseCondivise: 'Spese condivise', avversari: 'Avversari', documenti: 'Documenti', archivio: 'Archivio', stagioni: 'Stagioni', grafica: 'Grafiche', accessi: 'Accessi', management: 'Management' }
+const sectionNames: Record<string, string> = { giocatori: 'Rosa', allenamenti: 'Allenamenti', partite: 'Partite', appuntamenti: 'Calendario', promemoria: 'Promemoria', distinte: 'Distinte', calciPiazzati: 'Calci piazzati', magazzino: 'Bar', materiale: 'Materiale', manutenzione: 'Manutenzione', borsaMedica: 'Borsa medica', divise: 'Divise', tornei: 'Tornei', conti: 'Conti', speseCondivise: 'Spese condivise', avversari: 'Avversari', loghi: 'Loghi squadre', documenti: 'Documenti', archivio: 'Archivio', stagioni: 'Stagioni', grafica: 'Grafiche', accessi: 'Accessi', management: 'Management' }
 
 export function Management() {
   const { sbloccato } = useManagement()

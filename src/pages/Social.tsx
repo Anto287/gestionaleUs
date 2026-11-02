@@ -44,9 +44,10 @@ import { useSeason } from '../season/SeasonContext'
 import { useAppuntamenti, type Appuntamento } from '../lib/appuntamenti'
 import { leggiPrefs } from '../lib/graficaPrefs'
 import { graficaDaPartita } from '../lib/formazioneGrafica'
+import { logoSquadra } from '../lib/loghi'
 import { preparaLogo } from '../lib/immagine'
 import { driveAttivo, uploadGrafica } from '../services/driveStore'
-import type { Giocatore, Partita } from '../types'
+import type { Giocatore, Partita, LogoSquadra } from '../types'
 import { Editor } from './social/editor/Editor'
 import type { BuildInput, FixtureRiga, FormazioneGrafica } from './social/editor/scene'
 
@@ -100,6 +101,7 @@ function chiaveVoce(v: { data: string; avversario: string }) {
 type Kind = 'annuncio' | 'risultato' | 'mese' | 'formazione'
 
 export function Social() {
+  const { items: loghi } = useCollection<LogoSquadra>('loghi')
   const { items: partite } = useCollection<Partita>('partite')
   const { items: giocatori } = useCollection<Giocatore>('giocatori')
   const { list: appuntamenti, aggiungi, rimuovi } = useAppuntamenti()
@@ -151,7 +153,7 @@ export function Social() {
   const [notaG, setNotaG] = useState('')
 
   // stemma della squadra avversaria (caricato a mano, vale per la grafica in corso)
-  const [crestAvv, setCrestAvv] = useState<{ src: string; rapporto: number }>()
+  const [crestScelto, setCrestScelto] = useState<{ squadra: string; logo?: { src: string; rapporto: number } }>()
   // mister e cambi della grafica formazione: la panchina arriva dalla pagina
   // Formazione (undefined = \"quella vera\"), ma si può riscrivere qui
   const [allenatore, setAllenatore] = useState('')
@@ -248,13 +250,19 @@ export function Social() {
   const ritocca = (chiave: string, campo: 'ora' | 'luogo', valore: string) =>
     setRitocchi((prev) => ({ ...prev, [chiave]: { ...prev[chiave], [campo]: valore } }))
 
+  const nomeSquadraLogo = kind === 'risultato' ? partitaRes?.avversario || '' : kind === 'formazione' ? partitaFormazione?.avversario || '' : avversario
+  const logoAutomatico = logoSquadra(loghi, nomeSquadraLogo)
+  const crestAvv = crestScelto && crestScelto.squadra === nomeSquadraLogo ? crestScelto.logo : logoAutomatico ? { src: logoAutomatico.dataUrl, rapporto: logoAutomatico.rapporto } : undefined
+  const setCrestAvv = (logo?: { src: string; rapporto: number }) => setCrestScelto({ squadra: nomeSquadraLogo, logo })
+
   const piede = leggiPrefs(kind).piede ?? '#FORZARIOLUNATO'
 
   // dati per l'editor + chiave che, cambiando, rigenera la scena
   const { input, seedKey, nomeFile } = useMemo(() => {
     const base = {
       formato: { w: formato.w, h: formato.h },
-      crestSrc: LOGO,
+      crestSrc: logoSquadra(loghi, 'U.S. Riolunato')?.dataUrl || LOGO,
+      crestRapporto: logoSquadra(loghi, 'U.S. Riolunato')?.rapporto,
       piede,
       stagione: attiva,
       crestAvversarioSrc: crestAvv?.src,
@@ -276,7 +284,7 @@ export function Social() {
       }
       return {
         input: inp,
-        seedKey: `annuncio|${formatoChiave}|${avversario}|${dataG}|${oraG}|${inCasaG}|${luogoG}|${notaG}`,
+        seedKey: `annuncio|${formatoChiave}|${avversario}|${dataG}|${oraG}|${inCasaG}|${luogoG}|${notaG}|${crestAvv?.src || ''}`,
         nomeFile: `riolunato-${dataG}-${slug(avversario || 'annuncio')}.png`,
       }
     }
@@ -302,7 +310,7 @@ export function Social() {
       return {
         input: inp,
         // anche i dati della partita: se arrivano aggiornati dal Drive la tela si rifà
-        seedKey: `risultato|${formatoChiave}|${p?.id ?? 'none'}|${p ? `${p.data}|${p.ora ?? ''}|${p.avversario}|${p.inCasa}|${p.golFatti}|${p.golSubiti}` : ''}|${crestAvv?.src ? 'logo' : ''}|${marcatoriNoi ?? marcatoriDefault}|${marcatoriLoro}`,
+        seedKey: `risultato|${formatoChiave}|${p?.id ?? 'none'}|${p ? `${p.data}|${p.ora ?? ''}|${p.avversario}|${p.inCasa}|${p.golFatti}|${p.golSubiti}` : ''}|${crestAvv?.src || ''}|${marcatoriNoi ?? marcatoriDefault}|${marcatoriLoro}`,
         nomeFile: p ? `riolunato-${p.data}-${slug(p.avversario)}.png` : 'riolunato-risultato.png',
       }
     }
@@ -318,7 +326,7 @@ export function Social() {
       }
       return {
         input: inp,
-        seedKey: `formazione|${formatoChiave}|${fonteFormazioneEff ?? 'vuota'}|${JSON.stringify(formazioneGrafica)}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src ? 'logo' : ''}`,
+        seedKey: `formazione|${formatoChiave}|${fonteFormazioneEff ?? 'vuota'}|${JSON.stringify(formazioneGrafica)}|${allenatore}|${panchinaTxt ?? ''}|${crestAvv?.src || ''}`,
         nomeFile: partitaFormazione
           ? `riolunato-formazione-${partitaFormazione.data}-${slug(partitaFormazione.avversario)}.png`
           : `riolunato-formazione-${slug(formazioneGrafica?.modulo || 'xi')}.png`,
@@ -343,6 +351,7 @@ export function Social() {
     formato,
     formatoChiave,
     piede,
+    loghi,
     attiva,
     avversario,
     dataG,
@@ -502,10 +511,12 @@ export function Social() {
         </>
       )}
 
-      {(kind === 'risultato' || kind === 'formazione') && (
+      {(kind === 'annuncio' || kind === 'risultato' || kind === 'formazione') && (
         <div className="social-campo">
           <span className="social-label">Stemma avversario</span>
           <Space wrap>
+            <Select aria-label="Logo dalla libreria" placeholder="Scegli dai loghi salvati" style={{ width: 230 }} value={undefined} options={loghi.map((l) => ({ value: l.id, label: l.nome }))} onChange={(id) => { const l = loghi.find((l) => l.id === id); if (l) setCrestAvv({ src: l.dataUrl, rapporto: l.rapporto }) }} />
+            <Link to="/loghi">Gestisci loghi</Link>
             <Upload accept="image/*" showUploadList={false} beforeUpload={caricaCrestAvversario}>
               <Button icon={<PictureOutlined />}>{crestAvv ? 'Cambia logo' : 'Carica logo'}</Button>
             </Upload>
@@ -519,7 +530,7 @@ export function Social() {
             )}
           </Space>
           <div className="social-suggerimento" style={{ margin: '6px 0 0' }}>
-            Va accanto al nostro stemma. Meglio un PNG ritagliato: il fondo trasparente resta tale.
+            Il logo viene scelto automaticamente dal nome della squadra. Puoi cambiarlo per questa grafica o gestire la libreria condivisa.
           </div>
         </div>
       )}
@@ -751,7 +762,7 @@ export function Social() {
         <div className="social-editor">
           <Editor
             input={input}
-            seedKey={seedKey}
+            seedKey={`${seedKey}|${input.crestSrc}`}
             nomeFile={nomeFile}
             onSalvaDrive={driveAttivo() ? salvaSuDrive : undefined}
           />

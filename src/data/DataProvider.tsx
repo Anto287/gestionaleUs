@@ -59,7 +59,7 @@ export function useDataSyncVersion(): number {
 // raccolte NON divise per stagione: la cassa è continua nel tempo, e così
 // anche i conti in sospeso con le altre società e le schede degli avversari
 // (si ritrovano l'anno dopo)
-const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari'])
+const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi'])
 const SEASON_GLOBALE = 'globale'
 function seasonDi(collection: string, attiva: string): string {
   return COLLEZIONI_GLOBALI.has(collection) ? SEASON_GLOBALE : attiva

@@ -249,6 +249,7 @@ export interface BuildInput {
   kind: 'annuncio' | 'risultato' | 'mese' | 'formazione'
   formato: { w: number; h: number }
   crestSrc: string
+  crestRapporto?: number
   piede: string
   /** stagione attiva, per la riga in fondo (es. "2026/27") */
   stagione?: string
@@ -345,7 +346,7 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     rotation: 0,
     src: input.crestSrc,
     larghezza: size,
-    altezza: Math.round(size * PROPORZIONE_STEMMA),
+    altezza: Math.round(size * (input.crestRapporto || PROPORZIONE_STEMMA)),
   })
 
   /** Lo stemma avversario caricato dall'utente, con le sue proporzioni. */
@@ -401,6 +402,8 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
 
     // stemma in alto, appoggiato alla banda
     push(crest(bandaX - 174, sy(62), 152))
+    const avversarioLogo = crestAvv(bandaX - 174, sy(234), 118)
+    if (avversarioLogo) push(avversarioLogo)
 
     // ora a sinistra; a destra la sfida, con il tondo del "Vs" in mezzo.
     // La sfida sta alta: sotto deve restare l'aria per il MATCHDAY
