@@ -5,6 +5,8 @@ import { SeasonProvider } from './season/SeasonContext'
 import { Gate } from './components/Gate'
 import { Layout } from './components/Layout'
 import { ManagementProvider } from './management/ManagementContext'
+const Loghi = lazy(() => import('./pages/Loghi').then((m) => ({ default: m.Loghi })))
+const Classifica = lazy(() => import('./pages/Classifica').then((m) => ({ default: m.Classifica })))
 const Management = lazy(() => import('./pages/Management').then((m) => ({ default: m.Management })))
 const Dashboard = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
@@ -94,6 +96,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/rosa" element={<Rosa />} />
             <Route path="/rosa/:id" element={<GiocatoreDettaglio />} />
+            <Route path="/loghi" element={<Loghi />} />
+            <Route path="/classifica" element={<Classifica />} />
             <Route path="/allenamenti" element={<Allenamenti />} />
             <Route path="/partite" element={<Partite />} />
             <Route path="/partite/:id" element={<PartitaDettaglio />} />

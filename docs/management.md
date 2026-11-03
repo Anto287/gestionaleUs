@@ -62,3 +62,64 @@ Se provieni dalla versione con sessioni di 30 minuti, aggiorna nuovamente lo scr
 - `npm run build` e `npm run lint`: compilazione e controllo statico.
 
 Per i test browser serve Chromium installato tramite Playwright; in alternativa specifica `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. I test non usano password o dati reali. Il deployment su Google e la prova finale contro il proprio Drive devono essere effettuati dopo la configurazione descritta sopra.
+
+## Eliminazione LOG e classifica online
+
+Il pulsante **Elimina tutti i LOG**, nel Registro attività, chiede conferma ed elimina tutte le attività, indipendentemente dai filtri. L’operazione richiede una sessione Management valida anche sul server. I dispositivi restano registrati. Nel foglio privato `Ricevute` restano soltanto ID, impronta, esito tecnico e risposta delle scritture, senza descrizioni o valori prima/dopo: servono a impedire che una richiesta già eseguita venga ripetuta dopo la pulizia.
+
+In **Management → Classifica**, configura la fonte API per la stagione attiva oppure scegli Non configurata:
+
+- **API JSON**: inserisci un endpoint HTTPS pubblico. La chiave facoltativa è trasmessa dal server come `Authorization: Bearer …`, conservata nelle Proprietà script e mai restituita al frontend. Campo vuoto mantiene la chiave solo se l’URL è invariato; `RIMUOVI` la cancella. Cambiare endpoint senza fornire una nuova chiave non inoltra la precedente al nuovo host. L’API deve restituire un array oppure `{ "righe": [...] }`. Ogni riga contiene `squadra` (testo), `punti` (numero, anche negativo per penalizzazioni), ed eventualmente `giocate`, `vinte`, `pareggiate`, `perse`, `golFatti`, `golSubiti` (interi non negativi). L’ordine ufficiale della fonte è conservato. Se il fornitore usa un formato diverso serve un adattatore, non basta incollare la sua chiave.
+
+Esempio: `{ "righe": [{ "squadra": "U.S. Riolunato", "punti": 12, "giocate": 6, "vinte": 4, "pareggiate": 0, "perse": 2, "golFatti": 10, "golSubiti": 5 }] }`.
+
+Le API vengono lette all’apertura e ogni cinque minuti mentre la pagina è visibile; una cache server di cinque minuti limita le chiamate al fornitore. **Aggiorna** rilegge la fonte rispettando questa cache. Gli errori sono mostrati senza usare dati inventati. Le nuove stagioni partono senza fonte: configurare l’API del nuovo girone mantiene separati gli URL delle stagioni precedenti, senza anni fissati nel codice. Le classifiche storiche restano dipendenti dalla disponibilità dell’archivio del fornitore, non sono copie congelate.
+
+Per attivare questi endpoint è necessario aggiornare e ridistribuire **anche `docs/apps-script.gs`**, mantenendo le proprie configurazioni iniziali, e autorizzare le nuove chiamate esterne (`UrlFetchApp`, ambito `script.external_request`) se Google lo richiede. Il solo frontend non aggiorna lo script remoto. Nessun provider è preconfigurato e nessuna chiave è inclusa. Il servizio di widget/API è descritto da Tuttocampo: https://www.tuttocampo.it/Veneto/News/1818058.
+
+## Programmi e resoconti allenamento
+
+Aprendo una seduta, oltre alle presenze, puoi scrivere **Programma di allenamento** e **Attività svolta e osservazioni**. **Salva programma e resoconto** salva entrambi sulla stessa seduta e nella stessa stagione, con la sincronizzazione Drive già usata dalle presenze.
+
+**Genera esercizi** crea una proposta locale per possesso, finalizzazione o difesa, in base a durata (30–150 minuti) e numero previsto di giocatori (4–40). La somma delle fasi corrisponde alla durata scelta. È una libreria di esercizi, senza chiamate AI né costi; la proposta è modificabile e richiede il salvataggio esplicito. Prima di sostituire un programma esistente viene chiesta conferma. Le vecchie sedute senza questi campi continuano a funzionare.
+
+## Aggiornamento tramite blocco aggiuntivo
+
+Se hai già la versione con Management persistente e preferisci conservare il file esistente, incolla **una sola volta, in fondo allo stesso file**, l’intero contenuto di `docs/apps-script-aggiunta.gs`. Il blocco aggiorna le funzioni di smistamento e le scritture e aggiunge il supporto classifiche/LOG; non cambia gli ID né `SECRET`. È verificato anche contro la versione su main precedente a questa PR. Non usarlo su script precedenti al Management persistente. In alternativa sostituisci il file intero con `docs/apps-script.gs`, ripristinando i tuoi valori iniziali. Sono due alternative: non occorre applicarle entrambe. Salva e pubblica una nuova versione del deployment esistente, mantenendo l’URL `/exec`. Per l’API autorizza le richieste esterne se Google lo richiede.
+
+## Loghi squadre
+
+La sezione **Loghi squadre** salva una libreria condivisa nella raccolta globale `loghi`, comune a tutte le stagioni e sincronizzata attraverso gli endpoint già esistenti. Accetta PNG, JPEG e WebP fino a 10 MB, mantiene la trasparenza e riduce le immagini prima del salvataggio per rispettare il limite delle celle Google Sheets. Puoi aggiungere un nome e fino a 20 alias, modificare o eliminare il logo. Nomi e alias non possono sovrapporsi tra loghi diversi.
+
+La classifica in modalità **API JSON** e **UISP Modena** mostra i loghi della libreria accanto ai nomi, con confronto esatto normalizzato (spazi, maiuscole, punteggiatura e accenti sono ignorati). Se un fornitore usa un nome diverso aggiungilo come alias. Un logo assente non blocca la tabella. La visualizzazione è una tabella interna senza iframe, con i loghi caricati. Le vecchie configurazioni widget richiedono di essere sostituite con una fonte API JSON.
+
+Nelle **Grafiche IG** il logo avversario viene scelto automaticamente per annuncio, risultato e formazione con partita associata; è sempre possibile scegliere manualmente un logo salvato o caricarne uno per la sola grafica. Cambiare squadra evita di trascinare il logo manuale della squadra precedente. Il logo della propria società, se salvato con il nome U.S. Riolunato o un alias equivalente, sostituisce quello predefinito nelle grafiche. Le immagini mantengono le proporzioni. Le grafiche già esportate restano file indipendenti.
+
+
+## Classifica interna senza iframe
+
+La sezione Classifica mostra esclusivamente una tabella interna, con nomi, loghi della libreria e statistiche. In Management sono disponibili UISP Modena gratuita, API JSON avanzata e Non configurata. Una vecchia fonte widget viene segnalata e non viene caricata in iframe; per convertirla occorre un vero endpoint API, non il suo URL widget.
+
+**La modalità API JSON usa gli endpoint `standings`, `managementStandingsConfig` e `managementSaveStandings` già presenti nel precedente blocco Classifica/LOG.** Per attivare la nuova fonte UISP gratuita segui invece le istruzioni di aggiornamento UISP qui sotto. Per la modalità API resta da configurare la fonte della stagione e la chiave eventualmente richiesta. Per un fornitore che restituisce un JSON diverso dal contratto documentato servirà un adattatore specifico; il solo link a una pagina Tuttocampo non consente di leggere automaticamente i dati.
+
+## Modalità gratuita UISP Modena: classifica e risultati
+
+Per il campionato del Riolunato scegli **Management → Classifica → UISP Modena · gratuita, settimanale → Categoria 3 → Girone B → Salva**. Non occorrono URL API, chiavi o account aggiuntivi. Il link Tuttocampo fornito contiene `GironeD` ma al momento della verifica mostra **Calcio a 11 Modena – Cat. 3 Girone B**: la configurazione usa il campionato effettivamente indicato nella pagina e nel comunicato UISP.
+
+La fonte è l’archivio pubblico ufficiale `https://calcio.uispmodena.it/`: l’app trova il menu dei comunicati della stagione selezionata, sceglie il comunicato settimanale più recente e legge esclusivamente la sezione **CAMPIONATO** della categoria e del girone configurati. Le coppe sono escluse. Le stagioni future non richiedono di cambiare il codice: quando UISP pubblica il nuovo archivio, si selezionano categoria e girone per la nuova stagione. Se anno, gruppo o formato non sono disponibili l’app mostra un errore, senza usare un altro girone o inventare la classifica.
+
+Sono mostrati la classifica e i risultati pubblicati nel comunicato, con data e collegamento al PDF ufficiale. **I dati sono settimanali e possono essere meno recenti di Tuttocampo.** I risultati sono quelli del periodo coperto dal singolo comunicato, non tutto lo storico del campionato e non una diretta live. Non vengono copiati nella raccolta Partite della società e non cambiano marcatori o statistiche interne. La classifica mantiene l’ordine UISP e i loghi vengono abbinati tramite nomi/alias della libreria (esempio: alias `RIOLUNATO U.S` sul logo U.S. Riolunato).
+
+Ogni cinque minuti viene controllata la presenza di un nuovo comunicato; l’indice del sito è in cache server per cinque minuti. Lo stesso PDF già letto è riutilizzato nel browser per un massimo di quindici minuti. **Aggiorna** forza anche la rilettura del PDF, utile quando UISP corregge un allegato mantenendo lo stesso indirizzo. Le immagini e i nominativi nelle altre sezioni del PDF non vengono importati. La lettura del documento avviene nel browser; lo script Google recupera soltanto i file dal dominio ufficiale fissato nel codice, senza inoltrare chiavi di altri servizi.
+
+### Aggiornamento Apps Script per UISP
+
+Questa nuova fonte richiede un aggiornamento rispetto al precedente blocco che supportava soltanto API JSON:
+
+- Se hai già applicato il blocco Classifica/LOG precedente, incolla **una sola volta in fondo allo stesso file** `docs/apps-script-uisp.gs`.
+- Se non lo hai ancora applicato, usa il nuovo `docs/apps-script-aggiunta.gs` completo, che include anche UISP. Non serve applicare entrambi.
+- In alternativa, sostituisci il sorgente completo con `docs/apps-script.gs`, mantenendo i tuoi ID e segreti.
+
+Salva e distribuisci una nuova versione del deployment esistente, mantenendo lo stesso URL `/exec`. Autorizza le richieste esterne se Google lo richiede. Non vengono attivate API commerciali o abbonamenti. La gratuità riguarda la fonte pubblica UISP e l’assenza di un servizio dati a pagamento; restano i normali limiti di utilizzo di Google Apps Script. Se UISP modifica la struttura del sito o dei PDF potrà essere necessario aggiornare il lettore.
+
+La pagina ufficiale `https://www.tuttocampo.it/WidgetApi` dichiara che le API Tuttocampo hanno un costo mensile, mentre i widget gratuiti usano iframe. Per questo la modalità gratuita senza iframe usa i comunicati UISP, non l’estrazione automatica delle pagine Tuttocampo.

@@ -187,6 +187,8 @@ export interface Allenamento {
   id: string
   data: string
   note?: string
+  programma?: string
+  svolto?: string
   /** id giocatore → presente */
   presenze: Record<string, boolean>
 }
@@ -376,4 +378,13 @@ export interface CalciPiazzati {
   note?: string
   /** ultima modifica ('YYYY-MM-DD') */
   aggiornato?: string
+}
+
+/** Logo condiviso tra tutte le stagioni, con alias per le fonti esterne. */
+export interface LogoSquadra {
+  id: string
+  nome: string
+  alias: string[]
+  dataUrl: string
+  rapporto: number
 }

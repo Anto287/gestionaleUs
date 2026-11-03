@@ -11,6 +11,7 @@ class Sheet {
   getName() { return this.name }
   appendRow(row) { this.rows.push(row) }
   setFrozenRows() {}
+  deleteRows(start, count) { this.rows.splice(start - 1, count) }
   getLastRow() { return this.rows.length }
   getMaxRows() { return this.maxRows || 1000 }
   insertRowsAfter(_, count) { this.maxRows = this.getMaxRows() + count }
@@ -50,8 +51,9 @@ function setup() {
       formatDate: (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d),
     },
   })
-  const source = readFileSync(new URL('../docs/apps-script.gs', import.meta.url), 'utf8').replace("const SECRET = '';", "const SECRET = 'app-test-secret';")
+  const source = readFileSync(process.env.APPS_SCRIPT_BASE || new URL('../docs/apps-script.gs', import.meta.url), 'utf8').replace("const SECRET = '';", "const SECRET = 'app-test-secret';")
   vm.runInContext(source, context)
+  if (process.env.APPS_SCRIPT_BASE) vm.runInContext(readFileSync(new URL('../docs/apps-script-aggiunta.gs', import.meta.url), 'utf8'), context)
   const records = new Map()
   context.listDalFoglio_ = context.listItems = (c, season) => structuredClone(records.get(`${c}/${season}`) || [])
   context.rebuildSheet_ = (c, season, items) => { writes++; records.set(`${c}/${season}`, structuredClone(items)) }
@@ -162,4 +164,110 @@ test('management: paginazione senza filtri e crescita del foglio oltre le righe 
   const sheet = s.ss.getSheetByName('Attivita')
   s.context.mgmtWrite_(sheet, 1001, randomUUID(), { activity: {} })
   assert.equal(sheet.getMaxRows(), 1500)
+})
+
+
+test('eliminazione log riservata e con conferma, dispositivi conservati', () => {
+  const s = setup(), session = s.login()
+  assert.equal(s.call({ action: 'managementClearActivities', conferma: 'ELIMINA LOG' }).code, 'ADMIN_AUTH')
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token }).ok, false)
+  assert.ok(s.logs().length > 0)
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
+  assert.equal(s.logs().length, 0)
+  assert.equal(s.call({ action: 'managementDevices', adminToken: session.token }).devices.length, 1)
+})
+test('fonti classifica per stagione e chiave mai restituita', () => {
+  const s = setup(), session = s.login()
+  const body = { action: 'managementSaveStandings', season: '2026/27', config: { tipo: 'api', url: 'https://api.example.com/table', apiKey: 'PRIVATE-KEY' } }
+  assert.equal(s.call(body).code, 'ADMIN_AUTH')
+  assert.equal(s.call({ ...body, adminToken: session.token }).ok, true)
+  const c = s.call({ action: 'managementStandingsConfig', season: '2026-27', adminToken: session.token })
+  assert.equal(c.config.hasApiKey, true)
+  assert.equal(JSON.stringify(c).includes('PRIVATE-KEY'), false)
+  assert.equal(s.call({ action: 'standings', season: '2027-28' }).tipo, 'nessuna')
+  for (const url of ['http://api.example.com', 'https://127.0.0.1/test', 'https://user:pass@example.com']) {
+    assert.equal(s.call({ ...body, adminToken: session.token, config: { tipo: 'api', url } }).ok, false)
+  }
+  assert.equal(s.call({ ...body, adminToken: session.token, config: { tipo: 'widget', url: 'https://evil.com/WidgetV2/Classifica/test' } }).ok, false)
+})
+test('API classifica normalizza i dati, cache, ordine ufficiale e errori senza credenziali', () => {
+  const s = setup(), session = s.login()
+  let count = 0
+  s.context.UrlFetchApp = { fetch: (url, options) => {
+    count++
+    assert.equal(options.followRedirects, false)
+    assert.equal(options.headers.Authorization, 'Bearer PRIVATE')
+    return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ righe: [{ squadra: 'B', punti: -1 }, { squadra: 'A', punti: 0 }] }) }
+  } }
+  s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2030/31', config: { tipo: 'api', url: 'https://api.example.com/table', apiKey: 'PRIVATE' } })
+  const r = s.call({ action: 'standings', season: '2030/31' })
+  assert.equal(r.ok, true)
+  assert.deepEqual(r.righe.map((r) => r.squadra), ['B', 'A'])
+  assert.equal(JSON.stringify(r).includes('PRIVATE'), false)
+  s.call({ action: 'standings', season: '2030/31' })
+  assert.equal(count, 1)
+  s.cache.clear()
+  s.context.UrlFetchApp.fetch = () => { throw new Error('PRIVATE') }
+  const failure = s.call({ action: 'standings', season: '2030/31' })
+  assert.equal(failure.ok, false)
+  assert.equal(failure.error.includes('PRIVATE'), false)
+})
+test('pulizia log conserva la protezione dai replay senza dettagli personali', () => {
+  const s = setup(), session = s.login(), requestId = randomUUID()
+  const write = { action: 'put', requestId, collection: 'allenamenti', season: '2026-27', record: { id: 's1', programma: 'DETTAGLIO PRIVATO', presenze: {} } }
+  assert.equal(s.call(write).ok, true)
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
+  assert.equal(s.logs().length, 0)
+  assert.equal(s.call(write).ok, true)
+  assert.equal(s.writes(), 1)
+  assert.equal(JSON.stringify(s.ss.getSheetByName('Ricevute').rows).includes('DETTAGLIO PRIVATO'), false)
+})
+
+test('blocco aggiuntivo Apps Script: autenticazione, API e LOG operativi', () => {
+  const s = setup()
+  vm.runInContext(readFileSync(new URL('../docs/apps-script-aggiunta.gs', import.meta.url), 'utf8'), s.context)
+  assert.equal(s.call({ action: 'managementStandingsConfig', season: '2026/27' }).code, 'ADMIN_AUTH')
+  const session = s.login()
+  assert.equal(s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2040/41', config: { tipo: 'widget', url: 'https://www.tuttocampo.it/WidgetV2/Classifica/demo' } }).ok, true)
+  assert.equal(s.call({ action: 'standings', season: '2040/41' }).tipo, 'widget')
+  assert.equal(s.call({ action: 'managementClearActivities', adminToken: session.token, conferma: 'ELIMINA LOG' }).ok, true)
+})
+
+test('UISP: configurazione riservata, archivio per stagione, ultimo comunicato e PDF controllato', () => {
+  const s = setup(), session = s.login()
+  const save = { action: 'managementSaveStandings', season: '2026/27', config: { tipo: 'uisp', categoria: '3', girone: 'B' } }
+  assert.equal(s.call(save).code, 'ADMIN_AUTH')
+  assert.equal(s.call({ ...save, adminToken: session.token }).ok, true)
+  assert.equal(s.call({ ...save, adminToken: session.token, config: { tipo: 'uisp', categoria: '3', girone: '*' } }).ok, false)
+  const c = s.call({ action: 'managementStandingsConfig', season: '2026/27', adminToken: session.token })
+  assert.equal(c.config.categoria, '3')
+  assert.equal(c.config.girone, 'B')
+  let pdf = '%PDF-1.7\ntest', calls = 0
+  s.context.Utilities.base64Encode = (bytes) => Buffer.from(bytes).toString('base64')
+  s.context.UrlFetchApp = { fetch: (url, options) => {
+    calls++
+    assert.equal(options.followRedirects, false)
+    const text = url.endsWith('/') ? '<a href="https://calcio.uispmodena.it/comunicati-2026%252F2027">COMUNICATI 2026/2027</a>'
+      : url.includes('comunicati-') ? '<li id="allegato_993"><h4>COMUNICATO SETTIMANALE N.07 DEL 21/10/2026</h4></li><li id="allegato_995"><h4>COMUNICATO SETTIMANALE N.08 DEL 28/10/2026</h4></li>https://calcio.uispmodena.it/upload/c_allegati/file/1/993.pdf https://calcio.uispmodena.it/upload/c_allegati/file/1/995.pdf' : pdf
+    return { getResponseCode: () => 200, getContentText: () => text, getBlob: () => ({ getBytes: () => Array.from(Buffer.from(text)) }) }
+  } }
+  const r = s.call({ action: 'standings', season: '2026/27' })
+  assert.equal(r.ok, true)
+  assert.equal(r.tipo, 'uisp')
+  assert.equal(r.comunicato, '2026-10-28')
+  assert.match(r.pdfUrl, /995.pdf$/)
+  assert.equal(s.call({ action: 'standingsPdf', season: '2026/27' }).dataBase64, Buffer.from(pdf).toString('base64'))
+  assert.equal(calls, 3, 'indice in cache, nessun accesso a API commerciali')
+  pdf = '<html>Errore</html>'
+  assert.equal(s.call({ action: 'standingsPdf', season: '2026/27' }).ok, false)
+  assert.equal(s.call({ action: 'standingsPdf', season: '2027/28' }).ok, false)
+})
+test('UISP: nessun ripiego sul campionato sbagliato o su un anno non disponibile', () => {
+  const s = setup()
+  s.context.UrlFetchApp = { fetch: () => ({ getResponseCode: () => 200, getContentText: () => '<a href="https://calcio.uispmodena.it/comunicati-2026%252F2027">COMUNICATI 2026/2027</a>' }) }
+  assert.throws(() => s.context.uispLatest_('2030/31'), /Archivio comunicati UISP non trovato/)
+  assert.throws(() => s.context.uispLatest_('2026/29'), /due anni consecutivi/)
+  vm.runInContext(readFileSync(new URL('../docs/apps-script-uisp.gs', import.meta.url), 'utf8'), s.context)
+  const session = s.login()
+  assert.equal(s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2030/31', config: { tipo: 'uisp', categoria: '2', girone: 'A' } }).ok, true)
 })

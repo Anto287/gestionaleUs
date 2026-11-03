@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ProgrammaSeduta } from './allenamenti/ProgrammaSeduta'
 import { useFiltro } from '../hooks/useFiltro'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -499,6 +500,7 @@ export function Allenamenti() {
               />
             </Space>
 
+            <ProgrammaSeduta key={sessioneAperta.id} seduta={sessioneAperta} salva={(patch) => update(sessioneAperta.id, patch)} />
             <div className="presenze-toolbar">
               <div
                 style={{
