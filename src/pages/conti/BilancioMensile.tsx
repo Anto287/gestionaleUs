@@ -65,7 +65,7 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
   return (
     <GraficoInterattivo iniziaDallaFine titolo="Bilancio mensile" descrizione="Entrate e uscite registrate, incluse quelle ancora da saldare. Il saldo del mese è entrate meno uscite, non il saldo di cassa. Importi in euro; k indica migliaia."
       riepilogo={`${dati.length} mesi · Entrate ${formatEuro(dati.reduce((s, d) => s + d.entrate, 0))} · Uscite ${formatEuro(dati.reduce((s, d) => s + d.uscite, 0))}`}
-      legenda={[{ nome: 'Entrate', colore: COLORI.verde }, { nome: 'Uscite', colore: COLORI.rosso }]}
+      legenda={tipo === 'saldo' ? [{ nome: 'Saldo positivo', colore: COLORI.verde }, { nome: 'Saldo negativo', colore: COLORI.rosso }] : [{ nome: 'Entrate', colore: COLORI.verde }, { nome: 'Uscite', colore: COLORI.rosso }]}
       dati={dati.map((d) => ({ label: d.mese, valori: [{ nome: 'Entrate', valore: formatEuro(d.entrate) }, { nome: 'Uscite', valore: formatEuro(d.uscite) }, { nome: 'Saldo del mese', valore: formatEuro(d.entrate - d.uscite) }, { nome: 'Movimenti', valore: String(d.movimenti ?? '—') }, { nome: 'Da incassare', valore: formatEuro(d.daIncassare ?? 0) }, { nome: 'Da pagare', valore: formatEuro(d.daPagare ?? 0) }] }))}
       minWidth={minWidth} altezza={H}>
       {(seleziona) => <ResponsiveContainer width="100%" height="100%">

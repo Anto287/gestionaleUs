@@ -23,7 +23,7 @@ export function GraficoInterattivo({ titolo, descrizione, riepilogo, dati, minWi
     <p className="grafico-riepilogo">{riepilogo}</p>
     {legenda.length > 0 && <ul className="grafico-legenda">{legenda.map((v) => <li key={v.nome}><i style={{ background: v.colore }} aria-hidden />{v.nome}</li>)}</ul>}
     <div ref={scrollRef} className="grafico-scroll" tabIndex={0} role="region" aria-label={`Disegno: ${titolo}. Scorri orizzontalmente se necessario.`}><div className="grafico-tela" style={{ minWidth, height: altezza }}>{children(seleziona)}</div></div>
-    <p className="grafico-istruzione">Tocca una barra o scegli un dato per leggerne i dettagli. Il disegno scorre orizzontalmente quando necessario.</p>
+    <p className="grafico-istruzione">Tocca un punto del grafico o scegli un dato. Scorri il disegno in orizzontale e il riquadro dei dettagli per leggere i contenuti lunghi.</p>
     <div className="grafico-dettaglio">
       <label><span>Dettaglio</span><select aria-label={`Dato del grafico: ${titolo}`} value={index} onChange={(e) => setScelto(Number(e.target.value))}>{dati.map((d, i) => <option value={i} key={i}>{d.label}</option>)}</select></label>
       <div className="grafico-valori" tabIndex={0} role="region" aria-label={`Valori: ${titolo}`}><strong>{punto.label}</strong><dl>{punto.valori.map((v) => <div key={v.nome}><dt>{v.nome}</dt><dd>{v.valore}</dd></div>)}</dl></div>

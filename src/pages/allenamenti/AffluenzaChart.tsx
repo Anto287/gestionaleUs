@@ -65,7 +65,7 @@ export function AffluenzaChart({
           y={media}
           stroke={COLORI.asse}
           strokeDasharray="5 4"
-          label={{ value: `media ${media.toFixed(1)}`, position: 'insideTopRight', fill: COLORI.testo, fontSize: 10 }}
+          label={{ value: `media ${media.toLocaleString('it-IT', { maximumFractionDigits: 1 })}`, position: 'insideTopRight', fill: COLORI.testo, fontSize: 10 }}
         />
       )}
     </>
