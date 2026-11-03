@@ -10,8 +10,11 @@ import {
   Tag,
   Typography,
   App,
+  Tabs,
 } from 'antd'
 import { PlusOutlined, DeleteOutlined, CalendarOutlined, CheckOutlined } from '@ant-design/icons'
+import { useManagement } from '../management/useManagement'
+import { ConfigClassifica } from './classifica/ConfigClassifica'
 import { config } from '../config'
 import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
@@ -31,8 +34,9 @@ function prossimaStagione(stagione: string): string {
   return `${anno}/${anno2}`
 }
 
-export function Impostazioni() {
+function StagioniManager() {
   const { message } = App.useApp()
+  const { sbloccato: admin } = useManagement()
   const { stagioni, attiva, cambia, crea, elimina } = useSeason()
   const rosa = useCollection<Giocatore>('giocatori')
   const tornei = useCollection<Torneo>('tornei')
@@ -44,7 +48,11 @@ export function Impostazioni() {
 
   async function creaStagione() {
     const nome = nuova.trim()
-    if (!nome || creando) return
+    if (!admin || !nome || creando) return
+    if (!/^\d{4}\/\d{2}$/.test(nome) || Number(nome.slice(5)) !== (Number(nome.slice(0, 4)) + 1) % 100) {
+      message.error('Usa una stagione nel formato 2027/28, con anni consecutivi.')
+      return
+    }
     if (stagioni.includes(nome)) {
       message.error('Questa stagione esiste già.')
       return
@@ -89,7 +97,7 @@ export function Impostazioni() {
 
   return (
     <>
-      <PageHeader titolo="Impostazioni" sottotitolo="Stagioni e preferenze" />
+
 
       <Card title="Stagioni" style={{ marginBottom: 16 }}>
         <List
@@ -129,6 +137,7 @@ export function Impostazioni() {
                       type="text"
                       danger
                       icon={<DeleteOutlined />}
+                      aria-label={`Togli stagione ${s}`}
                       disabled={stagioni.length <= 1}
                     />
                   </Popconfirm>,
@@ -151,6 +160,7 @@ export function Impostazioni() {
           <Input
             style={{ maxWidth: 260 }}
             value={nuova}
+            aria-label="Nuova stagione"
             placeholder="es. 2027/28"
             onChange={(e) => setNuova(e.target.value)}
             onPressEnter={creaStagione}
@@ -165,7 +175,6 @@ export function Impostazioni() {
         </Space>
       </Card>
 
-      <TorneiManager />
 
       <Card title="Dati e Drive">
         <Text type="secondary">
@@ -177,4 +186,18 @@ export function Impostazioni() {
       </Card>
     </>
   )
+}
+
+export function Impostazioni() {
+  const { sbloccato: admin } = useManagement()
+  return <>
+    <PageHeader titolo="Impostazioni" sottotitolo="Preferenze della società" />
+    <Tabs items={[
+      { key: 'generali', label: 'Generali', children: <TorneiManager /> },
+      ...(admin ? [
+        { key: 'stagioni', label: 'Stagioni', children: <StagioniManager /> },
+        { key: 'classifica', label: 'Classifica', children: <ConfigClassifica /> },
+      ] : []),
+    ]} />
+  </>
 }

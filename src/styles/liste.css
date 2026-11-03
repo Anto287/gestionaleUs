@@ -1,0 +1,15 @@
+.liste-campi { display: grid; gap: 16px; margin-bottom: 16px; }
+.liste-campo { padding: 16px; border: 1px solid var(--linea); border-radius: 8px; }
+.liste-campo-inputs { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
+.liste-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.liste-valore { white-space: pre-wrap; overflow-wrap: anywhere; }
+.liste-indice-testo { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.liste-descrizione { margin: 4px 0 !important; white-space: pre-wrap; }
+.liste-indice-riga { gap: 16px; flex-wrap: wrap; }
+.liste-voce-mobile { display: flex; flex-direction: column; align-items: stretch !important; gap: 12px; }
+.liste-voce-mobile .ant-descriptions-item-content { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .liste-campo-inputs { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .liste-campo { padding: 12px; }
+  .liste-indice-testo { flex-basis: 100%; }
+}

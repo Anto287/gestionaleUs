@@ -218,3 +218,26 @@ in scala di grigi, con lato massimo 1000 px e qualità 10%. Se superano
 salvato su Drive. I PDF restano invariati; la compressione degli altri
 documenti mantiene le impostazioni precedenti. Se una foto non è decodificabile,
 il salvataggio viene fermato senza inviare l'originale pesante.
+
+## Liste personalizzate e impostazioni admin
+
+La voce **Liste** permette di creare più liste per stagione, ciascuna con nome,
+descrizione e campi configurabili: testo, testo lungo, numero/importo, data, sì/no
+e scelta da elenco. Campi obbligatori e ordine sono configurabili. Le voci si
+possono cercare, aggiungere, modificare ed eliminare. Rinomine e riordinamenti
+conservano i valori grazie agli identificativi stabili dei campi. Il tipo di un
+campo già compilato resta bloccato; rimuovere un campo richiede conferma se ha
+valori e lo nasconde dalle voci. Le raccolte `liste` e `righeLista` usano lo
+stesso salvataggio Drive delle altre sezioni e vengono create al primo utilizzo.
+Nessuna lista di esempio viene inserita automaticamente.
+
+Nelle **Impostazioni**, le schede **Stagioni** e **Classifica** sono visibili solo
+con accesso Management. La classifica è stata spostata dal Management.
+Creazione, selezione e rimozione delle stagioni richiedono anche sul server una
+sessione amministratore valida. La rimozione di una stagione conserva il
+comportamento esistente: toglie la voce dall’elenco, senza cestinare la cartella Drive.
+
+Per attivare il controllo server, aggiornare e ripubblicare il deployment
+Google Apps Script esistente con `docs/apps-script.gs`, conservando ID e SECRET,
+oppure aggiornare il blocco aggiuntivo con `docs/apps-script-aggiunta.gs`.
+Pubblicare anche la nuova build frontend.

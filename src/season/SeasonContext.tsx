@@ -3,6 +3,7 @@ import { App as AntApp, Button, Result, Space } from 'antd'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { config } from '../config'
 import * as store from '../services/driveStore'
+import { useManagement } from '../management/useManagement'
 import { useAuth } from '../auth/AuthContext'
 
 interface SeasonValue {
@@ -32,6 +33,7 @@ function ordina(stagioni: string[]): string[] {
  */
 export function SeasonProvider({ children }: { children: ReactNode }) {
   const { esci } = useAuth()
+  const { sbloccato: admin } = useManagement()
   const { message } = AntApp.useApp()
   const [cfg, setCfg] = useState<Cfg | null>(() => {
     const c = store.seasonsConfigCache()
@@ -56,10 +58,10 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
           stagioni = [config.season]
           attiva = config.season
         } else if (!c.stagioni.length) {
-          // primo avvio: crea la stagione di default sul Drive
+          // Primo avvio: mostra la stagione di default senza scritture non amministrative.
           stagioni = [config.season]
           attiva = config.season
-          await store.setSeasonsConfig(stagioni, attiva)
+          // L’inizializzazione su Drive avviene alla prima modifica amministratore.
         } else {
           stagioni = c.stagioni
           attiva = c.attiva && c.stagioni.includes(c.attiva) ? c.attiva : c.stagioni[0]
@@ -141,20 +143,20 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   const cambia = useCallback(
     (s: string) => {
       const prev = cfgRef.current
-      if (!prev || !prev.stagioni.includes(s) || s === prev.attiva) return
+      if (!admin || !prev || !prev.stagioni.includes(s) || s === prev.attiva) return
       const locale = { ...prev, attiva: s }
       cfgRef.current = locale
       setCfg(locale)
       salva((c) => (c.stagioni.includes(s) ? { ...c, attiva: s } : null), locale)
     },
-    [salva],
+    [salva, admin],
   )
 
   const crea = useCallback(
     (stagione: string) => {
       const nome = stagione.trim()
       const prev = cfgRef.current
-      if (!prev || !nome || prev.stagioni.includes(nome)) return false
+      if (!admin || !prev || !nome || prev.stagioni.includes(nome)) return false
       const locale = { stagioni: ordina([...prev.stagioni, nome]), attiva: nome }
       cfgRef.current = locale
       setCfg(locale)
@@ -164,13 +166,13 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
       )
       return true
     },
-    [salva],
+    [salva, admin],
   )
 
   const elimina = useCallback(
     (s: string) => {
       const prev = cfgRef.current
-      if (!prev || prev.stagioni.length <= 1 || !prev.stagioni.includes(s)) return
+      if (!admin || !prev || prev.stagioni.length <= 1 || !prev.stagioni.includes(s)) return
       // se sparisce quella attiva si passa alla più recente rimasta (l'elenco è in ordine crescente)
       const togli = (c: Cfg) => {
         const stagioni = ordina(c.stagioni.filter((x) => x !== s))
@@ -185,7 +187,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
       store.pulisciCacheStagione(s)
       salva(togli, locale)
     },
-    [salva],
+    [salva, admin],
   )
 
   if (stato === 'loading') return <SeasonSplash />

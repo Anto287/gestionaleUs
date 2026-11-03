@@ -1336,6 +1336,7 @@ function route(p) {
     // nemmeno conoscendo l'id del suo file.
     var managementFile = mgmtProps_().getProperty('MANAGEMENT_FILE_ID');
     if (managementFile && String(p.id || '') === managementFile || /^(management|attivita|dispositivi|__)/i.test(String(p.collection || ''))) throw new Error('Operazione riservata');
+    if (p.action === 'setSeasons' && !mgmtSession_(p)) return json({ ok: false, code: 'ADMIN_AUTH', error: 'Solo gli amministratori possono gestire le stagioni.' });
     if (p.action === 'managementLogin') { mgmtTouch_(p); return mgmtLogin_(p); }
     if (String(p.action || '').indexOf('management') === 0) {
       if (!mgmtSession_(p)) return json({ ok: false, code: 'ADMIN_AUTH', error: 'Accesso Management revocato. Ripeti l’accesso dal logo.' });

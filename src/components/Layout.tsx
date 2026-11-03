@@ -85,7 +85,7 @@ function LayoutPronto() {
           { label: 'Campionato', paths: ['/classifica', '/partite', '/avversari', '/calendario', '/statistiche'] },
           { label: 'Preparazione', paths: ['/formazione', '/piazzati', '/distinte'] },
           { label: 'Comunicazione', paths: ['/loghi', '/social'] },
-          { label: 'Società', paths: ['/magazzino', '/conti', '/spese', '/documenti', '/archivio', '/impostazioni'] },
+          { label: 'Società', paths: ['/magazzino', '/conti', '/spese', '/liste', '/documenti', '/archivio', '/impostazioni'] },
         ].map((group) => ({ type: 'group' as const, label: group.label, children: group.paths.flatMap((path) => {
           const item = navigation.find((n) => n.to === path)
           return item ? [{ key: item.to, icon: createElement(item.icon), label: item.label }] : []

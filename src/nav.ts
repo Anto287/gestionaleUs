@@ -17,6 +17,7 @@ import {
   FolderOpenOutlined,
   IdcardOutlined,
   SettingOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons'
 
 export interface NavItem {
@@ -44,6 +45,7 @@ export const navItems: NavItem[] = [
   { to: '/magazzino', label: 'Magazzino', icon: InboxOutlined, descrizione: 'Scorte del bar.' },
   { to: '/conti', label: 'Conti', icon: WalletOutlined, descrizione: 'Entrate, uscite e insoluti.' },
   { to: '/spese', label: 'Spese condivise', icon: SwapOutlined, descrizione: 'Conti in comune con altre società.' },
+  { to: '/liste', label: 'Liste', icon: UnorderedListOutlined, descrizione: 'Liste e campi personalizzati per ogni attività.' },
   { to: '/documenti', label: 'Documenti', icon: FolderOpenOutlined, descrizione: 'Archivio della società.' },
   { to: '/archivio', label: 'Archivio', icon: IdcardOutlined, descrizione: 'Documenti e foto dei tesserati.' },
   { to: '/impostazioni', label: 'Impostazioni', icon: SettingOutlined, descrizione: 'Stagioni e preferenze.' },
