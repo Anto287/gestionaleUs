@@ -1,16 +1,14 @@
-import { useEffect, useRef } from 'react'
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+import { GraficoInterattivo } from '../../components/GraficoInterattivo'
 import { formatEuro } from '../../lib/format'
 import { COLORI } from '../../lib/chart'
 
@@ -18,6 +16,9 @@ export interface MeseBilancio {
   mese: string
   entrate: number
   uscite: number
+  movimenti?: number
+  daIncassare?: number
+  daPagare?: number
 }
 
 export type TipoBilancio = 'barre' | 'saldo'
@@ -38,15 +39,6 @@ function asseEuro(v: number): string {
  * larghezza minima per mese e scorre in orizzontale.
  */
 export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]; tipo?: TipoBilancio }) {
-  const scatola = useRef<HTMLDivElement>(null)
-
-  // all'apertura parte scorso in fondo: i mesi più recenti, non i più vecchi
-  // (ri-ancorato anche quando cambiano i mesi o la vista, che cambia larghezza)
-  useEffect(() => {
-    const el = scatola.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [dati.length, tipo])
-
   if (dati.length === 0) {
     return <div style={{ color: COLORI.testo, padding: '2rem 0', textAlign: 'center' }}>Nessun movimento</div>
   }
@@ -66,49 +58,34 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
         axisLine={false}
         tick={{ fontSize: 10, fill: COLORI.testo }}
       />
-      <Tooltip
-        formatter={(v, name) => [formatEuro(Number(v)), name]}
-        contentStyle={{
-          borderRadius: 10,
-          border: `1px solid ${COLORI.griglia}`,
-          fontSize: 13,
-          // seguono il tema (chiaro/scuro)
-          background: 'var(--cartoncino)',
-          color: 'var(--inchiostro)',
-        }}
-        labelStyle={{ color: 'var(--inchiostro)' }}
-        cursor={{ fill: 'rgba(36,29,22,0.04)' }}
-      />
     </>
   )
 
   return (
-    <div ref={scatola} style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth, height: H }}>
-        <ResponsiveContainer width="100%" height="100%">
+    <GraficoInterattivo iniziaDallaFine titolo="Bilancio mensile" descrizione="Entrate e uscite registrate, incluse quelle ancora da saldare. Il saldo del mese è entrate meno uscite, non il saldo di cassa. Importi in euro; k indica migliaia."
+      riepilogo={`${dati.length} mesi · Entrate ${formatEuro(dati.reduce((s, d) => s + d.entrate, 0))} · Uscite ${formatEuro(dati.reduce((s, d) => s + d.uscite, 0))}`}
+      legenda={[{ nome: 'Entrate', colore: COLORI.verde }, { nome: 'Uscite', colore: COLORI.rosso }]}
+      dati={dati.map((d) => ({ label: d.mese, valori: [{ nome: 'Entrate', valore: formatEuro(d.entrate) }, { nome: 'Uscite', valore: formatEuro(d.uscite) }, { nome: 'Saldo del mese', valore: formatEuro(d.entrate - d.uscite) }, { nome: 'Movimenti', valore: String(d.movimenti ?? '—') }, { nome: 'Da incassare', valore: formatEuro(d.daIncassare ?? 0) }, { nome: 'Da pagare', valore: formatEuro(d.daPagare ?? 0) }] }))}
+      minWidth={minWidth} altezza={H}>
+      {(seleziona) => <ResponsiveContainer width="100%" height="100%">
           {tipo === 'saldo' ? (
-            <BarChart data={datiSaldo} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
+            <BarChart onClick={seleziona} data={datiSaldo} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
               {assi}
               <ReferenceLine y={0} stroke={COLORI.asse} strokeWidth={1.5} />
-              <Bar dataKey="saldo" name="Saldo" radius={[4, 4, 0, 0]} maxBarSize={48}>
+              <Bar isAnimationActive={false} dataKey="saldo" name="Saldo" radius={[4, 4, 0, 0]} maxBarSize={48}>
                 {datiSaldo.map((d, i) => (
                   <Cell key={i} fill={d.saldo >= 0 ? COLORI.verde : COLORI.rosso} />
                 ))}
               </Bar>
             </BarChart>
           ) : (
-            <BarChart data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
+            <BarChart onClick={seleziona} data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
               {assi}
-              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
-                // il pallino resta del colore della serie, il testo segue il tema
-                formatter={(v) => <span style={{ color: 'var(--inchiostro)' }}>{v}</span>}
-              />
-              <Bar dataKey="entrate" name="Entrate" fill={COLORI.verde} radius={[4, 4, 0, 0]} maxBarSize={28} />
-              <Bar dataKey="uscite" name="Uscite" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar isAnimationActive={false} dataKey="entrate" name="Entrate" fill={COLORI.verde} radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar isAnimationActive={false} dataKey="uscite" name="Uscite" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
           )}
-        </ResponsiveContainer>
-      </div>
-    </div>
+        </ResponsiveContainer>}
+    </GraficoInterattivo>
   )
 }

@@ -322,12 +322,14 @@ export function Conti() {
   )
 
   const bilancio: MeseBilancio[] = useMemo(() => {
-    const perMese = new Map<string, { entrate: number; uscite: number }>()
+    const perMese = new Map<string, { entrate: number; uscite: number; movimenti: number; daIncassare: number; daPagare: number }>()
     for (const m of items) {
       const k = (m.data ?? '').slice(0, 7)
-      const v = perMese.get(k) ?? { entrate: 0, uscite: 0 }
+      const v = perMese.get(k) ?? { entrate: 0, uscite: 0, movimenti: 0, daIncassare: 0, daPagare: 0 }
       if (m.tipo === 'entrata') v.entrate += m.importo
       else v.uscite += m.importo
+      v.movimenti++
+      if (!m.saldato) { if (m.tipo === 'entrata') v.daIncassare += m.importo; else v.daPagare += m.importo }
       perMese.set(k, v)
     }
     const ordinati = [...perMese.entries()].sort((a, b) =>
@@ -345,6 +347,9 @@ export function Conti() {
       mese: labelMese(k),
       entrate: v.entrate,
       uscite: v.uscite,
+      movimenti: v.movimenti,
+      daIncassare: v.daIncassare,
+      daPagare: v.daPagare,
     }))
   }, [items, periodoBilancio])
 

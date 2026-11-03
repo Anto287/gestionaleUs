@@ -1,4 +1,5 @@
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { GraficoInterattivo } from '../../components/GraficoInterattivo'
 import { COLORI } from '../../lib/chart'
 import { formatEuro } from '../../lib/format'
 
@@ -14,12 +15,16 @@ export interface VoceCategoria {
  */
 export function PerCategoria({ dati, tipo }: { dati: VoceCategoria[]; tipo: 'entrata' | 'uscita' }) {
   const colore = tipo === 'entrata' ? COLORI.verde : COLORI.rosso
-  const altezza = Math.max(140, dati.length * 34 + 40)
+  const altezza = Math.max(140, dati.length * 42 + 40)
+  const totale = dati.reduce((s, d) => s + d.importo, 0)
 
   return (
-    <div style={{ width: '100%', height: altezza }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={dati} layout="vertical" margin={{ top: 4, right: 24, bottom: 0, left: 8 }}>
+    <GraficoInterattivo titolo={`Categorie: ${tipo === 'entrata' ? 'entrate' : 'uscite'}`} descrizione="Importi per categoria, inclusi i movimenti da saldare. Le barre sono ordinate dall’importo maggiore; k indica migliaia di euro. Il nome completo è nel dettaglio e nella tabella."
+      riepilogo={`Totale ${formatEuro(totale)} · ${dati.length} categorie`}
+      dati={dati.map((d) => ({ label: d.categoria, valori: [{ nome: 'Importo', valore: formatEuro(d.importo) }, { nome: 'Quota sul totale', valore: totale ? `${(d.importo / totale * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%` : '—' }] }))}
+      minWidth={260} altezza={altezza}>
+      {(seleziona) => <ResponsiveContainer width="100%" height="100%">
+        <BarChart onClick={seleziona} data={dati} layout="vertical" margin={{ top: 4, right: 24, bottom: 0, left: 8 }}>
           <CartesianGrid horizontal={false} stroke={COLORI.griglia} />
           <XAxis
             type="number"
@@ -34,27 +39,14 @@ export function PerCategoria({ dati, tipo }: { dati: VoceCategoria[]; tipo: 'ent
           <YAxis
             type="category"
             dataKey="categoria"
-            width={120}
+            width={95}
             tickLine={false}
             axisLine={false}
-            tick={{ fontSize: 11.5, fill: COLORI.testo }}
+            tick={{ fontSize: 11.5, fill: COLORI.testo }} tickFormatter={(s: string) => s.length > 14 ? s.slice(0, 13) + '…' : s} interval={0}
           />
-          <Tooltip
-            formatter={(v) => [formatEuro(Number(v)), tipo === 'entrata' ? 'Entrate' : 'Uscite']}
-            contentStyle={{
-              borderRadius: 10,
-              border: `1px solid ${COLORI.griglia}`,
-              fontSize: 13,
-              // seguono il tema (chiaro/scuro)
-              background: 'var(--cartoncino)',
-              color: 'var(--inchiostro)',
-            }}
-            labelStyle={{ color: 'var(--inchiostro)' }}
-            cursor={{ fill: 'rgba(194,32,38,0.06)' }}
-          />
-          <Bar dataKey="importo" fill={colore} radius={[0, 4, 4, 0]} maxBarSize={18} />
+          <Bar isAnimationActive={false} dataKey="importo" fill={colore} radius={[0, 4, 4, 0]} maxBarSize={18} />
         </BarChart>
-      </ResponsiveContainer>
-    </div>
+      </ResponsiveContainer>}
+    </GraficoInterattivo>
   )
 }

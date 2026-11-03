@@ -149,3 +149,19 @@ data della fonte e posizione del Riolunato evidenziata. Le classifiche lunghe si
 suddividono in più immagini scaricabili separatamente. L’esportazione conserva
 l’ordine della fonte e i dati dell’ultima copia visibile, anche se non aggiornata:
 controllare sempre la data prima di pubblicare.
+
+### Leggibilità e grafici
+
+I messaggi temporanei restano visibili per otto secondi; quelli molto lunghi
+vanno a capo e possono scorrere nel proprio riquadro. Gli errori persistenti di
+sincronizzazione mantengono separati titolo, dettaglio e azione di recupero.
+Su mobile descrizioni di attività, nomi squadra, celle e dettagli non dipendono
+dall’hover per essere letti.
+
+I quattro grafici (presenze, bilancio mensile, categorie, gol) mostrano i dettagli
+in un pannello esterno di altezza riservata: toccando il disegno o scegliendo un
+dato dal selettore, l’informazione cambia senza allargare o allungare il grafico.
+La tabella espandibile permette la lettura completa e da tastiera. Le animazioni
+al cambio dei dati sono disattivate. Il bilancio e le categorie includono anche
+movimenti ancora da saldare; il saldo del mese non coincide con il saldo di cassa.
+Le presenze sono rapportate alla rosa attuale, anche per le sedute precedenti.

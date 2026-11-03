@@ -3093,3 +3093,67 @@ body {
   .classifica-crest > span { width: 24px; height: 24px; font-size: 9px; }
   .classifica-toolbar label { min-height: 40px; }
 }
+
+/* Messaggi e testi reali: nessun testo lungo deve allargare il telefono. */
+.ant-message { padding-inline: 12px; }
+.ant-message .ant-message-notice-content { max-width: min(620px, calc(100vw - 32px)); padding: 14px 16px; text-align: start; }
+.ant-message .ant-message-custom-content { display: flex; align-items: flex-start; gap: 10px; max-height: min(40dvh, 320px); overflow-y: auto; overscroll-behavior: contain; line-height: 1.6; }
+.ant-message-custom-content > .anticon { flex: 0 0 auto; margin: 4px 0 0 !important; }
+.ant-message-custom-content > span:last-child { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ant-notification-notice { max-width: calc(100vw - 32px); }
+.ant-notification-notice-message, .ant-notification-notice-description, .ant-popover-inner-content, .ant-popconfirm-title, .ant-popconfirm-description { overflow-wrap: anywhere; white-space: normal; line-height: 1.6; }
+.ant-alert { min-width: 0; align-items: flex-start; }
+.ant-alert-content { min-width: 0; }
+.ant-alert-message, .ant-alert-description { overflow-wrap: anywhere; white-space: pre-wrap; line-height: 1.6; }
+.ant-alert-icon, .ant-alert-close-icon { flex-shrink: 0; }
+.ant-alert-description p { margin: 8px 0 0; }
+.errore-dettaglio { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ant-form-item-explain-error, .ant-form-item-extra, .ant-descriptions-item-content, .lista-card-title, .lista-card-sub, .dafare-testo, .avv-card-nome { overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 767.98px) {
+  .ant-alert { flex-wrap: wrap; gap: 8px; }
+  .ant-alert-icon { margin-inline-end: 0; padding-top: 3px; }
+  .ant-alert-content { flex: 1 1 160px; }
+  .ant-alert-action { flex: 1 1 100%; margin-inline-start: 0 !important; }
+  .ant-alert-action .ant-btn { min-height: 40px; height: auto; max-width: 100%; white-space: normal; line-height: 1.5; }
+  .ant-notification { max-width: calc(100vw - 16px); margin-inline: 8px !important; }
+  .ant-notification-notice { width: 100% !important; margin-inline: 0 !important; }
+  .ant-notification-notice-message { padding-inline-end: 22px; }
+  .tronca, .dafare-dettaglio, .archivio-casella-titolo, .tabellone-squadra, .pt-entrato { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+  .avv-card-stile { display: block; -webkit-line-clamp: unset; overflow: visible; overflow-wrap: anywhere; }
+}
+
+/* Un pannello esterno stabile sostituisce i tooltip mobili dei grafici. */
+.grafico-interattivo { min-width: 0; }
+.grafico-spiegazione { color: var(--testo-2); font-size: 13px; line-height: 1.6; margin: 0 0 10px; max-width: 75ch; }
+.grafico-riepilogo { font-size: 13px; line-height: 1.6; font-weight: 600; margin: 0 0 12px; overflow-wrap: anywhere; }
+.grafico-legenda { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 0 0 12px; list-style: none; font-size: 12px; }
+.grafico-legenda li { display: inline-flex; align-items: center; gap: 7px; }
+.grafico-legenda i { width: 10px; height: 10px; border-radius: 2px; }
+.grafico-scroll { overflow-x: auto; overflow-y: hidden; min-width: 0; overscroll-behavior-x: contain; overflow-anchor: none; }
+.grafico-tela { position: relative; }
+.grafico-interattivo .recharts-responsive-container { margin: 0 !important; }
+.grafico-istruzione { color: var(--testo-2); font-size: 12px; line-height: 1.6; margin: 10px 0 14px; }
+.grafico-dettaglio { height: 244px; padding: 14px; border: 1px solid var(--linea); border-radius: 10px; background: var(--panna); display: flex; flex-direction: column; gap: 12px; overflow: hidden; overflow-anchor: none; box-sizing: border-box; }
+.grafico-dettaglio label { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; font-size: 12px; flex-shrink: 0; }
+.grafico-dettaglio select { width: 100%; min-width: 0; height: 40px; padding: 6px 8px; background: var(--cartoncino); color: var(--inchiostro); border: 1px solid var(--linea); border-radius: 6px; font: inherit; font-size: 14px; }
+.grafico-valori { min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere; padding-inline-end: 6px; }
+.grafico-valori > strong { display: block; font-size: 13px; line-height: 1.6; }
+.grafico-valori dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 12px 0 0; }
+.grafico-valori dl > div { min-width: 0; }
+.grafico-valori dt { font-size: 11px; color: var(--testo-2); margin-bottom: 3px; }
+.grafico-valori dd { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 0; line-height: 1.5; }
+.grafico-tabella { margin-top: 14px; font-size: 13px; }
+.grafico-tabella summary { cursor: pointer; padding: 10px 0; }
+.grafico-tabella-scroll { overflow-x: auto; }
+.grafico-tabella table { border-collapse: collapse; width: 100%; min-width: 500px; text-align: start; font-size: 12px; }
+.grafico-tabella caption { text-align: start; padding: 10px 0; font-weight: 600; }
+.grafico-tabella th, .grafico-tabella td { border-bottom: 1px solid var(--linea); padding: 10px 12px; text-align: start; overflow-wrap: anywhere; max-width: 220px; }
+@media (max-width: 575.98px) {
+  .grafico-dettaglio label { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .grafico-dettaglio { height: 284px; }
+  .grafico-dettaglio select { font-size: 16px; }
+}
+.ant-notification-notice-description { max-height: 45dvh; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 767.98px) {
+  .ant-notification { left: 8px !important; right: 8px !important; width: auto !important; max-width: none; margin-inline: 0 !important; }
+}

@@ -1,20 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useFiltro } from '../hooks/useFiltro'
 import { App, Button, Card, Col, Empty, Row, Select, Space, Statistic, Tabs, Tag, Typography } from 'antd'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { FilePdfOutlined, TrophyOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
+import { GolChart } from './statistiche/GolChart'
 import { COLORI } from '../lib/chart'
 import { esitoPartita } from '../lib/social'
 import { partiteConPresenze, statisticheGiocatore } from '../lib/statistiche'
@@ -122,6 +113,8 @@ export function Statistiche() {
     () =>
       giocate.map((p) => ({
         label: labelBreve(p.data),
+        data: p.data.split('-').reverse().join('/'),
+        inCasa: p.inCasa,
         avversario: p.avversario,
         fatti: p.golFatti,
         subiti: p.golSubiti,
@@ -306,41 +299,7 @@ export function Statistiche() {
       </Row>
 
       <Card title="Gol fatti e subiti per partita" style={{ marginBottom: 16 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <div style={{ minWidth: Math.max(260, datiChart.length * 56), height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={datiChart} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
-                <CartesianGrid vertical={false} stroke={COLORI.griglia} />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={{ stroke: COLORI.griglia }}
-                  tick={{ fontSize: 11, fill: COLORI.testo }}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  width={28}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 10, fill: COLORI.testo }}
-                />
-                <Tooltip
-                  labelFormatter={(_, payload) => {
-                    const p = payload?.[0]?.payload as { label: string; avversario: string } | undefined
-                    return p ? `${p.label} · vs ${p.avversario}` : ''
-                  }}
-                  contentStyle={{ borderRadius: 10, border: `1px solid ${COLORI.griglia}`, fontSize: 13 }}
-                  cursor={{ fill: 'rgba(194,32,38,0.06)' }}
-                />
-                <Legend wrapperStyle={{ fontSize: 12.5 }}
-                formatter={(v) => <span style={{ color: 'var(--inchiostro)' }}>{v}</span>}
-              />
-                <Bar dataKey="fatti" name="Gol fatti" fill={COLORI.verde} radius={[4, 4, 0, 0]} maxBarSize={22} />
-                <Bar dataKey="subiti" name="Gol subiti" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={22} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <GolChart dati={datiChart} />
       </Card>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>

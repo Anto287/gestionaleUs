@@ -6,14 +6,15 @@ import {
   CartesianGrid,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+import { GraficoInterattivo } from '../../components/GraficoInterattivo'
 import { COLORI } from '../../lib/chart'
 
 interface Punto {
   label: string
+  data?: string
   valore: number
 }
 
@@ -58,19 +59,6 @@ export function AffluenzaChart({
         axisLine={false}
         tick={{ fontSize: 10, fill: COLORI.testo }}
       />
-      <Tooltip
-        formatter={(v) => [`${v} / ${scala}`, 'Presenti']}
-        // colori dal tema: di serie è sfondo bianco, e in tema scuro il testo chiaro spariva
-        contentStyle={{
-          borderRadius: 10,
-          border: `1px solid ${COLORI.griglia}`,
-          fontSize: 13,
-          background: 'var(--cartoncino)',
-          color: 'var(--inchiostro)',
-        }}
-        labelStyle={{ color: 'var(--inchiostro)' }}
-        cursor={{ fill: 'rgba(194,32,38,0.06)' }}
-      />
       {media > 0 && (
         <ReferenceLine
           y={media}
@@ -83,13 +71,15 @@ export function AffluenzaChart({
   )
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth, height: H }}>
-        <ResponsiveContainer width="100%" height="100%">
+    <GraficoInterattivo iniziaDallaFine titolo="Presenze agli allenamenti" descrizione="Presenti per seduta. La linea tratteggiata indica la media del periodo; il confronto usa i giocatori della rosa attuale."
+      riepilogo={`${dati.length} sedute · Media ${media.toLocaleString('it-IT', { maximumFractionDigits: 1 })} presenti su ${scala} · Massimo ${Math.max(...dati.map((d) => d.valore))}`}
+      dati={dati.map((d) => ({ label: d.data || d.label, valori: [{ nome: 'Presenti', valore: `${d.valore} / ${scala}` }, { nome: 'Partecipazione', valore: scala ? `${Math.round(d.valore / scala * 100)}%` : '—' }, { nome: 'Assenti', valore: String(Math.max(0, scala - d.valore)) }, { nome: 'Scarto dalla media', valore: (d.valore - media).toLocaleString('it-IT', { maximumFractionDigits: 1, signDisplay: 'always' }) }] }))}
+      minWidth={minWidth} altezza={H}>
+      {(seleziona) => <ResponsiveContainer width="100%" height="100%">
           {tipo === 'linea' ? (
-            <AreaChart data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
+            <AreaChart onClick={seleziona} data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
               {assi}
-              <Area
+              <Area isAnimationActive={false}
                 type="monotone"
                 dataKey="valore"
                 stroke={COLORI.rosso}
@@ -100,13 +90,12 @@ export function AffluenzaChart({
               />
             </AreaChart>
           ) : (
-            <BarChart data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
+            <BarChart onClick={seleziona} data={dati} margin={{ top: 16, right: 16, bottom: 4, left: 0 }}>
               {assi}
-              <Bar dataKey="valore" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={30} />
+              <Bar isAnimationActive={false} dataKey="valore" fill={COLORI.rosso} radius={[4, 4, 0, 0]} maxBarSize={30} />
             </BarChart>
           )}
-        </ResponsiveContainer>
-      </div>
-    </div>
+        </ResponsiveContainer>}
+    </GraficoInterattivo>
   )
 }
