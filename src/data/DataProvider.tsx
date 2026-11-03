@@ -474,12 +474,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
           <Alert
             type="warning"
             showIcon
-            message={`Una modifica non è stata salvata sul Drive: ${erroreSync}`}
-            description={
-              scritture.current.size
-                ? 'Le modifiche locali restano visibili. Riprova il salvataggio prima di chiudere l’app.'
-                : 'Riprova il caricamento dalla sua finestra.'
-            }
+            message="Una modifica non è stata salvata sul Drive"
+            description={<><p className="errore-dettaglio">{erroreSync}</p><p>{scritture.current.size ? 'Le modifiche locali restano visibili. Riprova il salvataggio prima di chiudere l’app.' : 'Riprova il caricamento dalla sua finestra.'}</p></>}
             closable={!scritture.current.size}
             onClose={() => setErroreSync(null)}
             action={

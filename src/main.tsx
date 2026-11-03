@@ -22,7 +22,7 @@ avviaScrollPopup()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <TemaProvider>
-      <AntApp>
+      <AntApp message={{ duration: 8, maxCount: 3 }}>
         <HashRouter>
           <AuthProvider>
             <App />

@@ -14,7 +14,7 @@ try {
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
   await mockDrive(page)
-  const routes = ['/', '/rosa', '/allenamenti', '/partite', '/avversari', '/calendario', '/statistiche', '/formazione', '/piazzati', '/distinte', '/social', '/magazzino', '/conti', '/spese', '/documenti', '/archivio', '/impostazioni', '/rosa/g0', '/partite/p0', '/avversari/avv']
+  const routes = ['/classifica', '/loghi', '/management', '/', '/rosa', '/allenamenti', '/partite', '/avversari', '/calendario', '/statistiche', '/formazione', '/piazzati', '/distinte', '/social', '/magazzino', '/conti', '/spese', '/documenti', '/archivio', '/impostazioni', '/rosa/g0', '/partite/p0', '/avversari/avv']
   const widths = process.env.US_AUDIT_QUICK ? [320, 768, 1024, 1440] : [320, 390, 768, 1024, 1440]
   for (const theme of ['chiaro', 'scuro']) {
   await page.addInitScript((t) => localStorage.setItem('usriolunato:tema', t), theme)
@@ -59,7 +59,7 @@ try {
         return bad
       })
       const name = `${route.slice(1).replaceAll('/', '-') || 'panoramica'}-${width}`
-      if (!process.env.CI) await page.screenshot({ path: `${out}/${theme}-${name}.png`, fullPage: true })
+      if (!process.env.CI || (['/', '/rosa', '/conti', '/social'].includes(route) && [390, 1440].includes(width))) await page.screenshot({ path: `${out}/${theme}-${name}.png`, fullPage: true })
       checks.push({ theme, route, width, issues })
       if (issues.length) console.log(JSON.stringify({ route, width, issues }))
     }

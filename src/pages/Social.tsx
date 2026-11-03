@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import {
   App,
@@ -101,6 +101,7 @@ function chiaveVoce(v: { data: string; avversario: string }) {
 type Kind = 'annuncio' | 'risultato' | 'mese' | 'formazione'
 
 export function Social() {
+  const navigate = useNavigate()
   const { items: loghi } = useCollection<LogoSquadra>('loghi')
   const { items: partite } = useCollection<Partita>('partite')
   const { items: giocatori } = useCollection<Giocatore>('giocatori')
@@ -754,6 +755,7 @@ export function Social() {
     <>
       <PageHeader
         titolo="Grafiche IG"
+        azioni={<Button onClick={() => navigate('/classifica?esporta=1')}>Grafica classifica</Button>}
         sottotitolo="Crea e personalizza le foto per Instagram, poi scaricale o salvale sul Drive"
       />
 

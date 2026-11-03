@@ -124,7 +124,7 @@ export function Allenamenti() {
 
   const datiChart = useMemo(
     () =>
-      [...seduteChart].reverse().map((s) => ({ label: labelBreve(s.data), valore: presenti(s) })),
+      [...seduteChart].reverse().map((s) => ({ label: labelBreve(s.data), data: formatData(s.data), valore: presenti(s) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [seduteChart, rosa],
   )

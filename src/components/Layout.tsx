@@ -51,7 +51,7 @@ function Brand() {
         src={`${import.meta.env.BASE_URL}logo.png`}
         alt={config.clubName}
       />
-      <Text className="brand-season">Stagione {attiva}</Text>
+      <div className="brand-copy"><strong>{config.clubName}</strong><Text className="brand-season">Stagione {attiva}</Text></div>
     </div>
   )
 }
@@ -78,11 +78,19 @@ function LayoutPronto() {
     <Menu
       mode="inline"
       selectedKeys={[sezione.to]}
-      items={navigation.map((item) => ({
-        key: item.to,
-        icon: createElement(item.icon),
-        label: item.label,
-      }))}
+      items={[
+        ...navigation.filter((item) => ['/', '/management'].includes(item.to)).map((item) => ({ key: item.to, icon: createElement(item.icon), label: item.label })),
+        ...[
+          { label: 'Squadra', paths: ['/rosa', '/allenamenti'] },
+          { label: 'Campionato', paths: ['/classifica', '/partite', '/avversari', '/calendario', '/statistiche'] },
+          { label: 'Preparazione', paths: ['/formazione', '/piazzati', '/distinte'] },
+          { label: 'Comunicazione', paths: ['/loghi', '/social'] },
+          { label: 'Società', paths: ['/magazzino', '/conti', '/spese', '/documenti', '/archivio', '/impostazioni'] },
+        ].map((group) => ({ type: 'group' as const, label: group.label, children: group.paths.flatMap((path) => {
+          const item = navigation.find((n) => n.to === path)
+          return item ? [{ key: item.to, icon: createElement(item.icon), label: item.label }] : []
+        }) })),
+      ]}
       onClick={({ key }) => {
         navigate(key)
         setDrawer(false)
@@ -119,6 +127,7 @@ function LayoutPronto() {
         </Sider>
       ) : (
         <Drawer
+          title="Navigazione"
           placement="left"
           open={drawer}
           onClose={() => setDrawer(false)}

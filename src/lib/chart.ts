@@ -17,7 +17,7 @@ export const COLORI = {
     return scuro() ? '#59503f' : '#c9bfad'
   },
   get testo() {
-    return scuro() ? '#a89c8c' : '#9a948a'
+    return scuro() ? '#a89c8c' : '#75695a'
   },
 }
 
