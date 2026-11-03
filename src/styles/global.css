@@ -3211,3 +3211,11 @@ body {
 .elenco-compatto[open] .elenco-mostra { display: none; }
 .elenco-compatto[open] .elenco-nascondi { display: inline; }
 .rosa-card:hover { transform: none; }
+/* La card della Rosa gestisce le proprie spaziature, senza sommare il gap
+   delle vecchie card ai margini delle nuove righe. */
+.rosa-card { gap: 0; padding: 14px !important; }
+.rosa-card-stato { margin-top: 10px; }
+.rosa-card-piede { padding-top: 8px; }
+.rosa-card-dettagli { margin-top: 8px; padding-top: 4px; }
+.rosa-card-dettagli summary { min-height: 32px; padding: 4px 0; }
+.rosa-card-identita:hover { color: var(--inchiostro); }

@@ -37,7 +37,7 @@ try {
   await page.goto('http://127.0.0.1:5186/#/rosa')
   if (width < 576) {
    const card = page.locator('.rosa-card').first(); await card.waitFor()
-   assert.ok((await card.boundingBox()).height < 300)
+   assert.ok((await card.boundingBox()).height < 260)
    const details = card.locator('details')
    assert.equal(await details.getAttribute('open'), null)
    assert.equal(await card.getByRole('button', { name: /Elimina/ }).isVisible(), false)
@@ -48,8 +48,11 @@ try {
    await card.evaluate((e) => e.scrollIntoView({ block: 'center' }))
    await card.locator('.rosa-card-quota .ant-select-selector').click()
    await page.getByRole('option', { name: 'Esente', exact: true }).click()
+   await page.getByRole('option', { name: 'Esente', exact: true }).waitFor({ state: 'hidden' })
+   await card.getByText('Esente', { exact: true }).waitFor()
    assert.ok(page.url().endsWith('/rosa'))
-   if (width < 576) await page.locator('.lista-mobile').screenshot({ path: `/tmp/us-compatta/rosa-${theme}-${width}.png` })
+   await card.evaluate((e) => e.scrollIntoView({ block: 'center' }))
+   if (width < 576) await card.screenshot({ path: `/tmp/us-compatta/rosa-${theme}-${width}.png` })
    await card.getByRole('link').click()
    assert.ok(page.url().endsWith('/rosa/compact-0'))
   }
