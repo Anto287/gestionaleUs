@@ -86,7 +86,7 @@ try {
     await drawer.getByRole('button', { name: 'Salva voce', exact: true }).click()
     await page.getByText('Persona modificata', { exact: true }).waitFor()
     await page.getByRole('button', { name: /Modifica lista$/ }).click()
-    assert.equal(await page.getByLabel('Tipo campo 2', { exact: true }).isDisabled(), true)
+    assert.equal(await page.getByRole('combobox', { name: 'Tipo campo 2', exact: true }).isDisabled(), true)
     await page.getByLabel('Nome lista', { exact: true }).fill('Lista rinominata')
     await page.getByLabel('Nome campo 1', { exact: true }).fill('Nome completo')
     await page.getByRole('button', { name: 'Salva lista', exact: true }).click()
