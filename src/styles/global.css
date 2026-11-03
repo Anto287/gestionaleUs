@@ -3025,7 +3025,7 @@ body {
 .classifica-table .classifica-punti { font-size: 18px; font-weight: 750; text-align: center; }
 .classifica-table .classifica-numero { text-align: center; color: var(--testo-2); font-variant-numeric: tabular-nums; }
 .classifica-own > td, .classifica-own:hover > td { background: var(--rosso-tenue) !important; }
-.classifica-own .classifica-team, .classifica-own .classifica-punti { color: var(--rosso); font-weight: 750; }
+.classifica-own .classifica-team, .classifica-own .classifica-punti { color: var(--rosso-testo); font-weight: 750; }
 .classifica-results-title { margin-top: 36px; }
 .classifica-results-title > span { color: var(--testo-2); font-size: 12px; }
 .classifica-mobile-results { display: none; }
@@ -3085,4 +3085,11 @@ body {
   .app-container .ant-card-head-title { flex: 1 1 100px; }
   .app-container .ant-card-extra { flex: 0 1 auto; width: auto; }
   .app-container .ant-card-extra:has(.ant-space) { flex-basis: 100%; width: 100%; }
+}
+.classifica-crest { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; }
+.classifica-crest > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--panna); border: 1px solid var(--linea); color: var(--testo-2); font-size: 10px; font-weight: 600; }
+@media (max-width: 767.98px) {
+  .classifica-crest { width: 26px; height: 26px; flex-basis: 26px; }
+  .classifica-crest > span { width: 24px; height: 24px; font-size: 9px; }
+  .classifica-toolbar label { min-height: 40px; }
 }

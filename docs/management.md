@@ -137,7 +137,7 @@ Ogni dispositivo effettua la propria prima lettura. La cancellazione dei dati de
 browser richiede una nuova lettura. Se lo spazio locale non è disponibile, l’app
 continua a funzionare ma non conserva la copia tra le aperture.
 
-**Aggiorna** controlla se ci sono novità senza riscaricare lo stesso PDF.
+**Aggiorna classifica** controlla se ci sono novità senza riscaricare lo stesso PDF.
 **Rileggi PDF** forza una nuova lettura, utile per correzioni pubblicate allo stesso
 indirizzo. Il controllo dell’indice ufficiale può avere fino a cinque minuti di cache
 sul server. Non servono modifiche aggiuntive ad Apps Script.

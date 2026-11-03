@@ -46,8 +46,8 @@ try {
     assert.equal(await tables.nth(1).locator('tr[data-row-key]').count(), 4)
     await page.getByText(/Aggiornamento settimanale, non in tempo reale/).waitFor()
     assert.equal(downloads, 1)
-    await page.getByRole('button', { name: 'Aggiorna', exact: true }).click()
-    await page.getByRole('button', { name: 'Aggiorna', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Aggiorna classifica', exact: true }).click()
+    await page.getByRole('button', { name: 'Aggiorna classifica', exact: true }).waitFor()
     await page.waitForTimeout(500)
     assert.equal(downloads, 1, 'stesso comunicato: nessun download del PDF')
     await page.reload()
@@ -55,7 +55,7 @@ try {
     await page.waitForTimeout(500)
     assert.equal(downloads, 1, 'cache persistente anche dopo reload')
     next = true
-    await page.getByRole('button', { name: 'Aggiorna', exact: true }).click()
+    await page.getByRole('button', { name: 'Aggiorna classifica', exact: true }).click()
     await page.getByText('Comunicato del 04/11/2026', { exact: true }).waitFor()
     assert.equal(downloads, 2, 'nuovo comunicato scaricato automaticamente')
     await page.getByRole('button', { name: 'Rileggi PDF', exact: true }).click()
@@ -90,7 +90,7 @@ try {
     await page.screenshot({ path: `/tmp/us-classifica-preview/classifica-${width}.png`, fullPage: true })
     await preview.screenshot({ path: `/tmp/us-classifica-preview/instagram-${width}.png` })
     offline = true
-    await page.getByRole('button', { name: 'Aggiorna', exact: true }).click()
+    await page.getByRole('button', { name: 'Aggiorna classifica', exact: true }).click()
     await page.getByText('Mostriamo l’ultima copia salvata', { exact: true }).waitFor()
     await page.getByRole('cell', { name: 'RIOLUNATO U.S', exact: true }).waitFor()
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
