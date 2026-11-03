@@ -1,3 +1,4 @@
+import { Tooltip } from 'recharts'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 export interface DatoGrafico { label: string; valori: Array<{ nome: string; valore: string }> }
@@ -29,4 +30,9 @@ export function GraficoInterattivo({ titolo, descrizione, riepilogo, dati, minWi
     </div>
     <details className="grafico-tabella"><summary>Vedi tutti i dati in tabella ({dati.length})</summary><div className="grafico-tabella-scroll"><table><caption>{titolo}</caption><thead><tr><th scope="col">Dato</th>{punto.valori.map((v) => <th scope="col" key={v.nome}>{v.nome}</th>)}</tr></thead><tbody>{dati.map((d, i) => <tr key={i}><th scope="row">{d.label}</th>{d.valori.map((v) => <td key={v.nome}>{v.valore}</td>)}</tr>)}</tbody></table></div></details>
   </section>
+}
+
+/** Mantiene la selezione nativa di Recharts, senza disegnare un tooltip mobile. */
+export function InterazioneGrafico() {
+  return <Tooltip trigger="click" active={false} cursor={false} content={() => null} wrapperStyle={{ display: 'none' }} isAnimationActive={false} />
 }

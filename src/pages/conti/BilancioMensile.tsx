@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { GraficoInterattivo } from '../../components/GraficoInterattivo'
+import { GraficoInterattivo, InterazioneGrafico } from '../../components/GraficoInterattivo'
 import { formatEuro } from '../../lib/format'
 import { COLORI } from '../../lib/chart'
 
@@ -49,6 +49,7 @@ export function BilancioMensile({ dati, tipo = 'barre' }: { dati: MeseBilancio[]
 
   const assi = (
     <>
+      <InterazioneGrafico />
       <CartesianGrid vertical={false} stroke={COLORI.griglia} />
       <XAxis dataKey="mese" tickLine={false} axisLine={{ stroke: COLORI.griglia }} tick={{ fontSize: 11, fill: COLORI.testo }} />
       <YAxis

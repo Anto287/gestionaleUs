@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { GraficoInterattivo } from '../../components/GraficoInterattivo'
+import { GraficoInterattivo, InterazioneGrafico } from '../../components/GraficoInterattivo'
 import { COLORI } from '../../lib/chart'
 export interface DatoGol { label: string; data: string; inCasa: boolean; avversario: string; fatti: number; subiti: number }
 export function GolChart({ dati }: { dati: DatoGol[] }) {
@@ -11,7 +11,8 @@ export function GolChart({ dati }: { dati: DatoGol[] }) {
           minWidth={Math.max(260, dati.length * 56)}>
           {(seleziona) => <ResponsiveContainer width="100%" height="100%">
               <BarChart onClick={seleziona} data={dati} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
-                <CartesianGrid vertical={false} stroke={COLORI.griglia} />
+                <InterazioneGrafico />
+          <CartesianGrid vertical={false} stroke={COLORI.griglia} />
                 <XAxis
                   dataKey="label"
                   tickLine={false}

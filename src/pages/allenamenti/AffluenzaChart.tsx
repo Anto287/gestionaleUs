@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { GraficoInterattivo } from '../../components/GraficoInterattivo'
+import { GraficoInterattivo, InterazioneGrafico } from '../../components/GraficoInterattivo'
 import { COLORI } from '../../lib/chart'
 
 interface Punto {
@@ -49,6 +49,7 @@ export function AffluenzaChart({
 
   const assi = (
     <>
+      <InterazioneGrafico />
       <CartesianGrid vertical={false} stroke={COLORI.griglia} />
       <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: COLORI.griglia }} tick={{ fontSize: 11, fill: COLORI.testo }} />
       <YAxis

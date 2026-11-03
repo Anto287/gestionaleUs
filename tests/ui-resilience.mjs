@@ -31,8 +31,9 @@ try {
   for (let i = 0; i < await charts.count(); i++) {
    const chart = charts.nth(i), select = chart.locator('select'), drawing = chart.locator('.grafico-scroll')
    // Exercise both direct touch/click and accessible selection.
-   const bar = chart.locator('.recharts-bar-rectangle').first()
-   if (await bar.count()) {
+   const bar = chart.locator('.recharts-bar-rectangle, .recharts-area-dot').first()
+   {
+    await bar.waitFor({ state: 'visible' })
     await bar.scrollIntoViewIfNeeded()
     const before = await chart.evaluate((e) => ({ top: e.getBoundingClientRect().top, height: e.getBoundingClientRect().height, scroll: window.scrollY, width: document.documentElement.scrollWidth }))
     await bar.click()

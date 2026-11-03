@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts'
-import { GraficoInterattivo } from '../../components/GraficoInterattivo'
+import { GraficoInterattivo, InterazioneGrafico } from '../../components/GraficoInterattivo'
 import { COLORI } from '../../lib/chart'
 import { formatEuro } from '../../lib/format'
 
@@ -25,6 +25,7 @@ export function PerCategoria({ dati, tipo }: { dati: VoceCategoria[]; tipo: 'ent
       minWidth={260} altezza={altezza}>
       {(seleziona) => <ResponsiveContainer width="100%" height="100%">
         <BarChart onClick={seleziona} data={dati} layout="vertical" margin={{ top: 4, right: 24, bottom: 0, left: 8 }}>
+          <InterazioneGrafico />
           <CartesianGrid horizontal={false} stroke={COLORI.griglia} />
           <XAxis
             type="number"
