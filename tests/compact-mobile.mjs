@@ -58,7 +58,7 @@ try {
   const kinds = page.locator('.social-kind'); await kinds.waitFor()
   const initial = await kinds.boundingBox()
   for (const name of ['Risultato', 'Formazione', 'Mese', 'Partita del giorno', 'Formazione', 'Risultato']) {
-   await kinds.getByRole('radio', { name, exact: true }).check()
+   await kinds.getByText(name, { exact: true }).click()
    assert.equal(await kinds.getByRole('radio', { name, exact: true }).isChecked(), true)
    assert.equal(await kinds.locator('.ant-segmented-thumb').count(), 0)
    const current = await kinds.boundingBox()
