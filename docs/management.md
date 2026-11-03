@@ -123,3 +123,29 @@ Questa nuova fonte richiede un aggiornamento rispetto al precedente blocco che s
 Salva e distribuisci una nuova versione del deployment esistente, mantenendo lo stesso URL `/exec`. Autorizza le richieste esterne se Google lo richiede. Non vengono attivate API commerciali o abbonamenti. La gratuità riguarda la fonte pubblica UISP e l’assenza di un servizio dati a pagamento; restano i normali limiti di utilizzo di Google Apps Script. Se UISP modifica la struttura del sito o dei PDF potrà essere necessario aggiornare il lettore.
 
 La pagina ufficiale `https://www.tuttocampo.it/WidgetApi` dichiara che le API Tuttocampo hanno un costo mensile, mentre i widget gratuiti usano iframe. Per questo la modalità gratuita senza iframe usa i comunicati UISP, non l’estrazione automatica delle pagine Tuttocampo.
+
+### Classifica: cache e condivisione
+
+La classifica letta viene conservata sul dispositivo come dati elaborati, senza PDF,
+credenziali o loghi duplicati. Riaprendo la pagina compare subito l’ultima copia.
+In background si controlla la fonte all’apertura, al ritorno nella pagina, al ritorno
+online e ogni cinque minuti mentre l’app è visibile. Il PDF viene scaricato e analizzato
+solo al primo accesso o se cambiano URL, data del comunicato, categoria o girone.
+La copia precedente viene sostituita solo dopo una lettura riuscita: in caso di errore
+rimane visibile con un avviso e la data della fonte. La cache è separata per stagione.
+Ogni dispositivo effettua la propria prima lettura. La cancellazione dei dati del
+browser richiede una nuova lettura. Se lo spazio locale non è disponibile, l’app
+continua a funzionare ma non conserva la copia tra le aperture.
+
+**Aggiorna** controlla se ci sono novità senza riscaricare lo stesso PDF.
+**Rileggi PDF** forza una nuova lettura, utile per correzioni pubblicate allo stesso
+indirizzo. Il controllo dell’indice ufficiale può avere fino a cinque minuti di cache
+sul server. Non servono modifiche aggiuntive ad Apps Script.
+
+**Esporta classifica** apre gli strumenti nella pagina: anteprima e PNG per post
+Instagram 1080×1350 oppure Storia 1080×1920, e PDF A4 da scaricare e stampare dal
+visualizzatore del dispositivo. La grafica include loghi disponibili nella libreria,
+data della fonte e posizione del Riolunato evidenziata. Le classifiche lunghe si
+suddividono in più immagini scaricabili separatamente. L’esportazione conserva
+l’ordine della fonte e i dati dell’ultima copia visibile, anche se non aggiornata:
+controllare sempre la data prima di pubblicare.
