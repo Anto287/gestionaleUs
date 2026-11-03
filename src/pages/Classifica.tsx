@@ -68,7 +68,7 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
   return <div className="classifica-page">
     <PageHeader titolo="Classifica" sottotitolo={`Campionato · ${stagione}`} azioni={<Space><Button aria-label="Aggiorna classifica" icon={<ReloadOutlined aria-hidden />} loading={busy} onClick={() => setRefresh((n) => n + 1)}>Aggiorna classifica</Button><Button aria-label="Esporta classifica" icon={<ShareAltOutlined aria-hidden />} type="primary" disabled={!data?.righe?.length} onClick={() => setEsporta((v) => !v)} aria-expanded={esporta}>Esporta classifica</Button></Space>} />
     {error && data && <Alert type="warning" showIcon message="Mostriamo l’ultima copia salvata" description={error} style={{ marginBottom: 16 }} />}
-    {busy && !data ? <Skeleton active /> : error && !data ? <Alert type="error" message="Impossibile caricare la classifica" description={error} /> : data?.tipo === 'widget' ? <Alert type="warning" showIcon message="La fonte di questa stagione usa ancora un widget" description="Per visualizzare la classifica interna con i loghi, configura UISP Modena oppure una fonte API JSON in Management → Classifica. Un collegamento al widget non fornisce i dati della tabella." />
+    {busy && !data ? <Skeleton active /> : error && !data ? <Alert type="error" message="Impossibile caricare la classifica" description={error} /> : data?.tipo === 'widget' ? <Alert type="warning" showIcon message="La fonte di questa stagione usa ancora un widget" description="Per visualizzare la classifica interna con i loghi, configura UISP Modena oppure una fonte API JSON in Impostazioni → Classifica. Un collegamento al widget non fornisce i dati della tabella." />
     : (data?.tipo === 'api' || data?.tipo === 'uisp') ? <>
       <div className="classifica-fonte">
         <div><span className="classifica-eyebrow">{data.tipo === 'uisp' ? `UISP Modena · Categoria ${data.categoria}, Girone ${data.girone}` : 'Campionato'}</span><p>{data.tipo === 'uisp' ? `Comunicato del ${data.comunicato?.split('-').reverse().join('/')}` : `Ultima lettura: ${new Date(data.aggiornato!).toLocaleString('it-IT')}`}</p></div>
@@ -91,6 +91,6 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
           { title: 'Risultato', render: (_, r) => <strong>{r.golCasa} – {r.golOspite}</strong> }, { title: 'Trasferta', dataIndex: 'ospite' },
         ]} />
       </>}
-    </> : <Empty description="Fonte non configurata per questa stagione. Un amministratore può aggiungerla in Management → Classifica." />}
+    </> : <Empty description="Fonte non configurata per questa stagione. Un amministratore può aggiungerla in Impostazioni → Classifica." />}
   </div>
 }

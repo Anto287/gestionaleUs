@@ -28,7 +28,7 @@ try {
       if (b.action === 'standingsPdf') { downloads++; Object.assign(res, { pdfUrl: `https://calcio.uispmodena.it/upload/c_allegati/file/1/${next ? 996 : 995}.pdf`, dataBase64: readFileSync(new URL('./fixtures/uisp-girone.base64.txt', import.meta.url), 'utf8').trim() }) }
       await route.fulfill({ json: res })
     })
-    await page.goto('http://127.0.0.1:5183/#/management')
+    await page.goto('http://127.0.0.1:5183/#/impostazioni')
     await page.getByRole('tab', { name: 'Classifica', exact: true }).click()
     await page.getByRole('combobox', { name: 'Categoria UISP', exact: true }).waitFor()
     assert.equal(await page.getByLabel('URL HTTPS dell’API', { exact: true }).count(), 0)

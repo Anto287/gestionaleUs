@@ -46,7 +46,12 @@ try {
     await page.getByRole('button', { name: 'Crea stagione', exact: true }).click()
     await page.waitForFunction(() => document.body.textContent.includes('Stagione 2027/28 creata'))
     await page.getByRole('tab', { name: 'Stagioni', exact: true }).click()
+    const selezioneSalvata = page.waitForResponse((response) => {
+      const body = response.request().postDataJSON()
+      return body?.action === 'setSeasons' && body.attiva === '2026/27'
+    })
     await page.getByRole('button', { name: 'Rendi attiva', exact: true }).click()
+    await selezioneSalvata
     await page.getByRole('tab', { name: 'Generali', exact: true }).waitFor()
     assert.equal(seasons.attiva, '2026/27')
     await page.goto('http://127.0.0.1:5183/#/management')
