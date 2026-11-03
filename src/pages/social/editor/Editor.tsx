@@ -61,21 +61,21 @@ function nuovoId(prefisso: string): string {
 
 /** Carica un'immagine da src e la ridà quando è pronta. */
 function useImg(src?: string) {
-  const [img, setImg] = useState<HTMLImageElement>()
+  const [loaded, setLoaded] = useState<{ src: string; img: HTMLImageElement }>()
   useEffect(() => {
     if (!src) {
-      setImg(undefined)
+      setLoaded(undefined)
       return
     }
     const i = new window.Image()
     i.crossOrigin = 'anonymous'
-    i.onload = () => setImg(i)
+    i.onload = () => setLoaded({ src, img: i })
     i.src = src
     return () => {
       i.onload = null
     }
   }, [src])
-  return img
+  return loaded && loaded.src === src ? loaded.img : undefined
 }
 
 /** Eventi comuni ai nodi selezionabili della tela. */
@@ -310,7 +310,7 @@ export function Editor({
 
   // al cambio di grafica: se cambia il TIPO, riparte dallo stile predefinito di
   // quel tipo; se cambiano solo i dati, rigenera gli elementi tenendo lo stile.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (primoRender.current) {
       primoRender.current = false
       lastKind.current = input.kind

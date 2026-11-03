@@ -46,6 +46,7 @@ jobs:
             /tmp/us-layout-final/audit.json
             /tmp/us-classifica-preview/*.png
             /tmp/us-resilience/*.png
+            /tmp/us-compatta/*.png
           retention-days: 7
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
