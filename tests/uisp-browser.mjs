@@ -67,6 +67,12 @@ try {
     await preview.waitFor()
     assert.equal(await preview.evaluate((img) => img.naturalWidth), 1080)
     assert.equal(await preview.evaluate((img) => img.naturalHeight), 1350)
+    const pagination = await page.evaluate(async () => {
+      const { preparaGrafiche } = await import('/src/pages/classifica/esporta.ts')
+      const righe = Array.from({ length: 31 }, (_, i) => ({ squadra: `Squadra ${i} con un nome molto lungo e composto`, punti: 31 - i }))
+      return (await preparaGrafiche({ tipo: 'api', righe }, '2026/27', [], 'post')).map((c) => [c.width, c.height])
+    })
+    assert.deepEqual(pagination, [[1080, 1350], [1080, 1350], [1080, 1350]])
     const pngDownload = page.waitForEvent('download')
     await page.getByRole('button', { name: /Scarica PNG/ }).click()
     assert.match((await pngDownload).suggestedFilename(), /\.png$/)

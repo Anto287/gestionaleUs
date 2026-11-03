@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Empty, Skeleton, Table, Space, Switch } from 'antd'
+import { useSearchParams } from 'react-router-dom'
 import { useCollection } from '../hooks/useCollection'
 import { logoSquadra } from '../lib/loghi'
 import type { LogoSquadra } from '../types'
@@ -22,7 +23,8 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
   const [busy, setBusy] = useState(true)
   const [refresh, setRefresh] = useState(0)
   const [dettagli, setDettagli] = useState(() => window.matchMedia('(min-width: 768px)').matches)
-  const [esporta, setEsporta] = useState(false)
+  const [searchParams] = useSearchParams()
+  const [esporta, setEsporta] = useState(() => searchParams.get('esporta') === '1')
   const copia = useRef(data)
   const forza = useRef(false)
   useEffect(() => {
@@ -64,13 +66,13 @@ function ClassificaStagione({ stagione }: { stagione: string }) {
     return () => { active = false; window.clearInterval(timer); window.removeEventListener('online', torna); document.removeEventListener('visibilitychange', torna) }
   }, [stagione, refresh])
   return <div className="classifica-page">
-    <PageHeader titolo="Classifica" sottotitolo={`Campionato · ${stagione}`} azioni={<Space><Button icon={<ReloadOutlined />} loading={busy} onClick={() => setRefresh((n) => n + 1)}>Aggiorna</Button><Button icon={<ShareAltOutlined />} type="primary" disabled={!data?.righe?.length} onClick={() => setEsporta((v) => !v)} aria-expanded={esporta}>Esporta classifica</Button></Space>} />
+    <PageHeader titolo="Classifica" sottotitolo={`Campionato · ${stagione}`} azioni={<Space><Button aria-label="Aggiorna" icon={<ReloadOutlined aria-hidden />} loading={busy} onClick={() => setRefresh((n) => n + 1)}>Aggiorna</Button><Button aria-label="Esporta classifica" icon={<ShareAltOutlined aria-hidden />} type="primary" disabled={!data?.righe?.length} onClick={() => setEsporta((v) => !v)} aria-expanded={esporta}>Esporta classifica</Button></Space>} />
     {error && data && <Alert type="warning" showIcon message="Mostriamo l’ultima copia salvata" description={error} style={{ marginBottom: 16 }} />}
     {busy && !data ? <Skeleton active /> : error && !data ? <Alert type="error" message="Impossibile caricare la classifica" description={error} /> : data?.tipo === 'widget' ? <Alert type="warning" showIcon message="La fonte di questa stagione usa ancora un widget" description="Per visualizzare la classifica interna con i loghi, configura UISP Modena oppure una fonte API JSON in Management → Classifica. Un collegamento al widget non fornisce i dati della tabella." />
     : (data?.tipo === 'api' || data?.tipo === 'uisp') ? <>
       <div className="classifica-fonte">
         <div><span className="classifica-eyebrow">{data.tipo === 'uisp' ? `UISP Modena · Categoria ${data.categoria}, Girone ${data.girone}` : 'Campionato'}</span><p>{data.tipo === 'uisp' ? `Comunicato del ${data.comunicato?.split('-').reverse().join('/')}` : `Ultima lettura: ${new Date(data.aggiornato!).toLocaleString('it-IT')}`}</p></div>
-        <span className="classifica-stato" role="status">{busy ? 'Verifica aggiornamenti…' : error ? 'Copia salvata' : 'Disponibile sul dispositivo'}</span>
+        <span className="classifica-stato" role="status">{busy ? 'Verifica aggiornamenti…' : error ? 'Copia salvata' : 'Fonte verificata'}</span>
         {data.tipo === 'uisp' && <div className="classifica-source-note"><span>Aggiornamento settimanale, non in tempo reale.</span> <a href={data.pdfUrl} target="_blank" rel="noopener noreferrer">Comunicato ufficiale ↗</a><Button type="link" size="small" disabled={busy} onClick={() => { forza.current = true; setRefresh((n) => n + 1) }}>Rileggi PDF</Button></div>}
       </div>
       {esporta && <EsportaClassifica key={`${data.pdfUrl}|${data.comunicato}|${data.categoria}|${data.girone}|${data.aggiornato}`} dati={data} stagione={stagione} loghi={loghi} />}

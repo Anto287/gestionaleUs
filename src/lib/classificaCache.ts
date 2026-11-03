@@ -10,6 +10,8 @@ export function leggiClassificaCache(stagione: string): DatiClassifica | undefin
   try {
     const c = JSON.parse(localStorage.getItem(key(stagione)) || 'null') as Copia | null
     if (c?.versione !== 1 || !['uisp', 'api'].includes(c.dati.tipo) || !Array.isArray(c.dati.righe) || !c.dati.righe.every((r) => typeof r.squadra === 'string' && Number.isFinite(r.punti))) return
+    if (c.dati.tipo === 'uisp' && (typeof c.dati.pdfUrl !== 'string' || !c.dati.comunicato || !/^[1-9]$/.test(c.dati.categoria || '') || !/^[A-Z]$/.test(c.dati.girone || ''))) return
+    if (c.dati.risultati && (!Array.isArray(c.dati.risultati) || !c.dati.risultati.every((r) => r && typeof r.id === 'string' && typeof r.data === 'string' && typeof r.casa === 'string' && typeof r.ospite === 'string' && Number.isFinite(r.golCasa) && Number.isFinite(r.golOspite)))) return
     return c.dati
   } catch { return }
 }

@@ -3071,3 +3071,18 @@ body {
   .ant-col-xs-12 .stat-card .stat-icon { font-size: 18px; top: 14px; right: 14px; }
   .ant-col-xs-12 .stat-card .ant-statistic-content { font-size: 22px !important; }
 }
+/* Su mobile le informazioni di fonte lasciano spazio ai dati. */
+@media (max-width: 767.98px) {
+  .classifica-fonte { gap: 8px 12px; padding-bottom: 14px; }
+  .classifica-fonte > div:first-child { flex: 1 1 100%; }
+  .classifica-stato { display: none; }
+  .classifica-source-note { gap: 4px 12px; }
+  .classifica-source-note > span { font-size: 11px; }
+  .classifica-toolbar { gap: 8px; margin-bottom: 12px; }
+  .classifica-toolbar h2 { font-size: 16px; }
+}
+@media (max-width: 767.98px) {
+  .app-container .ant-card-head-title { flex: 1 1 100px; }
+  .app-container .ant-card-extra { flex: 0 1 auto; width: auto; }
+  .app-container .ant-card-extra:has(.ant-space) { flex-basis: 100%; width: 100%; }
+}
