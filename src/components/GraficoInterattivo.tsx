@@ -28,7 +28,7 @@ export function GraficoInterattivo({ titolo, descrizione, riepilogo, dati, minWi
       <label><span>Dettaglio</span><select aria-label={`Dato del grafico: ${titolo}`} value={index} onChange={(e) => setScelto(Number(e.target.value))}>{dati.map((d, i) => <option value={i} key={i}>{d.label}</option>)}</select></label>
       <div className="grafico-valori" tabIndex={0} role="region" aria-label={`Valori: ${titolo}`}><strong>{punto.label}</strong><dl>{punto.valori.map((v) => <div key={v.nome}><dt>{v.nome}</dt><dd>{v.valore}</dd></div>)}</dl></div>
     </div>
-    <details className="grafico-tabella"><summary>Vedi tutti i dati in tabella ({dati.length})</summary><div className="grafico-tabella-scroll"><table><caption>{titolo}</caption><thead><tr><th scope="col">Dato</th>{punto.valori.map((v) => <th scope="col" key={v.nome}>{v.nome}</th>)}</tr></thead><tbody>{dati.map((d, i) => <tr key={i}><th scope="row">{d.label}</th>{d.valori.map((v) => <td key={v.nome}>{v.valore}</td>)}</tr>)}</tbody></table></div></details>
+    <details className="grafico-tabella"><summary>Vedi tutti i dati in tabella ({dati.length})</summary><div className="grafico-tabella-scroll"><table style={{ minWidth: 200 + punto.valori.length * 110 }}><caption>{titolo}</caption><thead><tr><th scope="col">Dato</th>{punto.valori.map((v) => <th scope="col" key={v.nome}>{v.nome}</th>)}</tr></thead><tbody>{dati.map((d, i) => <tr key={i}><th scope="row">{d.label}</th>{d.valori.map((v) => <td key={v.nome}>{v.valore}</td>)}</tr>)}</tbody></table></div></details>
   </section>
 }
 

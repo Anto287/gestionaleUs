@@ -21,9 +21,12 @@ try {
   assert.equal(await alert.locator('.ant-alert-description').evaluate((e) => e.scrollWidth > e.clientWidth + 1), false)
   await page.getByRole('button', { name: 'Mostra messaggio lungo', exact: true }).click()
   const toast = page.locator('.ant-message-notice-content'); await toast.waitFor()
+  await page.waitForFunction(() => { const e = document.querySelector('.ant-message-notice-content'); return e && e.getBoundingClientRect().top >= 0 && getComputedStyle(e.closest('.ant-message-notice-wrapper')).opacity === '1' })
+  assert.equal(await toast.evaluate((e) => e.getBoundingClientRect().bottom > innerHeight + 1), false)
   assert.equal(await toast.evaluate((e) => e.getBoundingClientRect().right > innerWidth || e.getBoundingClientRect().left < 0), false)
   assert.equal(await toast.locator('.ant-message-custom-content').evaluate((e) => e.scrollWidth > e.clientWidth + 1), false)
   await page.screenshot({ path: `/tmp/us-resilience/testo-${theme}-${width}.png` })
+  assert.equal(await toast.locator('.ant-message-custom-content').evaluate((e) => { e.scrollTop = e.scrollHeight; return e.scrollTop > 0 || e.scrollHeight <= e.clientHeight }), true)
   // Reload removes test-only persistent toast before interacting with charts.
   await page.reload()
   const charts = page.locator('.grafico-interattivo')

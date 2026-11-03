@@ -3162,3 +3162,12 @@ body {
   .ant-alert-close-icon { position: absolute; inset-inline-end: 8px; top: 8px; width: 32px; height: 32px; display: grid; place-items: center; }
   .ant-alert:has(.ant-alert-close-icon) .ant-alert-content { padding-inline-end: 28px; }
 }
+/* Il dettaglio di un errore resta leggibile senza occupare tutta la pagina. */
+.ant-alert-description { max-height: min(36dvh, 300px); overflow-y: auto; overscroll-behavior: contain; }
+.app-content > .ant-alert { max-width: 1200px; margin-inline: auto; }
+/* Le colonne numeriche restano intere; scorre soltanto la tabella. */
+.grafico-tabella table { table-layout: fixed; }
+.grafico-tabella th, .grafico-tabella td { max-width: none; overflow-wrap: normal; word-break: normal; }
+.grafico-tabella td { white-space: nowrap; }
+.grafico-tabella tr > :first-child { width: 200px; white-space: normal; overflow-wrap: anywhere; }
+.grafico-tabella caption { caption-side: top; }
