@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { CardGiocatore } from './rosa/CardGiocatore'
 import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -709,91 +710,9 @@ export function Rosa() {
           </div>
           {isMobile ? (
             <div className="lista-mobile">
-              {filtrati.map((g) => {
-                const cert = statoCertificato(g)
-                const doc = statoScadenza(g.scadenzaDocumento)
-                return (
-                  <div key={g.id} className="lista-card" onClick={() => navigate(`/rosa/${g.id}`)}>
-                    <div className="lista-card-top">
-                      <div className="lista-card-persona">
-                        <Avatar
-                          src={fotoDi(g)}
-                          size={40}
-                          style={{ background: 'var(--rosso)', fontSize: 15, flex: 'none' }}
-                        >
-                          {iniziali(g)}
-                        </Avatar>
-                        <div>
-                          <div className="lista-card-title">
-                            {g.numeroMaglia != null && (
-                              <span style={{ color: 'var(--testo-2)', marginRight: 6 }}>{g.numeroMaglia}</span>
-                            )}
-                            {g.cognome} {g.nome}
-                            {isDirigente(g) && (
-                              <Tag color="purple" style={{ marginLeft: 6 }}>
-                                {g.categoria === 'entrambi' ? 'Gioc. + Dir.' : 'Dirigente'}
-                              </Tag>
-                            )}
-                            {isExtra(g) && (
-                              <Tag color="cyan" style={{ marginLeft: 6 }}>
-                                Extra
-                              </Tag>
-                            )}
-                            {isGiocatore(g) && g.infortunato && (
-                              <Tag color="red" style={{ marginLeft: 6 }}>
-                                Infortunato
-                              </Tag>
-                            )}
-                          </div>
-                          <div className="lista-card-meta" style={{ marginTop: 5 }}>
-                            {g.ruoloPreferito ? (
-                              <Tag color={coloreRuolo(g.ruoloPreferito)}>{g.ruoloPreferito}</Tag>
-                            ) : !isGiocatore(g) ? (
-                              g.ruoloDirigenza && <Tag color="purple">{g.ruoloDirigenza}</Tag>
-                            ) : (
-                              <span>Ruolo n.d.</span>
-                            )}
-                            {g.ruoliAdattati?.map((r) => (
-                              <Tag key={r} color={coloreRuolo(r)} style={{ opacity: 0.7 }}>
-                                {r}
-                              </Tag>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <span onClick={(e) => e.stopPropagation()}>
-                        <Popconfirm
-                          title={`Eliminare ${g.nome} ${g.cognome}?`}
-                          description={avvisoElimina(g)}
-                          okText="Elimina"
-                          cancelText="Annulla"
-                          okButtonProps={{ danger: true }}
-                          onConfirm={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)}
-                        >
-                          <Button type="text" danger icon={<DeleteOutlined />} />
-                        </Popconfirm>
-                      </span>
-                    </div>
-                    <div className="lista-card-meta">
-                      {isGiocatore(g) && <Tag color={cert.color}>{cert.label}</Tag>}
-                      {g.tessera ? (
-                        <Tag>{g.tessera}</Tag>
-                      ) : (
-                        <Tag color="orange" icon={<WarningOutlined />}>
-                          Tessera mancante
-                        </Tag>
-                      )}
-                      {doc.label && <Tag color={doc.color}>Documento {doc.label.toLowerCase()}</Tag>}
-                      {isGiocatore(g) && <span>· {presenze[g.id] ?? 0} pres.</span>}
-                      {isGiocatore(g) && (
-                        <span className="lista-card-fine" onClick={(e) => e.stopPropagation()}>
-                          Quota <CellaQuota g={g} onCambia={(patch) => update(g.id, patch)} />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+              {filtrati.map((g) => <CardGiocatore key={g.id} g={g} foto={fotoDi(g)} presenze={presenze[g.id] ?? 0}
+                quota={<CellaQuota g={g} onCambia={(patch) => update(g.id, patch)} />}
+                avvisoElimina={avvisoElimina(g)} elimina={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)} />)}
             </div>
           ) : (
             <Table

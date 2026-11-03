@@ -24,7 +24,7 @@ try {
     await page.locator('.app-container').waitFor()
     await page.locator('.pagina-in-arrivo').waitFor({ state: 'hidden' })
     if (kind === 'tab') await page.getByRole('tab', { name: new RegExp(label) }).click()
-    if (kind === 'segment') await page.locator('.ant-segmented-item').filter({ hasText: label }).first().click()
+    if (kind === 'segment') await page.locator('.social-kind').getByText(label, { exact: true }).click()
     if (kind === 'generate') {
       await page.getByRole('button', { name: 'Tutti', exact: true }).click()
       await page.getByRole('button', { name: new RegExp(label) }).click()

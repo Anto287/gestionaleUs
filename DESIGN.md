@@ -11,3 +11,10 @@ App gestionale usata dal telefono a bordo campo e da desktop per amministrazione
 
 ## Components
 Ant Design per campi e comandi, icone coerenti. Tabelle compatte, punti in evidenza, dettagli secondari progressivi su mobile. Tocchi comodi, focus visibile, aggiornamenti in background senza svuotare il contenuto.
+
+## Sintesi nelle liste
+Panoramica: dettagli secondari massimo due righe. Formazione: conteggi e avvisi
+brevi, con elenchi apribili. Rosa mobile: nome, foto, ruolo principale, certificato,
+presenze e quota in primo piano; ruoli aggiuntivi, tessera e azioni secondarie nei
+dettagli. Le informazioni complete restano nelle schede. I messaggi di errore
+mantengono invece lo scorrimento completo, senza tagliare il contenuto.

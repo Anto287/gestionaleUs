@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button, Card, Empty, Select, Space, Tag, Typography } from 'antd'
 import { ThunderboltOutlined, ClearOutlined, InstagramOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
+import { ElencoCompatto } from '../components/ElencoCompatto'
 import { PageHeader } from '../components/PageHeader'
 import { coloreRuolo } from '../ruoli'
 import { isGiocatore } from '../lib/categoria'
@@ -267,33 +268,11 @@ export function Formazione() {
             )
           })}
         </Space>
-        {infortunati.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <Text type="secondary" style={{ fontSize: 12.5 }}>
-              🚑 Esclusi perché infortunati:{' '}
-              {infortunati.map((g) => `${g.cognome}${g.rientroInfortunio ? ` (rientro ${g.rientroInfortunio.split('-').reverse().join('/')})` : ''}`).join(', ')}
-            </Text>
-          </div>
-        )}
-        {certificatoCritico.size > 0 && (
-          <div style={{ marginTop: 6 }}>
-            <Text type="secondary" style={{ fontSize: 12.5 }}>
-              ⚠️ Certificato da regolarizzare:{' '}
-              {tesserati
-                .filter((g) => certificatoCritico.has(g.id))
-                .map((g) => `${g.cognome.trim()} ${g.nome.trim().charAt(0)}. (${statoCertificato(g).label.toLowerCase()})`)
-                .join(', ')}
-            </Text>
-          </div>
-        )}
-        {senzaTessera.length > 0 && (
-          <div style={{ marginTop: 6 }}>
-            <Text type="secondary" style={{ fontSize: 12.5 }}>
-              🪪 Non in elenco perché senza numero di tessera:{' '}
-              {senzaTessera.map((g) => `${g.cognome.trim()} ${g.nome.trim().charAt(0)}.`).join(', ')}
-            </Text>
-          </div>
-        )}
+        <div className="formazione-avvisi">
+          <ElencoCompatto titolo="Infortunati esclusi" voci={infortunati.map((g) => `${g.cognome}${g.rientroInfortunio ? ` (rientro ${g.rientroInfortunio.split('-').reverse().join('/')})` : ''}`)} />
+          <ElencoCompatto titolo="Certificati da regolarizzare" voci={tesserati.filter((g) => certificatoCritico.has(g.id)).map((g) => `${g.cognome.trim()} ${g.nome.trim().charAt(0)}. (${statoCertificato(g).label.toLowerCase()})`)} />
+          <ElencoCompatto titolo="Senza numero di tessera" voci={senzaTessera.map((g) => `${g.cognome.trim()} ${g.nome.trim().charAt(0)}.`)} />
+        </div>
       </Card>
 
       <Space wrap style={{ marginBottom: 16 }}>

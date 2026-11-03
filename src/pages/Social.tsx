@@ -14,6 +14,7 @@ import {
   Modal,
   Popconfirm,
   Segmented,
+  Radio,
   Select,
   Space,
   Upload,
@@ -437,17 +438,10 @@ export function Social() {
     <>
       <div className="social-campo">
         <span className="social-label">Grafica</span>
-        <Segmented
-          block
-          value={kind}
-          onChange={(v) => setKind(v as Kind)}
-          options={[
-            { value: 'annuncio', label: 'Partita del giorno' },
-            { value: 'risultato', label: 'Risultato' },
-            { value: 'mese', label: 'Mese' },
-            { value: 'formazione', label: 'Formazione' },
-          ]}
-        />
+        <Radio.Group className="social-kind" aria-label="Tipo di grafica" optionType="button" buttonStyle="solid" value={kind} onChange={(e) => setKind(e.target.value as Kind)} options={[
+          { value: 'annuncio', label: 'Partita del giorno' }, { value: 'risultato', label: 'Risultato' },
+          { value: 'mese', label: 'Mese' }, { value: 'formazione', label: 'Formazione' },
+        ]} />
       </div>
 
       <div className="social-campo">
