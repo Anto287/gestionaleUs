@@ -3171,3 +3171,6 @@ body {
 .grafico-tabella td { white-space: nowrap; }
 .grafico-tabella tr > :first-child { width: 200px; white-space: normal; overflow-wrap: anywhere; }
 .grafico-tabella caption { caption-side: top; }
+/* Ant Design usa un selettore più specifico per centrare i messaggi: con
+   testi alti farebbe partire il contenuto fuori dall’area scorrevole. */
+.ant-message .ant-message-notice-wrapper .ant-message-notice-content .ant-message-custom-content { align-items: flex-start; }

@@ -25,6 +25,7 @@ try {
   assert.equal(await toast.evaluate((e) => e.getBoundingClientRect().bottom > innerHeight + 1), false)
   assert.equal(await toast.evaluate((e) => e.getBoundingClientRect().right > innerWidth || e.getBoundingClientRect().left < 0), false)
   assert.equal(await toast.locator('.ant-message-custom-content').evaluate((e) => e.scrollWidth > e.clientWidth + 1), false)
+  assert.equal(await toast.locator('.ant-message-custom-content').evaluate((e) => e.lastElementChild.getBoundingClientRect().top < e.getBoundingClientRect().top - 1), false, 'inizio del messaggio visibile, non centrato fuori dal riquadro')
   await page.screenshot({ path: `/tmp/us-resilience/testo-${theme}-${width}.png` })
   assert.equal(await toast.locator('.ant-message-custom-content').evaluate((e) => { e.scrollTop = e.scrollHeight; return e.scrollTop > 0 || e.scrollHeight <= e.clientHeight }), true)
   // Reload removes test-only persistent toast before interacting with charts.
