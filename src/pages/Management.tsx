@@ -4,13 +4,12 @@ import { Alert, App, Button, Empty, Form, Input, Select, Skeleton, Space, Popcon
 import { LockOutlined, ReloadOutlined } from '@ant-design/icons'
 import { PageHeader } from '../components/PageHeader'
 import { useManagement } from '../management/useManagement'
-import { ConfigClassifica } from './classifica/ConfigClassifica'
 import { getDevice } from '../management/device'
 import type { Activity, ActivityFilters, Device } from '../management/types'
 
 const { Text, Paragraph } = Typography
 const date = (value: string) => value ? new Date(value).toLocaleString('it-IT', { timeZone: 'Europe/Rome' }) : 'Mai'
-const sectionNames: Record<string, string> = { giocatori: 'Rosa', allenamenti: 'Allenamenti', partite: 'Partite', appuntamenti: 'Calendario', promemoria: 'Promemoria', distinte: 'Distinte', calciPiazzati: 'Calci piazzati', magazzino: 'Bar', materiale: 'Materiale', manutenzione: 'Manutenzione', borsaMedica: 'Borsa medica', divise: 'Divise', tornei: 'Tornei', conti: 'Conti', speseCondivise: 'Spese condivise', avversari: 'Avversari', loghi: 'Loghi squadre', documenti: 'Documenti', archivio: 'Archivio', stagioni: 'Stagioni', grafica: 'Grafiche', accessi: 'Accessi', management: 'Management' }
+const sectionNames: Record<string, string> = { giocatori: 'Rosa', allenamenti: 'Allenamenti', partite: 'Partite', appuntamenti: 'Calendario', promemoria: 'Promemoria', distinte: 'Distinte', calciPiazzati: 'Calci piazzati', magazzino: 'Bar', materiale: 'Materiale', manutenzione: 'Manutenzione', borsaMedica: 'Borsa medica', divise: 'Divise', tornei: 'Tornei', conti: 'Conti', speseCondivise: 'Spese condivise', avversari: 'Avversari', loghi: 'Loghi squadre', documenti: 'Documenti', archivio: 'Archivio', stagioni: 'Stagioni', liste: 'Liste', righeLista: 'Voci delle liste', grafica: 'Grafiche', accessi: 'Accessi', management: 'Management' }
 
 export function Management() {
   const { sbloccato } = useManagement()
@@ -123,7 +122,6 @@ function ManagementPronto() {
     </div>
     {error && <Alert type="error" showIcon message="Impossibile aggiornare il Management" description={error} action={<Button onClick={() => setRefresh((n) => n + 1)}>Riprova</Button>} style={{ marginBottom: 16 }} />}
     {!ready && busy ? <Skeleton active paragraph={{ rows: 8 }} /> : <Tabs defaultActiveKey="attivita" items={[
-      { key: 'classifica', label: 'Classifica', children: <ConfigClassifica /> },
       { key: 'attivita', label: 'Registro attività', children: activityTable },
       { key: 'dispositivi', label: 'Dispositivi', children: <>
         <Paragraph type="secondary">Ogni browser ha un identificativo proprio. Cancellando i dati del browser verrà registrato un nuovo dispositivo. L’ultimo contatto può aggiornarsi con alcuni minuti di ritardo.</Paragraph>

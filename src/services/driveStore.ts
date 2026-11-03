@@ -322,7 +322,7 @@ export function setSeasonsConfig(stagioni: string[], attiva: string): Promise<vo
     return Promise.resolve()
   }
   return inCoda(async () => {
-    await post({ action: 'setSeasons', stagioni, attiva })
+    await post({ action: 'setSeasons', stagioni, attiva, adminToken: loadValue('__management_token') || '' })
     // allinea anche l'elenco tenuto nel browser per la prossima apertura
     saveValue(SEASONS_CFG_KEY, JSON.stringify({ stagioni, attiva }))
   })

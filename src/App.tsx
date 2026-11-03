@@ -5,6 +5,7 @@ import { SeasonProvider } from './season/SeasonContext'
 import { Gate } from './components/Gate'
 import { Layout } from './components/Layout'
 import { ManagementProvider } from './management/ManagementContext'
+const Liste = lazy(() => import('./pages/Liste').then((m) => ({ default: m.Liste })))
 const Loghi = lazy(() => import('./pages/Loghi').then((m) => ({ default: m.Loghi })))
 const Classifica = lazy(() => import('./pages/Classifica').then((m) => ({ default: m.Classifica })))
 const Management = lazy(() => import('./pages/Management').then((m) => ({ default: m.Management })))
@@ -112,6 +113,8 @@ function App() {
             <Route path="/magazzino" element={<Magazzino />} />
             <Route path="/conti" element={<Conti />} />
             <Route path="/spese" element={<Spese />} />
+            <Route path="/liste" element={<Liste />} />
+            <Route path="/liste/:id" element={<Liste />} />
             <Route path="/documenti" element={<Documenti />} />
             <Route path="/archivio" element={<Archivio />} />
             <Route path="/management" element={<Management />} />

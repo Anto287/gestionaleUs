@@ -271,3 +271,29 @@ test('UISP: nessun ripiego sul campionato sbagliato o su un anno non disponibile
   const session = s.login()
   assert.equal(s.call({ action: 'managementSaveStandings', adminToken: session.token, season: '2030/31', config: { tipo: 'uisp', categoria: '2', girone: 'A' } }).ok, true)
 })
+
+test('stagioni: creazione, selezione e rimozione richiedono una sessione admin valida', () => {
+  for (const aggiunta of [false, true]) {
+    const s = setup()
+    if (aggiunta) vm.runInContext(readFileSync(new URL('../docs/apps-script-aggiunta.gs', import.meta.url), 'utf8'), s.context)
+    let config = { ok: true, stagioni: ['2026/27'], attiva: '2026/27' }
+    s.context.readSeasons = () => structuredClone(config)
+    s.context.writeSeasons = (stagioni, attiva) => { config = { ok: true, stagioni: [...stagioni], attiva }; return config }
+    const { token } = s.login()
+    for (const modifica of [
+      { stagioni: ['2026/27', '2027/28'], attiva: '2027/28' },
+      { stagioni: ['2026/27', '2027/28'], attiva: '2026/27' },
+      { stagioni: ['2026/27'], attiva: '2026/27' },
+    ]) {
+      const body = { action: 'setSeasons', ...modifica, requestId: randomUUID() }
+      const before = structuredClone(config)
+      assert.equal(s.call(body).code, 'ADMIN_AUTH')
+      assert.deepEqual(config, before)
+      assert.equal(s.call({ ...body, adminToken: token }).ok, true)
+      assert.deepEqual(config.stagioni, modifica.stagioni)
+      assert.equal(config.attiva, modifica.attiva)
+    }
+    s.call({ action: 'managementLogout', adminToken: token })
+    assert.equal(s.call({ action: 'setSeasons', adminToken: token, stagioni: [], attiva: '', requestId: randomUUID() }).code, 'ADMIN_AUTH')
+  }
+})

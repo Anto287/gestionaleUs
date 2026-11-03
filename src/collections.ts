@@ -29,6 +29,8 @@ export const COLLECTIONS = [
   'avversari',
   'loghi',
   'documenti',
+  'liste',
+  'righeLista',
 ] as const
 
 export type CollectionName = (typeof COLLECTIONS)[number]
