@@ -120,12 +120,14 @@ export function Dashboard() {
     const infortunati = soloGiocatori.filter((g) => g.infortunato)
     const speseAperte = spese.items.filter((s) => !s.saldata)
     const borsaScaduta = borsaMedica.items.filter((v) => statoScadenza(v.scadenza).critico)
-    const daRiordinare = [
-      ...magazzino.items,
-      ...materiale.items,
-      ...manutenzione.items,
-      ...borsaMedica.items,
-    ].filter(sottoScorta)
+    const scortePerScheda = [
+      { scheda: 'bar', articoli: magazzino.items.filter(sottoScorta) },
+      { scheda: 'materiale', articoli: materiale.items.filter(sottoScorta) },
+      { scheda: 'manutenzione', articoli: manutenzione.items.filter(sottoScorta) },
+      { scheda: 'borsa', articoli: borsaMedica.items.filter(sottoScorta) },
+    ]
+    const daRiordinare = scortePerScheda.flatMap(({ articoli }) => articoli)
+    const primaSchedaSottoScorta = scortePerScheda.find(({ articoli }) => articoli.length)?.scheda ?? 'bar'
 
     const voci = [
       {
@@ -135,7 +137,7 @@ export function Dashboard() {
         testo: 'Certificati medici da regolarizzare',
         dettaglio: nomi(certCritici),
         n: certCritici.length,
-        to: '/rosa',
+        to: '/rosa?filtro=cert',
       },
       {
         key: 'cert2',
@@ -144,7 +146,7 @@ export function Dashboard() {
         testo: 'Certificati in scadenza entro un mese',
         dettaglio: nomi(certInScadenza),
         n: certInScadenza.length,
-        to: '/rosa',
+        to: '/rosa?filtro=cert2',
       },
       {
         key: 'quote',
@@ -153,7 +155,7 @@ export function Dashboard() {
         testo: 'Quote associative da incassare',
         dettaglio: nomi(quoteAperte),
         n: quoteAperte.length,
-        to: '/rosa',
+        to: '/rosa?filtro=quote',
       },
       {
         key: 'tessere',
@@ -162,7 +164,7 @@ export function Dashboard() {
         testo: 'Tesserati senza numero di tessera',
         dettaglio: nomi(senzaTessera),
         n: senzaTessera.length,
-        to: '/rosa',
+        to: '/rosa?filtro=tessere',
       },
       {
         key: 'doc',
@@ -171,7 +173,7 @@ export function Dashboard() {
         testo: "Documenti d'identità scaduti",
         dettaglio: nomi(docScaduti),
         n: docScaduti.length,
-        to: '/rosa',
+        to: '/rosa?filtro=doc',
       },
       {
         key: 'doc2',
@@ -180,7 +182,7 @@ export function Dashboard() {
         testo: "Documenti d'identità in scadenza entro un mese",
         dettaglio: nomi(docInScadenza),
         n: docInScadenza.length,
-        to: '/rosa',
+        to: '/rosa?filtro=doc2',
       },
       {
         key: 'borsa',
@@ -189,7 +191,7 @@ export function Dashboard() {
         testo: 'Borsa medica: articoli scaduti o in scadenza',
         dettaglio: borsaScaduta.map((v) => v.nome).join(', '),
         n: borsaScaduta.length,
-        to: '/magazzino',
+        to: '/magazzino?filtro=borsa',
       },
       {
         key: 'scorte',
@@ -198,7 +200,7 @@ export function Dashboard() {
         testo: 'Articoli sotto scorta da riordinare',
         dettaglio: daRiordinare.map((v) => v.nome).join(', '),
         n: daRiordinare.length,
-        to: '/magazzino',
+        to: `/magazzino?filtro=scorte&scheda=${primaSchedaSottoScorta}`,
       },
       {
         key: 'spese',
@@ -207,7 +209,7 @@ export function Dashboard() {
         testo: 'Spese condivise ancora da saldare',
         dettaglio: [...new Set(speseAperte.map((s) => s.societa))].join(', '),
         n: speseAperte.length,
-        to: '/spese',
+        to: '/spese?filtro=spese',
       },
       {
         key: 'infortuni',
@@ -216,7 +218,7 @@ export function Dashboard() {
         testo: 'Giocatori infortunati',
         dettaglio: nomi(infortunati),
         n: infortunati.length,
-        to: '/rosa',
+        to: '/rosa?filtro=infortuni',
       },
     ]
     return voci.filter((v) => v.n > 0)
@@ -323,7 +325,7 @@ export function Dashboard() {
             icona={<TeamOutlined />}
             titolo="Giocatori in rosa"
             valore={giocatori.items.filter(isGiocatore).length}
-            onApri={() => navigate('/rosa')}
+            onApri={() => navigate('/rosa?filtro=giocatori')}
             apriLabel="apri la Rosa"
           />
         </Col>
@@ -333,7 +335,7 @@ export function Dashboard() {
             titolo="Articoli in scadenza"
             valore={inScadenza}
             colore={inScadenza > 0 ? 'var(--ocra)' : undefined}
-            onApri={() => navigate('/magazzino')}
+            onApri={() => navigate('/magazzino?filtro=scadenze')}
             apriLabel="apri il Magazzino"
           />
         </Col>

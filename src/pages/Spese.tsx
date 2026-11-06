@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useFiltro } from '../hooks/useFiltro'
+import { useFiltro, useFiltriDaLink } from '../hooks/useFiltro'
+import { useSearchParams } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 import {
   App as AntApp,
@@ -95,7 +96,12 @@ function coloreConto(dovuto: number): string | undefined {
  * chi l'ha anticipata e la fetta a carico nostro. L'app tiene il conto di
  * chi deve dare quanto a chi, finché la spesa non viene saldata.
  */
+const prefissiFiltriSpese = ['spese.']
+const speseAperte = { 'spese.statoF': 'aperta' }
+
 export function Spese() {
+  const [parametri] = useSearchParams()
+  useFiltriDaLink(prefissiFiltriSpese, parametri.get('filtro') === 'spese' ? speseAperte : undefined)
   const spese = useCollection<SpesaCondivisa>('speseCondivise')
   const { items, add, update } = spese
   const conti = useCollection<Movimento>('conti')

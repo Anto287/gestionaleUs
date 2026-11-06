@@ -1,4 +1,5 @@
-import { useCallback, useState, useSyncExternalStore, type SetStateAction } from 'react'
+import { useCallback, useLayoutEffect, useReducer, useState, useSyncExternalStore, type SetStateAction } from 'react'
+import { useLocation } from 'react-router-dom'
 
 /**
  * Store dei filtri delle liste: restano impostati cambiando pagina nell'app o
@@ -35,4 +36,23 @@ export function useFiltro<T>(chiave: string, valoreIniziale: T): [T, (v: SetStat
     [chiave, iniziale],
   )
   return [valore, imposta]
+}
+
+const ultimoLink = new Map<string, string>()
+
+/** Applica il filtro del link prima di mostrare la lista, al posto di quelli lasciati aperti. */
+export function useFiltriDaLink(prefissi: readonly string[], filtri?: Record<string, unknown>) {
+  const { key, pathname } = useLocation()
+  const [, aggiorna] = useReducer((versione: number) => versione + 1, 0)
+
+  useLayoutEffect(() => {
+    if (!filtri || ultimoLink.get(pathname) === key) return
+    ultimoLink.set(pathname, key)
+    valori = Object.fromEntries(
+      Object.entries(valori).filter(([nome]) => !prefissi.some((prefisso) => nome.startsWith(prefisso))),
+    )
+    Object.assign(valori, filtri)
+    ascoltatori.forEach((f) => f())
+    aggiorna()
+  }, [filtri, key, pathname, prefissi])
 }

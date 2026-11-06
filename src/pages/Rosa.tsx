@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { CardGiocatore } from './rosa/CardGiocatore'
-import { useFiltro } from '../hooks/useFiltro'
+import { useFiltro, useFiltriDaLink } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   App,
   AutoComplete,
@@ -120,7 +120,21 @@ function CellaQuota({ g, onCambia }: { g: Giocatore; onCambia: (patch: Partial<G
   )
 }
 
+const filtriPanoramica = new Map<string, Record<string, string>>([
+  ['cert', { 'rosa.certF': 'critico' }],
+  ['cert2', { 'rosa.certF': 'scadenza' }],
+  ['quote', { 'rosa.quotaF': 'no' }],
+  ['tessere', { 'rosa.tesseraF': 'no' }],
+  ['doc', { 'rosa.datiF': 'docScaduti' }],
+  ['doc2', { 'rosa.datiF': 'docInScadenza' }],
+  ['infortuni', { 'rosa.saluteF': 'infortunati' }],
+  ['giocatori', { 'rosa.categoriaF': 'giocatore' }],
+])
+const prefissiFiltriRosa = ['rosa.']
+
 export function Rosa() {
+  const [parametri] = useSearchParams()
+  useFiltriDaLink(prefissiFiltriRosa, filtriPanoramica.get(parametri.get('filtro') ?? ''))
   const giocatori = useCollection<Giocatore>('giocatori')
   const { items, add, update } = giocatori
   const eliminaConUndo = useEliminaUndo()
@@ -153,7 +167,9 @@ export function Rosa() {
   const [tesseraF, setTesseraF] = useFiltro<string | undefined>('rosa.tesseraF', undefined)
   const [datiF, setDatiF] = useFiltro<string | undefined>('rosa.datiF', undefined)
 
-  const nFiltri = [repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF].filter(Boolean).length
+  const [saluteF, setSaluteF] = useFiltro<string | undefined>('rosa.saluteF', undefined)
+
+  const nFiltri = [repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF, saluteF].filter(Boolean).length
   function azzeraFiltri() {
     setRepartoF(undefined)
     setRuoloF(undefined)
@@ -162,6 +178,7 @@ export function Rosa() {
     setQuotaF(undefined)
     setTesseraF(undefined)
     setDatiF(undefined)
+    setSaluteF(undefined)
   }
 
   /** Campi anagrafici della distinta ancora vuoti (nascita, documento, tessera…). */
@@ -243,10 +260,15 @@ export function Rosa() {
         if (tesseraF === 'no' && g.tessera) return false
         if (datiF === 'incompleti' && !datiMancanti(g).length) return false
         if (datiF === 'completi' && datiMancanti(g).length) return false
+        if (datiF === 'docScaduti' || datiF === 'docInScadenza') {
+          const scadenza = statoScadenza(g.scadenzaDocumento)
+          if (!scadenza.critico || ((scadenza.giorni ?? 0) < 0) !== (datiF === 'docScaduti')) return false
+        }
+        if (saluteF === 'infortunati' && (!isGiocatore(g) || !g.infortunato)) return false
         return true
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ordinati, q, repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF],
+    [ordinati, q, repartoF, ruoloF, categoriaF, certF, quotaF, tesseraF, datiF, saluteF],
   )
 
   // le quote non passano dai Conti: qui si vede la cifra che a fine anno
@@ -702,7 +724,19 @@ export function Rosa() {
                   options={[
                     { value: 'incompleti', label: 'Con dati mancanti' },
                     { value: 'completi', label: 'Dati completi' },
+                    { value: 'docScaduti', label: "Documenti d'identità scaduti" },
+                    { value: 'docInScadenza', label: "Documenti d'identità in scadenza" },
                   ]}
+                  style={{ width: '100%' }}
+                />
+              </FiltroCampo>
+              <FiltroCampo label="Disponibilità">
+                <Select
+                  allowClear
+                  placeholder="Qualsiasi"
+                  value={saluteF}
+                  onChange={setSaluteF}
+                  options={[{ value: 'infortunati', label: 'Infortunati' }]}
                   style={{ width: '100%' }}
                 />
               </FiltroCampo>
