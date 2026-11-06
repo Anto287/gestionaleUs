@@ -19,6 +19,7 @@ import { config } from '../config'
 import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
 import * as store from '../services/driveStore'
+import { PulsanteInstallaApp } from '../components/PulsanteInstallaApp'
 import { PageHeader } from '../components/PageHeader'
 import { TorneiManager } from './impostazioni/TorneiManager'
 import type { Giocatore, Divisa, Torneo } from '../types'
@@ -193,7 +194,14 @@ export function Impostazioni() {
   return <>
     <PageHeader titolo="Impostazioni" sottotitolo="Preferenze della società" />
     <Tabs items={[
-      { key: 'generali', label: 'Generali', children: <TorneiManager /> },
+      {
+        key: 'generali',
+        label: 'Generali',
+        children: <>
+          <PulsanteInstallaApp style={{ marginBottom: 16 }} />
+          <TorneiManager />
+        </>,
+      },
       ...(admin ? [
         { key: 'stagioni', label: 'Stagioni', children: <StagioniManager /> },
         { key: 'classifica', label: 'Classifica', children: <ConfigClassifica /> },

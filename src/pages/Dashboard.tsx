@@ -29,6 +29,7 @@ import { sottoScorta } from '../lib/scorta'
 import { statoCertificato } from '../lib/certificato'
 import { statoQuota } from '../lib/quota'
 import { isGiocatore } from '../lib/categoria'
+import { PulsanteInstallaApp } from '../components/PulsanteInstallaApp'
 import { StatCard } from '../components/StatCard'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { DettaglioMovimenti, type VistaDettaglio } from '../components/DettaglioMovimenti'
@@ -287,6 +288,7 @@ export function Dashboard() {
             </Text>
           )}
         </div>
+        <PulsanteInstallaApp />
       </div>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 8 }}>
