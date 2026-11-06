@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -48,7 +50,10 @@ jobs:
             /tmp/us-resilience/*.png
             /tmp/us-compatta/*.png
           retention-days: 7
-      - run: npm run build
+      - name: Build con versione dell’app
+        run: |
+          versione="$(node scripts/versione-app.mjs)"
+          VITE_APP_VERSION="$versione" npm run build
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:

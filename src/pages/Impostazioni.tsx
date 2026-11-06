@@ -207,7 +207,7 @@ export function Impostazioni() {
         label: 'Info',
         children: (
           <Card title="Versione dell’app">
-            <Text code>{import.meta.env.VITE_APP_VERSION}</Text>
+            <Text code>{import.meta.env.VITE_APP_VERSION || 'Sviluppo locale'}</Text>
           </Card>
         ),
       },

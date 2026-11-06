@@ -7,11 +7,6 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/gestionaleUs/' : '/',
-  define: {
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
-      process.env.GITHUB_SHA?.slice(0, 12) || 'Sviluppo locale',
-    ),
-  },
   plugins: [
     react(),
     // App installabile sul telefono: manifest + service worker che si
