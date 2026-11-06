@@ -17,14 +17,10 @@ export function PulsanteInstallaApp({ style }: { style?: CSSProperties }) {
   if (installata) return null
 
   async function installa() {
-    if (mostraGuida) {
-      setMostraGuida(false)
-      return
-    }
     setInCorso(true)
     const aperta = await chiediInstallazione()
     setInCorso(false)
-    if (!aperta) setMostraGuida(true)
+    setMostraGuida((visibile) => !aperta && !visibile)
   }
 
   return (
