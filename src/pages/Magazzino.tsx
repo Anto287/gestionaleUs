@@ -1,4 +1,5 @@
 import { Grid, Tabs } from 'antd'
+import { useSearchParams } from 'react-router-dom'
 import {
   CoffeeOutlined,
   AppstoreOutlined,
@@ -7,8 +8,9 @@ import {
   SkinOutlined,
 } from '@ant-design/icons'
 import { PageHeader } from '../components/PageHeader'
-import { useFiltro } from '../hooks/useFiltro'
+import { useFiltro, useFiltriDaLink } from '../hooks/useFiltro'
 import { InventarioTab, type ConfigInventario } from './magazzino/InventarioTab'
+import { GIORNI_ALLARME } from '../lib/scadenza'
 import { DivisaManager } from './magazzino/DivisaManager'
 
 /** Le scorte del bar: quantità e scadenze, come sempre. */
@@ -177,7 +179,25 @@ const BORSA_MEDICA: ConfigInventario = {
   },
 }
 
+const prefissiFiltriMagazzino = ['inventario.']
+const schedeInventario = ['bar', 'materiale', 'manutenzione', 'borsa']
+const filtriScorte = {
+  'inventario.magazzino.soloSottoScorta': true,
+  'inventario.materiale.soloSottoScorta': true,
+  'inventario.manutenzione.soloSottoScorta': true,
+  'inventario.borsaMedica.soloSottoScorta': true,
+}
+
 export function Magazzino() {
+  const [parametri] = useSearchParams()
+  const filtro = parametri.get('filtro')
+  const scheda = parametri.get('scheda') ?? 'bar'
+  const filtri = new Map<string, Record<string, unknown>>([
+    ['borsa', { 'magazzino.tab': 'borsa', 'inventario.borsaMedica.entroGiorni': GIORNI_ALLARME }],
+    ['scadenze', { 'magazzino.tab': 'bar', 'inventario.magazzino.entroGiorni': GIORNI_ALLARME }],
+    ['scorte', { ...filtriScorte, 'magazzino.tab': schedeInventario.includes(scheda) ? scheda : 'bar' }],
+  ])
+  useFiltriDaLink(prefissiFiltriMagazzino, filtri.get(filtro ?? ''))
   const screens = Grid.useBreakpoint()
   const [tab, setTab] = useFiltro('magazzino.tab', 'bar')
   const tabs = [
