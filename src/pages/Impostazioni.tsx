@@ -10,9 +10,9 @@ import {
   Tag,
   Typography,
   App,
-  Tabs,
+  Divider,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, CalendarOutlined, CheckOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, CalendarOutlined, CheckOutlined, InfoCircleOutlined, BarChartOutlined } from '@ant-design/icons'
 import { useManagement } from '../management/useManagement'
 import { ConfigClassifica } from './classifica/ConfigClassifica'
 import { config } from '../config'
@@ -24,6 +24,7 @@ import { PageHeader } from '../components/PageHeader'
 import { TorneiManager } from './impostazioni/TorneiManager'
 import type { Giocatore, Divisa, Torneo } from '../types'
 import { plurale } from '../lib/format'
+import './impostazioni/impostazioni.css'
 
 const { Text } = Typography
 
@@ -97,124 +98,114 @@ function StagioniManager() {
   }
 
   return (
-    <>
-
-
-      <Card title="Stagioni" style={{ marginBottom: 16 }}>
-        <List
-          dataSource={stagioni}
-          renderItem={(s) => {
-            const isAttiva = s === attiva
-            return (
-              <List.Item
-                actions={[
-                  isAttiva ? (
-                    <Tag key="a" color="red" icon={<CheckOutlined />}>
-                      Attiva
-                    </Tag>
-                  ) : (
-                    <Button key="a" size="small" onClick={() => cambia(s)}>
-                      Rendi attiva
-                    </Button>
-                  ),
-                  <Popconfirm
-                    key="d"
-                    title={`Togliere la stagione ${s} dall'elenco?`}
-                    // lo script riceve solo il nuovo elenco: non è garantito che cancelli la cartella
-                    description={
-                      <div style={{ maxWidth: 300 }}>
-                        La stagione sparisce dall'elenco e dalle copie su questo dispositivo. La sua
-                        cartella sul Drive non viene cancellata dall'app: se non serve più, eliminala a
-                        mano dal Drive.
-                      </div>
-                    }
-                    okText="Togli"
-                    cancelText="Annulla"
-                    okButtonProps={{ danger: true }}
+    <Card title={<h2><CalendarOutlined aria-hidden="true" /> Stagioni</h2>}>
+      <List
+        dataSource={stagioni}
+        renderItem={(s) => {
+          const isAttiva = s === attiva
+          return (
+            <List.Item
+              actions={[
+                isAttiva ? (
+                  <Tag key="a" color="red" icon={<CheckOutlined />}>
+                    Attiva
+                  </Tag>
+                ) : (
+                  <Button key="a" size="small" onClick={() => cambia(s)}>
+                    Rendi attiva
+                  </Button>
+                ),
+                <Popconfirm
+                  key="d"
+                  title={`Togliere la stagione ${s} dall'elenco?`}
+                  // lo script riceve solo il nuovo elenco: non è garantito che cancelli la cartella
+                  description={
+                    <div style={{ maxWidth: 300 }}>
+                      La stagione sparisce dall'elenco e dalle copie su questo dispositivo. La sua
+                      cartella sul Drive non viene cancellata dall'app: se non serve più, eliminala a
+                      mano dal Drive.
+                    </div>
+                  }
+                  okText="Togli"
+                  cancelText="Annulla"
+                  okButtonProps={{ danger: true }}
+                  disabled={stagioni.length <= 1}
+                  onConfirm={() => elimina(s)}
+                >
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    aria-label={`Togli stagione ${s}`}
                     disabled={stagioni.length <= 1}
-                    onConfirm={() => elimina(s)}
-                  >
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      aria-label={`Togli stagione ${s}`}
-                      disabled={stagioni.length <= 1}
-                    />
-                  </Popconfirm>,
-                ]}
-              >
-                <List.Item.Meta avatar={<CalendarOutlined />} title={`Stagione ${s}`} />
-              </List.Item>
-            )
-          }}
-        />
-      </Card>
-
-      <Card title="Nuova stagione" style={{ marginBottom: 16 }}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Text type="secondary">
-            La nuova stagione parte con le sue cartelle vuote: allenamenti, partite, distinte,
-            magazzino e documenti ricominciano da zero. Conti e spese condivise restano come sono:
-            non sono divisi per stagione. Tornei e tute da gara vengono portati avanti.
-          </Text>
-          <Input
-            style={{ maxWidth: 260 }}
-            value={nuova}
-            aria-label="Nuova stagione"
-            placeholder="es. 2027/28"
-            onChange={(e) => setNuova(e.target.value)}
-            onPressEnter={creaStagione}
-          />
-          <Checkbox checked={copiaRosa} onChange={(e) => setCopiaRosa(e.target.checked)}>
-            Copia la rosa dalla stagione attiva ({plurale(rosa.items.length, 'tesserato', 'tesserati')}) — statistiche,
-            tessera, quota (e versamenti) e infortuni ripartono da zero; chi è esente dalla quota resta esente
-          </Checkbox>
-          <Button type="primary" icon={<PlusOutlined />} loading={creando} onClick={creaStagione}>
-            Crea stagione
-          </Button>
-        </Space>
-      </Card>
-
-
-      <Card title="Dati e Drive">
+                  />
+                </Popconfirm>,
+              ]}
+            >
+              <List.Item.Meta avatar={<CalendarOutlined />} title={`Stagione ${s}`} />
+            </List.Item>
+          )
+        }}
+      />
+      <Divider orientation="left" plain>Nuova stagione</Divider>
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Text type="secondary">
-          Ogni stagione tiene i suoi dati separati: sul Drive è una cartella dedicata (es. «
-          {config.clubName} / {attiva}») con un file per ogni sezione. L'elenco stagioni è nel foglio
-          «Stagioni»: puoi cambiare la stagione mostrata anche a mano, mettendo una «x» nella colonna
-          Attiva. La password d'accesso è la chiave del Drive, inserita al login.
+          La nuova stagione parte con le sue cartelle vuote: allenamenti, partite, distinte,
+          magazzino e documenti ricominciano da zero. Conti e spese condivise restano come sono:
+          non sono divisi per stagione. Tornei e tute da gara vengono portati avanti.
         </Text>
-      </Card>
-    </>
+        <Input
+          style={{ maxWidth: 260 }}
+          value={nuova}
+          aria-label="Nuova stagione"
+          placeholder="es. 2027/28"
+          onChange={(e) => setNuova(e.target.value)}
+          onPressEnter={creaStagione}
+        />
+        <Checkbox checked={copiaRosa} onChange={(e) => setCopiaRosa(e.target.checked)}>
+          Copia la rosa dalla stagione attiva ({plurale(rosa.items.length, 'tesserato', 'tesserati')}) — statistiche,
+          tessera, quota (e versamenti) e infortuni ripartono da zero; chi è esente dalla quota resta esente
+        </Checkbox>
+        <Button type="primary" icon={<PlusOutlined />} loading={creando} onClick={creaStagione}>
+          Crea stagione
+        </Button>
+      </Space>
+      <Divider orientation="left" plain>Dati e Drive</Divider>
+      <Text type="secondary">
+        Ogni stagione tiene i suoi dati separati: sul Drive è una cartella dedicata (es. «
+        {config.clubName} / {attiva}») con un file per ogni sezione. L'elenco stagioni è nel foglio
+        «Stagioni»: puoi cambiare la stagione mostrata anche a mano, mettendo una «x» nella colonna
+        Attiva. La password d'accesso è la chiave del Drive, inserita al login.
+      </Text>
+    </Card>
   )
 }
 
 export function Impostazioni() {
   const { sbloccato: admin } = useManagement()
-  return <>
-    <PageHeader titolo="Impostazioni" sottotitolo="Preferenze della società" />
-    <Tabs items={[
-      {
-        key: 'generali',
-        label: 'Generali',
-        children: <>
-          <PulsanteInstallaApp style={{ marginBottom: 16 }} />
-          <TorneiManager />
-        </>,
-      },
-      {
-        key: 'info',
-        label: 'Info',
-        children: (
-          <Card title="Versione dell’app">
-            <Text code>{import.meta.env.VITE_APP_VERSION || 'Sviluppo locale'}</Text>
-          </Card>
-        ),
-      },
-      ...(admin ? [
-        { key: 'stagioni', label: 'Stagioni', children: <StagioniManager /> },
-        { key: 'classifica', label: 'Classifica', children: <ConfigClassifica /> },
-      ] : []),
-    ]} />
-  </>
+  return (
+    <>
+      <PageHeader titolo="Impostazioni" sottotitolo="Preferenze della società e informazioni sull’app" />
+      <div className="impostazioni-grid">
+        <TorneiManager />
+        <Card title={<h2><InfoCircleOutlined aria-hidden="true" /> Info sull’app</h2>}>
+          <Space direction="vertical" size="middle">
+            <Space wrap>
+              <Text type="secondary">Versione dell’app</Text>
+              <Text code>{import.meta.env.VITE_APP_VERSION || 'Sviluppo locale'}</Text>
+            </Space>
+            <PulsanteInstallaApp />
+          </Space>
+        </Card>
+        {admin && (
+          <>
+            <StagioniManager />
+            <Card title={<h2><BarChartOutlined aria-hidden="true" /> Classifica</h2>}>
+              <ConfigClassifica />
+            </Card>
+          </>
+        )}
+      </div>
+    </>
+  )
 }

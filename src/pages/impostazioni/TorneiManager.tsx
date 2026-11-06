@@ -51,12 +51,8 @@ export function TorneiManager() {
   return (
     <Card
       title={
-        <>
-          <TrophyOutlined style={{ marginRight: 8 }} />
-          Tornei e gironi
-        </>
+        <h2><TrophyOutlined aria-hidden="true" /> Tornei e gironi</h2>
       }
-      style={{ marginBottom: 16 }}
       extra={
         items.length > 0 && (
           <Button icon={<PlusOutlined />} onClick={apriNuovo}>
