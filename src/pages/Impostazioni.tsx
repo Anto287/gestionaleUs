@@ -202,6 +202,15 @@ export function Impostazioni() {
           <TorneiManager />
         </>,
       },
+      {
+        key: 'info',
+        label: 'Info',
+        children: (
+          <Card title="Versione dell’app">
+            <Text code>{import.meta.env.VITE_APP_VERSION}</Text>
+          </Card>
+        ),
+      },
       ...(admin ? [
         { key: 'stagioni', label: 'Stagioni', children: <StagioniManager /> },
         { key: 'classifica', label: 'Classifica', children: <ConfigClassifica /> },
