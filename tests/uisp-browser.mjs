@@ -29,7 +29,7 @@ try {
       await route.fulfill({ json: res })
     })
     await page.goto('http://127.0.0.1:5183/#/impostazioni')
-    await page.getByRole('tab', { name: 'Classifica', exact: true }).click()
+    await page.getByRole('heading', { name: 'Classifica', exact: true }).waitFor()
     await page.getByRole('combobox', { name: 'Categoria UISP', exact: true }).waitFor()
     assert.equal(await page.getByLabel('URL HTTPS dell’API', { exact: true }).count(), 0)
     await page.getByRole('button', { name: 'Salva fonte per 2026/27', exact: true }).click()

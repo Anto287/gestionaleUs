@@ -27,7 +27,7 @@ function Configurazione({ stagione }: { stagione: string }) {
     <p>Classifica della stagione {stagione}. Ogni nuova stagione richiede il proprio collegamento: lo storico resta separato.</p>
     {legacyWidget && <Alert type="warning" showIcon message="Sostituisci il precedente widget con una fonte dati" description="Scegli UISP Modena per i comunicati settimanali gratuiti oppure configura un’API autorizzata." style={{ marginBottom: 16 }} />}
     {error && <Alert type="error" message={error} />}
-    {!ready ? (error ? <p>Riapri la scheda per riprovare dopo aver aggiornato lo script.</p> : <Skeleton active />) : <Form form={form} layout="vertical" onFinish={async (config) => {
+    {!ready ? (error ? <p>Ricarica la pagina per riprovare dopo aver aggiornato lo script.</p> : <Skeleton active />) : <Form form={form} layout="vertical" onFinish={async (config) => {
       setBusy(true)
       try { await request('managementSaveStandings', { season: stagione, config }); form.setFieldValue('apiKey', ''); setLegacyWidget(false); message.success('Fonte classifica salvata') }
       catch (e) { message.error((e as Error).message) }
