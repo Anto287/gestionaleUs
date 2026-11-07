@@ -1,4 +1,4 @@
-import { createElement, Suspense, useState } from 'react'
+import { createElement, Suspense, useLayoutEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Layout as AntLayout,
@@ -68,6 +68,12 @@ function LayoutPronto() {
   const { tema, alterna } = useTema()
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Ogni nuova pagina parte dall'alto, anche se la precedente era scorsa.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.querySelector('.app-content')?.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [location.pathname])
   const screens = Grid.useBreakpoint()
   const [drawer, setDrawer] = useState(false)
 
