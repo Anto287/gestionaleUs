@@ -21,6 +21,7 @@ import { useCollection } from '../hooks/useCollection'
 import * as store from '../services/driveStore'
 import { PulsanteInstallaApp } from '../components/PulsanteInstallaApp'
 import { PageHeader } from '../components/PageHeader'
+import { ImpostazionePromemoriaTessere } from '../components/PromemoriaTessere'
 import { TorneiManager } from './impostazioni/TorneiManager'
 import type { Giocatore, Divisa, Torneo } from '../types'
 import { plurale } from '../lib/format'
@@ -199,6 +200,7 @@ export function Impostazioni() {
         </Card>
         {admin && (
           <>
+            <ImpostazionePromemoriaTessere />
             <StagioniManager />
             <Card title={<h2><BarChartOutlined aria-hidden="true" /> Classifica</h2>}>
               <ConfigClassifica />

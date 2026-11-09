@@ -38,6 +38,14 @@ Sono registrate:
 
 Le operazioni provenienti da una versione precedente dell’app restano registrabili dallo script, ma senza metadati del browser vengono mostrate come “Dispositivo non identificato”.
 
+## Promemoria per la stampa dei tesserini
+
+Aggiorna il deployment esistente usando `docs/apps-script.gs` e pubblica il frontend. Accedi come amministratore, apri **Impostazioni → Promemoria tesserini** e attiva l’interruttore. Il promemoria parte disattivato e l’impostazione è condivisa dalla società.
+
+Il gestionale conta i tesseramenti della stagione attiva a partire dall’attivazione. Il promemoria scatta quando, dall’app, si salva un numero di tessera su una scheda nuova o con il campo **Tessera** vuoto. Correggere un numero già presente lascia il conteggio invariato. L’app controlla all’apertura e ogni due minuti mentre è visibile.
+
+**Sì, ho stampato** registra la conferma per tutti i dispositivi. I tesseramenti successivi alla verifica restano da confermare. **Ricordamelo più tardi** nasconde l’avviso fino alla prossima apertura dell’app sullo stesso dispositivo.
+
 ## Esiti e limiti
 
 - **Riuscita:** il server ha confermato l’operazione.

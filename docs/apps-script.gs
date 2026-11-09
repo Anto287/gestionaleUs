@@ -98,6 +98,9 @@ function routeOriginal_(p) {
       case 'archivioDelete':return json({ ok: true, deletedId: archivioDelete(p.id) });
       case 'ics':           return icsCalendar(p.season); // feed calendario (GET, per abbonarsi)
       case 'listAll':       return json({ ok: true, liste: listAllItems(p.richieste) });
+      case 'promemoriaTessere':
+      case 'confermaStampaTessere':
+      case 'configuraPromemoriaTessere': return promemoriaTessere_(p);
       default:              return json({ ok: false, error: 'azione sconosciuta' });
     }
   } catch (err) {
@@ -233,6 +236,7 @@ function putItem(collection, season, record) {
   if (collection === 'documenti') return record; // i documenti passano da 'upload'
   return withLock_(function () {
     var records = listItems(collection, season);
+    if (collection === 'giocatori') versioneTessere_([record], records);
     var trovato = false;
     for (var i = 0; i < records.length; i++) {
       if (records[i].id === record.id) { records[i] = record; trovato = true; break; }
@@ -248,8 +252,78 @@ function putAllItems(collection, season, records) {
   if (collection === 'documenti') return 0;
   return withLock_(function () {
     var recs = (records || []).filter(function (r) { return r && r.id; });
+    if (collection === 'giocatori') versioneTessere_(recs, listItems(collection, season));
     rebuildSheet_(collection, season, recs);
     return recs.length;
+  });
+}
+
+// La versione vive nel record: un inserimento fallito non genera un avviso.
+// Il contatore avanza sotto lo stesso lock usato per scrivere la rosa.
+var TESSERE_CICLO = 'TESSERE_PROMEMORIA_CICLO';
+var TESSERE_VERSIONE = 'TESSERE_PROMEMORIA_VERSIONE';
+var TESSERE_CAMPO = '_versionePromemoriaTessera';
+
+function prossimaVersioneTessere_(props) {
+  var versione = Number(props.getProperty(TESSERE_VERSIONE) || 0) + 1;
+  props.setProperty(TESSERE_VERSIONE, String(versione));
+  return versione;
+}
+
+function haTessera_(record) {
+  return !!(record && String(record.tessera == null ? '' : record.tessera).trim());
+}
+
+function versioneTessere_(records, precedenti) {
+  var props = mgmtProps_();
+  var attivo = !!props.getProperty(TESSERE_CICLO);
+  var perId = new Map(precedenti.map(function (r) { return [r.id, r]; }));
+  var versione = 0;
+  records.forEach(function (record) {
+    delete record[TESSERE_CAMPO]; // il valore del client non è autorevole
+    if (!attivo || !haTessera_(record)) return;
+    var prima = perId.get(record.id);
+    if (haTessera_(prima)) {
+      if (prima[TESSERE_CAMPO]) record[TESSERE_CAMPO] = prima[TESSERE_CAMPO];
+      return; // correggere un numero già presente non è un nuovo tesseramento
+    }
+    if (!versione) versione = prossimaVersioneTessere_(props);
+    record[TESSERE_CAMPO] = versione;
+  });
+}
+
+function promemoriaTessere_(p) {
+  var stagione = seasonKey_(p.season);
+  if (!/^\d{4}-\d{2,4}$/.test(stagione)) throw new Error('Stagione non valida');
+  return withLock_(function () {
+    var props = mgmtProps_();
+    var ciclo = Number(props.getProperty(TESSERE_CICLO) || 0);
+    if (p.action === 'configuraPromemoriaTessere') {
+      if (!mgmtSession_(p)) return json({ ok: false, code: 'ADMIN_AUTH', error: 'Solo gli amministratori possono modificare il promemoria.' });
+      if (typeof p.attivo !== 'boolean') throw new Error('Impostazione non valida');
+      if (p.attivo && !ciclo) {
+        ciclo = prossimaVersioneTessere_(props);
+        props.setProperty(TESSERE_CICLO, String(ciclo));
+        return json({ ok: true, attivo: true, ciclo: ciclo, versione: ciclo, nuovi: 0 });
+      } else if (!p.attivo && ciclo) {
+        props.deleteProperty(TESSERE_CICLO);
+        ciclo = 0;
+      }
+    }
+    if (!ciclo) return json({ ok: true, attivo: false, ciclo: 0, versione: 0, nuovi: 0 });
+
+    var chiave = 'TESSERE_PROMEMORIA_CONFERMATA_' + stagione;
+    var confermata = Math.max(ciclo, Number(props.getProperty(chiave) || 0));
+    var versioni = listItems('giocatori', stagione).filter(haTessera_).map(function (r) {
+      return Number(r[TESSERE_CAMPO] || 0);
+    });
+    var ultima = versioni.reduce(function (max, v) { return Math.max(max, v); }, confermata);
+    // Conferma solo le versioni già mostrate. Eventuali nuove tessere restano in attesa.
+    if (p.action === 'confermaStampaTessere' && p.ciclo === ciclo && Number.isSafeInteger(p.versione) && p.versione > confermata) {
+      confermata = Math.min(p.versione, ultima);
+      props.setProperty(chiave, String(confermata));
+    }
+    return json({ ok: true, attivo: true, ciclo: ciclo, versione: ultima, nuovi: versioni.filter(function (v) { return v > confermata; }).length });
   });
 }
 
@@ -1249,7 +1323,7 @@ function mgmtDiff_(before, after) {
   before = before || {}; after = after || {};
   var keys = Object.keys(before).concat(Object.keys(after)), seen = {}, diff = [];
   keys.forEach(function (key) {
-    if (seen[key] || key === 'id') return; seen[key] = true;
+    if (seen[key] || key === 'id' || key === TESSERE_CAMPO) return; seen[key] = true;
     if (JSON.stringify(before[key]) === JSON.stringify(after[key])) return;
     if (diff.length < 30) diff.push({ campo: key, prima: mgmtValue_(key, before[key]), dopo: mgmtValue_(key, after[key]) });
   });
