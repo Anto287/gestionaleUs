@@ -204,8 +204,12 @@ export function SelectorList({
           : `${CHECKBOX_LABELS[key]} è riservato ai giocatori`,
       )
 
-    // togliendo il ruolo di staff la persona torna fra i giocatori numerati: serve un posto libero
-    if (!checked && target && SPECIAL_CHECKBOXES.includes(key) && nGiocatori >= MAX_GIOCATORI)
+    // Serve un posto fra i giocatori solo se si toglie l'ultimo ruolo di staff.
+    if (
+      !checked && target && SPECIAL_CHECKBOXES.includes(key) &&
+      !SPECIAL_CHECKBOXES.some((role) => role !== key && target[role]) &&
+      nGiocatori >= MAX_GIOCATORI
+    )
       return message.error(`La distinta UISP ha posto per ${MAX_GIOCATORI} giocatori`)
 
     setList((prev) => {
@@ -213,8 +217,15 @@ export function SelectorList({
       const idx = updated.findIndex((it) => it.id === id)
       if (idx === -1) return prev
       const wasSpecial = hasSpecialCheckbox(updated[idx])
-      if (checked) TUTTI_I_RUOLI.forEach((k) => (updated[idx][k] = k === key))
-      else updated[idx][key] = false
+      if (checked) {
+        // Ass. arbitro può affiancare un altro ruolo di staff, ma non un ruolo da giocatore.
+        const isStaffRole = SPECIAL_CHECKBOXES.includes(key)
+        TUTTI_I_RUOLI.forEach((role) => {
+          if (isStaffRole && SPECIAL_CHECKBOXES.includes(role) && (key === 'AssArb' || role === 'AssArb')) return
+          updated[idx][role] = role === key
+        })
+      }
+      updated[idx][key] = checked
       const isNowSpecial = hasSpecialCheckbox(updated[idx])
       if (wasSpecial && !isNowSpecial) {
         const numbered = updated.filter((it) => !hasSpecialCheckbox(it) && it.id !== id)
@@ -361,7 +372,7 @@ export function SelectorList({
         style={{ maxHeight: '50vh', overflowY: 'auto', overflowX: 'hidden' }}
         renderItem={(item) => {
           const isSpecial = hasSpecialCheckbox(item)
-          const activeRole = TUTTI_I_RUOLI.find((k) => item[k])
+          const activeRoles = TUTTI_I_RUOLI.filter((k) => item[k])
           return (
             <List.Item style={{ padding: 12 }}>
               <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -420,7 +431,7 @@ export function SelectorList({
                     </Button>
                   </Col>
                 </Row>
-                {activeRole && (
+                {activeRoles.length > 0 && (
                   <div
                     style={{
                       display: 'inline-block',
@@ -432,7 +443,7 @@ export function SelectorList({
                       fontWeight: 500,
                     }}
                   >
-                    {CHECKBOX_LABELS[activeRole]}
+                    {activeRoles.map((role) => CHECKBOX_LABELS[role]).join(' · ')}
                   </div>
                 )}
               </Space>
