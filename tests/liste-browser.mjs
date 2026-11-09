@@ -13,6 +13,7 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 950 }, reducedMotion: 'reduce' })
     const page = await context.newPage(), errors = [], data = fixtures(), calls = []
     let seasons = { stagioni: ['2026/27'], attiva: '2026/27' }
+    let promemoria = { attivo: false, ciclo: 0, versione: 0, nuovi: 0 }
     page.on('pageerror', (e) => errors.push(e.message))
     page.setDefaultTimeout(12000)
     await page.addInitScript(() => localStorage.setItem('usriolunato:__secret', 'test-only'))
@@ -27,6 +28,16 @@ try {
       else if (b.action === 'put') { const k = key(b), items = records[k] ||= []; records[k] = [...items.filter((r) => r.id !== b.record.id), b.record] }
       else if (b.action === 'delete') { const k = key(b); records[k] = (records[k] || []).filter((r) => r.id !== b.id) }
       else if (b.action === 'managementStandingsConfig') res.config = { tipo: 'nessuna' }
+      else if (b.action === 'promemoriaTessere') Object.assign(res, promemoria)
+      else if (b.action === 'configuraPromemoriaTessere') {
+        assert.equal(b.adminToken, 'test-admin')
+        promemoria = { attivo: b.attivo, ciclo: 1, versione: 1, nuovi: 0 }
+        Object.assign(res, promemoria)
+      } else if (b.action === 'confermaStampaTessere') {
+        assert.equal(b.versione, promemoria.versione)
+        promemoria = { ...promemoria, nuovi: 0 }
+        Object.assign(res, promemoria)
+      }
       else if (b.action === 'managementDevices') res.devices = []
       else if (b.action === 'managementActivities') Object.assign(res, { activities: [], total: 0 })
       await route.fulfill({ json: res })
@@ -35,6 +46,7 @@ try {
     await page.getByRole('heading', { name: 'Tornei e gironi', exact: true }).waitFor()
     assert.equal(await page.getByRole('heading', { name: 'Classifica', exact: true }).count(), 0)
     assert.equal(await page.getByRole('heading', { name: 'Stagioni', exact: true }).count(), 0)
+    assert.equal(await page.getByRole('switch', { name: 'Promemoria stampa tesserini' }).count(), 0)
     await page.getByRole('heading', { name: 'Info sull’app', exact: true }).waitFor()
     assert.equal(calls.some((b) => b.action === 'managementStandingsConfig' || b.action === 'setSeasons'), false)
     // Admin session restored, same flow already covered by management-browser login tests.
@@ -43,12 +55,24 @@ try {
     await page.getByRole('heading', { name: 'Classifica', exact: true }).waitFor()
     await page.getByRole('button', { name: 'Salva fonte per 2026/27', exact: true }).waitFor()
     const boxes = page.locator('.impostazioni-grid > .ant-card')
-    assert.equal(await boxes.count(), 4)
+    assert.equal(await boxes.count(), 5)
     assert.equal(await page.getByRole('tablist').count(), 0)
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true)
     const torneiBox = await boxes.nth(0).boundingBox()
     const infoBox = await boxes.nth(1).boundingBox()
     assert.equal(torneiBox.y === infoBox.y, width === 1440)
+    const interruttore = page.getByRole('switch', { name: 'Promemoria stampa tesserini' })
+    await interruttore.click()
+    await page.waitForFunction(() => document.querySelector('[aria-label="Promemoria stampa tesserini"][aria-checked="true"]'))
+    promemoria = { ...promemoria, versione: 2, nuovi: 1 }
+    await page.reload()
+    const avviso = page.getByRole('dialog', { name: 'Stampa della lista dei tesserini' })
+    await avviso.getByRole('button', { name: 'Ricordamelo più tardi' }).click()
+    await avviso.waitFor({ state: 'hidden' })
+    await page.reload()
+    await avviso.getByRole('button', { name: 'Sì, ho stampato' }).click()
+    await avviso.waitFor({ state: 'hidden' })
+    assert.equal(promemoria.nuovi, 0)
     await page.getByLabel('Nuova stagione', { exact: true }).fill('2027/28')
     await page.getByRole('button', { name: /Crea stagione$/ }).click()
     await page.waitForFunction(() => document.body.textContent.includes('Stagione 2027/28 creata'))
