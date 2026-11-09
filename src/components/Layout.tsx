@@ -24,6 +24,7 @@ import { useTema } from '../theme/TemaProvider'
 import { DataProvider, DataFeedback } from '../data/DataProvider'
 import { ArchivioProvider } from '../data/ArchivioProvider'
 import { PalloneSpinner } from './PalloneSpinner'
+import { PromemoriaTessereProvider } from './PromemoriaTessere'
 
 const { Sider, Header, Content } = AntLayout
 const { Text } = Typography
@@ -58,7 +59,11 @@ function Brand() {
 
 export function Layout() {
   const { attiva } = useSeason()
-  return <DataProvider key={attiva}><LayoutPronto /></DataProvider>
+  return (
+    <PromemoriaTessereProvider>
+      <DataProvider key={attiva}><LayoutPronto /></DataProvider>
+    </PromemoriaTessereProvider>
+  )
 }
 
 function LayoutPronto() {

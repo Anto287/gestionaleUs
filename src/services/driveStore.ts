@@ -222,6 +222,21 @@ async function post(body: Record<string, unknown>) {
   return data
 }
 
+export interface StatoPromemoriaTessere {
+  attivo: boolean
+  ciclo: number
+  versione: number
+  nuovi: number
+}
+
+export async function leggiPromemoriaTessere(season: string): Promise<StatoPromemoriaTessere> {
+  return post({ action: 'promemoriaTessere', season })
+}
+
+export async function confermaStampaTessere(season: string, { ciclo, versione }: StatoPromemoriaTessere): Promise<StatoPromemoriaTessere> {
+  return post({ action: 'confermaStampaTessere', season, ciclo, versione })
+}
+
 export function put<T extends { id: string }>(collection: string, season: string, record: T, requestId: string = crypto.randomUUID()): Promise<T> {
   if (!DRIVE_URL) {
     const k = lsKey(collection, season)

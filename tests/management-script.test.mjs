@@ -154,6 +154,64 @@ test('management: senza configurazione della chiave applicativa nessuna richiest
   vm.runInContext(readFileSync(new URL('../docs/apps-script.gs', import.meta.url), 'utf8'), context)
   assert.equal(JSON.parse(context.route({ action: 'seasons', secret: '' }).getContent()).ok, false)
 })
+
+test('promemoria tesserini condiviso, riservato agli admin e confermato fino alla versione vista', () => {
+  const s = setup(), { token } = s.login()
+  const season = '2026-27'
+  const leggi = (st = season) => s.call({ action: 'promemoriaTessere', season: st, device: { id: randomUUID() } })
+  const imposta = (attivo, adminToken = token) => s.call({ action: 'configuraPromemoriaTessere', season, attivo, adminToken })
+  const salva = (id, tessera, st = season) => s.call({ action: 'put', collection: 'giocatori', season: st, record: { id, tessera } })
+  const conferma = ({ ciclo, versione }) => s.call({ action: 'confermaStampaTessere', season, ciclo, versione })
+
+  assert.equal(imposta(true, '').code, 'ADMIN_AUTH')
+  assert.equal(leggi().attivo, false)
+  assert.equal(salva('storico', '001').ok, true)
+  assert.equal(imposta(true).nuovi, 0)
+  assert.equal(salva('storico', '002').ok, true)
+  assert.equal(salva('primo', '   ').ok, true)
+  assert.equal(leggi().nuovi, 0)
+  assert.equal(salva('primo', '003').ok, true)
+  const avviso = leggi()
+  assert.equal(avviso.nuovi, 1)
+  assert.equal(salva('primo', '003 bis').ok, true)
+  assert.deepEqual(leggi(), avviso, 'una correzione non crea un secondo tesseramento')
+  assert.equal(salva('secondo', '004').ok, true)
+  assert.equal(salva('altra-stagione', '005', '2027-28').ok, true)
+  assert.equal(conferma(avviso).nuovi, 1, 'la conferma di un avviso vecchio conserva le aggiunte successive')
+  assert.equal(conferma(avviso).nuovi, 1, 'la stessa conferma si può ripetere')
+  assert.equal(leggi('2027-28').nuovi, 1)
+  assert.equal(conferma(leggi()).nuovi, 0)
+  assert.equal(leggi().nuovi, 0)
+
+  assert.equal(salva('primo', '').ok, true)
+  assert.equal(salva('primo', '003').ok, true)
+  const primaDiDisattivare = leggi()
+  assert.equal(primaDiDisattivare.nuovi, 1)
+  assert.equal(imposta(false).attivo, false)
+  assert.equal(salva('disattivato', '006').ok, true)
+  assert.equal(imposta(true).nuovi, 0)
+  assert.equal(salva('dopo', '007').ok, true)
+  assert.equal(conferma(primaDiDisattivare).nuovi, 1, 'un avviso del ciclo precedente non conferma quello attuale')
+})
+
+test('promemoria tesserini per sostituzioni della rosa e scritture confermate', () => {
+  const s = setup(), { token } = s.login()
+  const season = '2026-27'
+  const leggi = () => s.call({ action: 'promemoriaTessere', season })
+  const importa = (records) => s.call({ action: 'putAll', collection: 'giocatori', season, records })
+  assert.equal(importa([{ id: 'g1', tessera: '1' }, { id: 'g2' }]).ok, true)
+  assert.equal(s.call({ action: 'configuraPromemoriaTessere', season, attivo: true, adminToken: token }).ok, true)
+  const records = [{ id: 'g1', tessera: '2' }, { id: 'g2', tessera: '3' }, { id: 'g3', tessera: '4' }]
+  const scrivi = s.context.rebuildSheet_
+  s.context.rebuildSheet_ = () => { throw new Error('Salvataggio non riuscito') }
+  assert.equal(importa(records).ok, false)
+  assert.equal(leggi().nuovi, 0)
+  s.context.rebuildSheet_ = scrivi
+  assert.equal(importa(records).ok, true)
+  assert.equal(leggi().nuovi, 2)
+  assert.equal(s.call({ action: 'delete', collection: 'giocatori', season, id: 'g3' }).ok, true)
+  assert.equal(leggi().nuovi, 1)
+})
 test('management: paginazione senza filtri e crescita del foglio oltre le righe iniziali', () => {
   const s = setup(), { token } = s.login()
   for (let i = 0; i < 26; i++) s.call({ action: 'deviceHello', requestId: randomUUID() })
