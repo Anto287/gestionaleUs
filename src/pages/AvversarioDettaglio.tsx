@@ -25,6 +25,7 @@ import { ErbaCampo, posizioneSlot } from '../components/ErbaCampo'
 import { MODULI } from '../lib/formazione'
 import { moduloDa } from '../lib/formazionePartita'
 import { CARATTERISTICHE, bilancio, partiteContro } from '../lib/avversari'
+import { inAttesaDiRecupero } from '../lib/partita'
 import { formatData } from '../lib/format'
 import { OPZIONI_RUOLI, RUOLO_BY_CODE, areaHex, coloreRuolo, ordineRuolo } from '../ruoli'
 import type { Avversario, GiocatoreAvversario, Partita } from '../types'
@@ -352,7 +353,8 @@ export function AvversarioDettaglio() {
               <ul className="avv-partite">
                 {contro.map((p) => {
                   const programma = p.giocata === false
-                  const colore = programma
+                  const rinviata = inAttesaDiRecupero(p)
+                  const colore = rinviata ? 'orange' : programma
                     ? 'gold'
                     : p.golFatti > p.golSubiti
                       ? 'success'
@@ -362,10 +364,10 @@ export function AvversarioDettaglio() {
                   return (
                     <li key={p.id} onClick={() => navigate(`/partite/${p.id}`)}>
                       <span>
-                        {formatData(p.data)} · {p.inCasa ? 'in casa' : 'in trasferta'}
+                        {rinviata ? 'Data da definire' : formatData(p.data)} · {p.inCasa ? 'in casa' : 'in trasferta'}
                       </span>
                       <Tag color={colore} style={{ marginInlineEnd: 0 }}>
-                        {programma ? 'In programma' : `${p.golFatti}-${p.golSubiti}`}
+                        {rinviata ? 'Rinviata' : programma ? 'In programma' : `${p.golFatti}-${p.golSubiti}`}
                       </Tag>
                     </li>
                   )

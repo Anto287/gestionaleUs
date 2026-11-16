@@ -19,6 +19,7 @@ import {
 import { FilePdfOutlined, PictureOutlined } from '@ant-design/icons'
 import dayjs, { type Dayjs } from 'dayjs'
 import { FiltroCampo } from '../../components/FiltriDrawer'
+import { chiaveGara, chiaviGare, inAttesaDiRecupero } from '../../lib/partita'
 import { formatData, isoDa, oggiIso } from '../../lib/format'
 import type { Allenamento, Appuntamento, Partita, Torneo } from '../../types'
 import {
@@ -175,11 +176,10 @@ export function StampaCalendario({
   // gli impegni a mano del calendario diventano partite in programma; se uno
   // ha stessa data e avversario di una partita è la stessa gara: resta la partita
   const tutte = useMemo(() => {
-    const chiave = (data: string, avv: string) => `${data}|${avv.trim().toLowerCase().replace(/\s+/g, ' ')}`
-    const gia = new Set(partite.map((p) => chiave(p.data, p.avversario)))
+    const gia = chiaviGare(partite)
     return [
-      ...partite,
-      ...(appuntamenti ?? []).filter((ap) => !gia.has(chiave(ap.data, ap.avversario))).map(
+      ...partite.filter((p) => !inAttesaDiRecupero(p)),
+      ...(appuntamenti ?? []).filter((ap) => !gia.has(chiaveGara(ap.data, ap.avversario))).map(
         (ap): Partita => ({
           id: `ap-${ap.id}`,
           data: ap.data,

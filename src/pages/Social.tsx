@@ -28,6 +28,7 @@ import {
 import { useCollection } from '../hooks/useCollection'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
+import { chiaveGara, chiaviGare, inAttesaDiRecupero } from '../lib/partita'
 import { formatData, oggiIso, nomeGiocatoreBreve } from '../lib/format'
 import {
   etichettaGiorno,
@@ -190,13 +191,12 @@ export function Social() {
     // un impegno a mano con stessa data e avversario di una partita è un
     // doppione: vale la partita (come in Calendario e nella stampa), ma se
     // l'impegno ha il luogo lo si tiene per la riga
-    const chiave = (data: string, avv: string) => `${data}|${avv.trim().toLowerCase().replace(/\s+/g, ' ')}`
-    const luogoDi = new Map(apptOrdinati.map((a) => [chiave(a.data, a.avversario), a.luogo]))
+    const luogoDi = new Map(apptOrdinati.map((a) => [chiaveGara(a.data, a.avversario), a.luogo]))
     const inProgramma = partite
-      .filter((p) => p.giocata === false)
-      .map((p) => ({ id: p.id, data: p.data, ora: p.ora, avversario: p.avversario, inCasa: p.inCasa, luogo: luogoDi.get(chiave(p.data, p.avversario)) }))
-    const gia = new Set(inProgramma.map((p) => chiave(p.data, p.avversario)))
-    const soloImpegni = apptOrdinati.filter((a) => !gia.has(chiave(a.data, a.avversario)))
+      .filter((p) => p.giocata === false && !inAttesaDiRecupero(p))
+      .map((p) => ({ id: p.id, data: p.data, ora: p.ora, avversario: p.avversario, inCasa: p.inCasa, luogo: luogoDi.get(chiaveGara(p.data, p.avversario)) }))
+    const gia = chiaviGare(partite.filter((p) => p.giocata === false || p.rinvii?.length))
+    const soloImpegni = apptOrdinati.filter((a) => !gia.has(chiaveGara(a.data, a.avversario)))
     return [...soloImpegni, ...inProgramma].sort((a, b) =>
       (a.data + (a.ora ?? '')).localeCompare(b.data + (b.ora ?? '')),
     )

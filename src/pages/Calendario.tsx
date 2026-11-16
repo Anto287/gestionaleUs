@@ -20,6 +20,7 @@ import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { useAppuntamenti } from '../lib/appuntamenti'
 import { scaricaIcs, type EventoCal } from '../lib/ics'
+import { chiaveGara, chiaviGare, inAttesaDiRecupero } from '../lib/partita'
 import { formatData } from '../lib/format'
 import { config } from '../config'
 import { driveAttivo, getSecret } from '../services/driveStore'
@@ -72,6 +73,7 @@ export function Calendario() {
   const eventi: EventoCal[] = useMemo(() => {
     const out: EventoCal[] = []
     for (const p of partite) {
+      if (inAttesaDiRecupero(p)) continue
       const giocata = p.giocata !== false
       out.push({
         id: `p-${p.id}`,
@@ -92,10 +94,9 @@ export function Calendario() {
     }
     // un appuntamento con stessa data e avversario di una partita è la stessa
     // gara: si mostra solo la partita
-    const chiave = (data: string, avv: string) => `${data}|${avv.trim().toLowerCase().replace(/\s+/g, ' ')}`
-    const gia = new Set(partite.map((p) => chiave(p.data, p.avversario)))
+    const gia = chiaviGare(partite)
     for (const ap of appuntamenti) {
-      if (gia.has(chiave(ap.data, ap.avversario))) continue
+      if (gia.has(chiaveGara(ap.data, ap.avversario))) continue
       out.push({
         id: `ap-${ap.id}`,
         data: ap.data,

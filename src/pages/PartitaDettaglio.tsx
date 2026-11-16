@@ -19,16 +19,17 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, AimOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, CalendarOutlined, EditOutlined, DeleteOutlined, AimOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData } from '../lib/format'
 import { isGiocatore } from '../lib/categoria'
-import { REGEX_ORA, problemiPartita, sommaEventi } from '../lib/partita'
+import { inAttesaDiRecupero, REGEX_ORA, problemiPartita, sommaEventi } from '../lib/partita'
 import { COLORI } from '../lib/chart'
 import { EventoEditor } from './partite/EventoEditor'
 import { FormazioneCampo } from './partite/FormazioneCampo'
+import { RinvioModale } from './partite/RinvioModale'
 import { schedaDi } from '../lib/avversari'
 import type { Avversario, EventoGol, Giocatore, Partita, Torneo } from '../types'
 
@@ -44,6 +45,7 @@ export function PartitaDettaglio() {
   const avversari = useCollection<Avversario>('avversari')
   const eliminaConUndo = useEliminaUndo()
   const { message } = AntApp.useApp()
+  const [rinvio, setRinvio] = useState(false)
   const [modale, setModale] = useState(false)
   const [form] = Form.useForm()
   const giocataForm = Form.useWatch('giocata', form)
@@ -102,6 +104,7 @@ export function PartitaDettaglio() {
   }
 
   const programma = p.giocata === false
+  const rinviata = inAttesaDiRecupero(p)
   const titolari = p.titolari ?? []
   const subentrati = p.subentrati ?? []
   const golMarcatori = sommaEventi(p.marcatori)
@@ -129,7 +132,7 @@ export function PartitaDettaglio() {
     setModale(true)
   }
   function salvaModifica(v: Partial<Partita>) {
-    const giocata = v.giocata !== false
+    const giocata = !rinviata && v.giocata !== false
     if (!giocata && (haEventi || haFormazione)) {
       message.error(
         'Per rimettere la partita in programma togli prima formazione, marcatori e cartellini.',
@@ -139,7 +142,8 @@ export function PartitaDettaglio() {
     update(p!.id, {
       ...v,
       giocata,
-      ora: v.ora?.trim() || undefined,
+      data: rinviata ? p!.data : v.data,
+      ora: rinviata ? p!.ora : v.ora?.trim() || undefined,
       avversario: (v.avversario ?? p!.avversario).trim(),
       torneoId: v.torneoId || undefined,
       amichevole: v.amichevole || undefined,
@@ -160,7 +164,7 @@ export function PartitaDettaglio() {
   const esitoColore =
     p.golFatti > p.golSubiti ? COLORI.verde : p.golFatti < p.golSubiti ? COLORI.rosso : 'var(--testo-2)'
   const esitoTag = programma
-    ? { color: 'gold', label: 'In programma' }
+    ? rinviata ? { color: 'orange', label: 'Rinviata' } : { color: 'gold', label: 'In programma' }
     : p.golFatti > p.golSubiti
       ? { color: 'success', label: 'Vittoria' }
       : p.golFatti < p.golSubiti
@@ -198,8 +202,8 @@ export function PartitaDettaglio() {
           }}
         >
           <Text type="secondary">
-            {formatData(p.data)}
-            {p.ora ? ` · ore ${p.ora}` : ''} · {p.inCasa ? 'In casa' : 'In trasferta'}
+            {rinviata ? 'Data di recupero da definire' : formatData(p.data)}
+            {!rinviata && p.ora ? ` · ore ${p.ora}` : ''} · {p.inCasa ? 'In casa' : 'In trasferta'}
             {nomeTorneo ? ` · ${nomeTorneo}` : ''}
             {p.amichevole ? ' · Amichevole' : ''}
           </Text>
@@ -207,6 +211,11 @@ export function PartitaDettaglio() {
             <Button icon={<AimOutlined />} onClick={apriScheda}>
               Scheda avversario
             </Button>
+            {programma && (
+              <Button icon={<CalendarOutlined />} onClick={() => setRinvio(true)}>
+                {rinviata ? 'Fissa il recupero' : 'Rinvia partita'}
+              </Button>
+            )}
             <Button icon={<EditOutlined />} onClick={apriModifica}>
               Modifica
             </Button>
@@ -255,6 +264,25 @@ export function PartitaDettaglio() {
           </div>
         )}
       </Card>
+
+      {!!p.rinvii?.length && (
+        <Card title="Storico rinvii" size="small" style={{ marginBottom: 16 }}>
+          <ol style={{ margin: 0, paddingInlineStart: 20 }}>
+            {p.rinvii.map((r, indice) => (
+              <li key={indice} style={{ overflowWrap: 'anywhere' }}>
+                <Text strong>
+                  {formatData(r.dataPrecedente, true)}{r.oraPrecedente ? ` alle ${r.oraPrecedente}` : ''}
+                </Text>
+                {' → '}
+                {r.dataRecupero
+                  ? `${formatData(r.dataRecupero, true)}${r.oraRecupero ? ` alle ${r.oraRecupero}` : ''}`
+                  : 'Recupero da definire'}
+                {r.motivo && <div><Text type="secondary">{r.motivo}</Text></div>}
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
 
       {problemi.length > 0 && (
         <Alert
@@ -334,7 +362,7 @@ export function PartitaDettaglio() {
               </Card>
             </Col>
           </>
-        ) : (
+        ) : !rinviata && (
           <Col span={24}>
             <Card size="small">
               <Text type="secondary">
@@ -345,6 +373,10 @@ export function PartitaDettaglio() {
           </Col>
         )}
       </Row>
+
+      {rinvio && programma && (
+        <RinvioModale partita={p} onSave={(patch) => update(p.id, patch)} onClose={() => setRinvio(false)} />
+      )}
 
       <Modal
         title="Modifica partita"
@@ -357,22 +389,24 @@ export function PartitaDettaglio() {
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={salvaModifica} requiredMark={false}>
-          <Row gutter={12}>
-            <Col span={14}>
-              <Form.Item label="Data" name="data" rules={[{ required: true }]} {...propsCampoData}>
-                <DataPicker />
-              </Form.Item>
-            </Col>
-            <Col span={10}>
-              <Form.Item
-                label="Ora"
-                name="ora"
-                rules={[{ pattern: REGEX_ORA, message: 'Usa il formato 15:30' }]}
-              >
-                <Input placeholder="es. 15:30" />
-              </Form.Item>
-            </Col>
-          </Row>
+          {!rinviata && (
+            <Row gutter={12}>
+              <Col span={14}>
+                <Form.Item label="Data" name="data" rules={[{ required: true }]} {...propsCampoData}>
+                  <DataPicker />
+                </Form.Item>
+              </Col>
+              <Col span={10}>
+                <Form.Item
+                  label="Ora"
+                  name="ora"
+                  rules={[{ pattern: REGEX_ORA, message: 'Usa il formato 15:30' }]}
+                >
+                  <Input placeholder="es. 15:30" />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
           <Form.Item label="Avversario" name="avversario" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
@@ -402,15 +436,17 @@ export function PartitaDettaglio() {
           <Form.Item label="Amichevole" name="amichevole" valuePropName="checked">
             <Switch />
           </Form.Item>
-          <Form.Item
-            label="Partita già giocata"
-            name="giocata"
-            valuePropName="checked"
-            extra="Spegni per una partita in programma (senza risultato)"
-          >
-            <Switch />
-          </Form.Item>
-          {giocataForm !== false && (
+          {!rinviata && (
+            <Form.Item
+              label="Partita già giocata"
+              name="giocata"
+              valuePropName="checked"
+              extra="Spegni per una partita in programma (senza risultato)"
+            >
+              <Switch />
+            </Form.Item>
+          )}
+          {!rinviata && giocataForm !== false && (
             <Row gutter={12}>
               <Col span={12}>
                 <Form.Item

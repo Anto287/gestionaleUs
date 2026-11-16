@@ -98,6 +98,14 @@ export interface EventoGol {
   quantita: number
 }
 
+export interface RinvioPartita {
+  dataPrecedente: string
+  oraPrecedente?: string
+  motivo?: string
+  dataRecupero?: string
+  oraRecupero?: string
+}
+
 /** Il risultato e gli eventi di una partita. Da qui derivano le statistiche. */
 export interface Partita {
   id: string
@@ -115,6 +123,7 @@ export interface Partita {
    * risultato ancora). Assente vale già giocata, per i dati precedenti.
    */
   giocata?: boolean
+  rinvii?: RinvioPartita[]
   golFatti: number
   golSubiti: number
   marcatori: EventoGol[]

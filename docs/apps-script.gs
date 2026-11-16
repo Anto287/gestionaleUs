@@ -635,8 +635,18 @@ function toDate_(iso) {
 function icsCalendar(season) {
   var s = season || readSeasons().attiva || '';
   var eventi = [];
+  var dateRinviate = new Set();
+  function chiaveGara(data, avversario) {
+    return data + '|' + String(avversario || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
   listItems('partite', s).forEach(function (p) {
     var giocata = p.giocata !== false;
+    var rinvii = p.rinvii || [];
+    rinvii.forEach(function (r) {
+      dateRinviate.add(chiaveGara(r.dataPrecedente, p.avversario));
+    });
+    if (!giocata && rinvii.length && !rinvii[rinvii.length - 1].dataRecupero) return;
+    if (rinvii.length) dateRinviate.add(chiaveGara(p.data, p.avversario));
     eventi.push({
       id: 'p-' + p.id, data: p.data, ora: p.ora, durata: 105,
       titolo: (giocata ? 'Riolunato ' + (p.golFatti != null ? p.golFatti : 0) + '-' + (p.golSubiti != null ? p.golSubiti : 0) + ' ' : 'Partita vs ') +
@@ -647,6 +657,7 @@ function icsCalendar(season) {
     eventi.push({ id: 'a-' + a.id, data: a.data, durata: 90, titolo: 'Allenamento', descrizione: a.note });
   });
   listItems('appuntamenti', s).forEach(function (ap) {
+    if (dateRinviate.has(chiaveGara(ap.data, ap.avversario))) return;
     eventi.push({
       id: 'ap-' + ap.id, data: ap.data, ora: ap.ora, durata: 105,
       titolo: 'Partita vs ' + (ap.avversario || '') + (ap.inCasa ? ' (casa)' : ' (trasferta)'),

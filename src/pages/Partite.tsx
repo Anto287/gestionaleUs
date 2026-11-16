@@ -20,7 +20,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SearchOutlined, PrinterOutlined } from '@ant-design/icons'
+import { CalendarOutlined, PlusOutlined, DeleteOutlined, SearchOutlined, PrinterOutlined } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { useAggancioLista } from '../hooks/useAggancioLista'
@@ -28,10 +28,11 @@ import { PageHeader } from '../components/PageHeader'
 import { FiltriDrawer, FiltroCampo } from '../components/FiltriDrawer'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData, oggiIso, plurale } from '../lib/format'
-import { REGEX_ORA } from '../lib/partita'
+import { inAttesaDiRecupero, REGEX_ORA } from '../lib/partita'
 import type { Partita, Torneo } from '../types'
 import { useSeason } from '../season/SeasonContext'
 import { StampaCalendario } from './partite/StampaCalendario'
+import { RinvioModale } from './partite/RinvioModale'
 
 const { Text } = Typography
 
@@ -61,6 +62,8 @@ export function Partite() {
   const { toolbarRef, offsetHeader } = useAggancioLista()
   const isMobile = !screens.sm
   const [modale, setModale] = useState(false)
+  const [rinvioId, setRinvioId] = useState<string>()
+  const partitaRinvio = items.find((p) => p.id === rinvioId && inProgramma(p))
   const [stampa, setStampa] = useState(false)
   const { attiva } = useSeason()
   const [form] = Form.useForm()
@@ -107,7 +110,8 @@ export function Partite() {
         if (dove === 'casa' && !p.inCasa) return false
         if (dove === 'trasferta' && p.inCasa) return false
         if (statoF === 'giocate' && programma) return false
-        if (statoF === 'programma' && !programma) return false
+        if (statoF === 'programma' && (!programma || inAttesaDiRecupero(p))) return false
+        if (statoF === 'rinviate' && !inAttesaDiRecupero(p)) return false
         // esito e porta valgono solo per le partite già giocate
         if (esitoF && (programma || esito(p).label !== esitoF)) return false
         if (portaF && programma) return false
@@ -163,6 +167,20 @@ export function Partite() {
     if (giocata) navigate(`/partite/${id}`)
   }
 
+  function azioneRinvio(p: Partita) {
+    if (!inProgramma(p)) return null
+    const titolo = inAttesaDiRecupero(p) ? 'Fissa il recupero' : 'Rinvia partita'
+    return (
+      <Button
+        type="text"
+        icon={<CalendarOutlined />}
+        title={titolo}
+        aria-label={titolo}
+        onClick={() => setRinvioId(p.id)}
+      />
+    )
+  }
+
   const columns = [
     {
       title: 'Data',
@@ -170,7 +188,7 @@ export function Partite() {
       width: 140,
       sorter: (a: Partita, b: Partita) => a.data.localeCompare(b.data),
       defaultSortOrder: 'descend' as const,
-      render: (_: unknown, p: Partita) => (
+      render: (_: unknown, p: Partita) => inAttesaDiRecupero(p) ? 'Da definire' : (
         <span>
           {formatData(p.data, true)}
           {p.ora && <span style={{ color: 'var(--testo-2)' }}> · {p.ora}</span>}
@@ -201,6 +219,7 @@ export function Partite() {
       sorter: (a: Partita, b: Partita) =>
         a.golFatti - a.golSubiti - (b.golFatti - b.golSubiti),
       render: (_: unknown, p: Partita) => {
+        if (inAttesaDiRecupero(p)) return <Tag color="orange">Rinviata</Tag>
         if (inProgramma(p)) return <Tag color="gold">In programma</Tag>
         const e = esito(p)
         return (
@@ -216,19 +235,21 @@ export function Partite() {
     {
       title: '',
       key: 'azioni',
-      width: 60,
-      // il click su Elimina (e sul suo Popconfirm) non deve aprire la partita
+      width: 100,
       onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }),
       render: (_: unknown, p: Partita) => (
-        <Popconfirm
-          title={`Eliminare la partita con ${p.avversario}?`}
-          okText="Elimina"
-          cancelText="Annulla"
-          okButtonProps={{ danger: true }}
-          onConfirm={() => eliminaConUndo(partiteColl, p, `Partita con ${p.avversario} eliminata.`)}
-        >
-          <Button type="text" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
+        <Space size={0}>
+          {azioneRinvio(p)}
+          <Popconfirm
+            title={`Eliminare la partita con ${p.avversario}?`}
+            okText="Elimina"
+            cancelText="Annulla"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => eliminaConUndo(partiteColl, p, `Partita con ${p.avversario} eliminata.`)}
+                  >
+            <Button type="text" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
@@ -281,6 +302,7 @@ export function Partite() {
                   options={[
                     { value: 'giocate', label: 'Già giocate' },
                     { value: 'programma', label: 'In programma' },
+                    { value: 'rinviate', label: 'Rinviate' },
                   ]}
                 />
               </FiltroCampo>
@@ -368,6 +390,7 @@ export function Partite() {
               {filtrate.length === 0 && <Empty description="Nessuna partita con questi filtri" />}
               {filtrate.map((p) => {
                 const programma = inProgramma(p)
+                const rinviata = inAttesaDiRecupero(p)
                 const e = esito(p)
                 return (
                   <div key={p.id} className="lista-card" onClick={() => navigate(`/partite/${p.id}`)}>
@@ -375,14 +398,15 @@ export function Partite() {
                       <div>
                         <div className="lista-card-title">{p.avversario}</div>
                         <div className="lista-card-meta" style={{ marginTop: 5 }}>
-                          {formatData(p.data, true)}
-                          {p.ora && <span>· {p.ora}</span>}
+                          {rinviata ? 'Data da definire' : formatData(p.data, true)}
+                          {!rinviata && p.ora && <span>· {p.ora}</span>}
                           <Tag>{p.inCasa ? 'Casa' : 'Trasferta'}</Tag>
                           {nomeTorneo(p.torneoId) && <Tag color="geekblue">{nomeTorneo(p.torneoId)}</Tag>}
                           {p.amichevole && <Tag color="purple">Amichevole</Tag>}
                         </div>
                       </div>
-                      <span onClick={(ev) => ev.stopPropagation()}>
+                      <Space size={0} onClick={(ev) => ev.stopPropagation()}>
+                        {azioneRinvio(p)}
                         <Popconfirm
                           title={`Eliminare la partita con ${p.avversario}?`}
                           okText="Elimina"
@@ -392,10 +416,12 @@ export function Partite() {
                         >
                           <Button type="text" danger icon={<DeleteOutlined />} />
                         </Popconfirm>
-                      </span>
+                      </Space>
                     </div>
                     <div className="lista-card-meta">
-                      {programma ? (
+                      {rinviata ? (
+                        <Tag color="orange">Rinviata</Tag>
+                      ) : programma ? (
                         <Tag color="gold">In programma</Tag>
                       ) : (
                         <>
@@ -423,6 +449,15 @@ export function Partite() {
             />
           )}
         </>
+      )}
+
+      {partitaRinvio && (
+        <RinvioModale
+          key={partitaRinvio.id}
+          partita={partitaRinvio}
+          onSave={(patch) => partiteColl.update(partitaRinvio.id, patch)}
+          onClose={() => setRinvioId(undefined)}
+        />
       )}
 
       <StampaCalendario

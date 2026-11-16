@@ -23,6 +23,7 @@ import { navItems } from '../nav'
 import { useSeason } from '../season/SeasonContext'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
+import { chiaveGara, chiaviGare, inAttesaDiRecupero } from '../lib/partita'
 import { formatData, formatEuro, oggiIso } from '../lib/format'
 import { statoScadenza } from '../lib/scadenza'
 import { sottoScorta } from '../lib/scorta'
@@ -254,10 +255,11 @@ export function Dashboard() {
   const prossimo = useMemo(() => {
     const impegni: { data: string; ora?: string; chi: string }[] = []
     for (const p of partite.items)
-      if (p.giocata === false && p.data >= oggi)
+      if (p.giocata === false && !inAttesaDiRecupero(p) && p.data >= oggi)
         impegni.push({ data: p.data, ora: p.ora, chi: p.avversario })
+    const gia = chiaviGare(partite.items)
     for (const a of appuntamenti.items)
-      if (a.data >= oggi) impegni.push({ data: a.data, ora: a.ora, chi: a.avversario })
+      if (a.data >= oggi && !gia.has(chiaveGara(a.data, a.avversario))) impegni.push({ data: a.data, ora: a.ora, chi: a.avversario })
     for (const d of distinte.items)
       if (d.data && d.data >= oggi) impegni.push({ data: d.data, chi: d.avversario ?? 'prossima gara' })
     return impegni.sort((a, b) =>

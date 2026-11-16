@@ -6,6 +6,23 @@ export const MAX_TITOLARI = 11
 /** Formato accettato per l'ora della partita, es. "15:30". */
 export const REGEX_ORA = /^([01]?\d|2[0-3]):[0-5]\d$/
 
+export function inAttesaDiRecupero(p: Partita): boolean {
+  const ultimo = p.rinvii?.at(-1)
+  return p.giocata === false && !!ultimo && !ultimo.dataRecupero
+}
+
+export function chiaveGara(data: string, avversario: string): string {
+  return `${data}|${avversario.trim().toLowerCase().replace(/\s+/g, ' ')}`
+}
+
+/** Include le date annullate per riconoscere gli appuntamenti duplicati. */
+export function chiaviGare(partite: Partita[]): Set<string> {
+  return new Set(partite.flatMap((p) => [
+    chiaveGara(p.data, p.avversario),
+    ...(p.rinvii ?? []).map((r) => chiaveGara(r.dataPrecedente, p.avversario)),
+  ]))
+}
+
 /** Somma dei gol (o assist) attribuiti nei singoli eventi. */
 export function sommaEventi(eventi?: EventoGol[]): number {
   return (eventi ?? []).reduce((tot, e) => tot + e.quantita, 0)
