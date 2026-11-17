@@ -39,8 +39,10 @@ try {
     await page.getByRole('button', { name: 'Aggiungi ospite', exact: true }).click()
     const editor = page.getByRole('dialog', { name: 'Aggiungi ospite' })
     assert.equal(await editor.getByRole('textbox').count(), 2)
-    await editor.getByLabel('Nome', { exact: true }).fill('Mario')
-    await editor.getByLabel('Cognome', { exact: true }).fill('Ospitetest')
+    // L'app separa le lettere delle etichette con U+2060 per bloccare l'autofill.
+    const etichetta = (nome) => [...nome].join('\u2060')
+    await editor.getByLabel(etichetta('Nome'), { exact: true }).fill('Mario')
+    await editor.getByLabel(etichetta('Cognome'), { exact: true }).fill('Ospitetest')
     const salvataggio = page.waitForRequest((r) => r.url().startsWith('https://script.google.com/') &&
       r.postDataJSON()?.collection === 'giocatori' && r.postDataJSON()?.action === 'put')
     await editor.getByRole('button', { name: 'Aggiungi', exact: true }).click()
