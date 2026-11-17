@@ -16,6 +16,8 @@ export interface Giocatore {
   id: string
   nome: string
   cognome: string
+  /** Ospite della rosa, disponibile solo per le presenze agli allenamenti. */
+  soloAllenamento?: true
   categoria?: Categoria
   /** incarico in dirigenza, testo libero (es. "Presidente"); solo per dirigenti */
   ruoloDirigenza?: string
@@ -200,6 +202,7 @@ export interface Allenamento {
   svolto?: string
   /** id giocatore → presente */
   presenze: Record<string, boolean>
+  presenzeOspiti?: Record<string, true>
 }
 
 /** Una riga di dati tesserato usata dentro la distinta (Nome, Cognome, ecc.). */

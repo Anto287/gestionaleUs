@@ -23,7 +23,9 @@ try {
       const b = route.request().postDataJSON(), res = { ok: true }
       if (b.action === 'seasons') Object.assign(res, { stagioni: ['2026/27'], attiva: '2026/27' })
       if (b.action === 'listAll') res.liste = b.richieste.map((r) => ({ collection: r.collection, items: data[r.collection] || [] }))
+      if (b.action === 'archivioList') Object.assign(res, { documenti: [], foto: [] })
       if (b.action === 'list') res.items = data[b.collection] || []
+      if (b.action === 'put' && b.collection === 'giocatori') data.giocatori.push(b.record)
       if (b.action === 'put' && b.collection === 'allenamenti') { saved = b.record; data.allenamenti = [saved] }
       if (b.action === 'standings') Object.assign(res, { tipo: legacy ? 'widget' : 'api', righe: [{ squadra: 'U.S. Riolunato', punti: 12 }], aggiornato: new Date().toISOString() })
       if (b.action === 'managementDevices') res.devices = []
@@ -33,13 +35,37 @@ try {
       if (b.action === 'managementClearActivities') cleared = true
       await route.fulfill({ json: res })
     })
+    await page.goto('http://127.0.0.1:5181/#/rosa')
+    await page.getByRole('button', { name: 'Aggiungi ospite', exact: true }).click()
+    const editor = page.getByRole('dialog', { name: 'Aggiungi ospite' })
+    assert.equal(await editor.getByRole('textbox').count(), 2)
+    await editor.getByLabel('Nome', { exact: true }).fill('Mario')
+    await editor.getByLabel('Cognome', { exact: true }).fill('Ospitetest')
+    const salvataggio = page.waitForRequest((r) => r.url().startsWith('https://script.google.com/') &&
+      r.postDataJSON()?.collection === 'giocatori' && r.postDataJSON()?.action === 'put')
+    await editor.getByRole('button', { name: 'Aggiungi', exact: true }).click()
+    const ospite = (await salvataggio).postDataJSON().record
+    assert.deepEqual(ospite, { id: ospite.id, nome: 'Mario', cognome: 'Ospitetest', soloAllenamento: true })
+    await page.getByText('Ospitetest Mario', { exact: true }).waitFor()
+    await page.goto('http://127.0.0.1:5181/#/archivio')
+    await page.getByRole('heading', { name: 'Archivio tesserati', exact: true }).waitFor()
+    await page.getByText(data.giocatori[0].cognome + ' ' + data.giocatori[0].nome, { exact: true }).waitFor()
+    assert.equal(await page.getByText(/Ospitetest/).count(), 0)
     await page.goto('http://127.0.0.1:5181/#/allenamenti?seduta=seduta-test')
     const dialog = page.getByRole('dialog')
+    const presenza = dialog.getByRole('button', { name: 'Ospitetest Mario', exact: true })
+    await presenza.click()
+    assert.equal(await presenza.getAttribute('aria-pressed'), 'true')
     await dialog.getByRole('button', { name: 'Genera esercizi', exact: true }).click()
     assert.match(await page.getByLabel('Programma di allenamento', { exact: true }).inputValue(), /90 minuti/)
     await page.getByLabel('Attività svolta e osservazioni', { exact: true }).fill('Lavoro sul possesso eseguito')
     await page.getByRole('button', { name: 'Salva programma e resoconto', exact: true }).click()
     await page.waitForTimeout(1000)
+    assert.deepEqual(saved.presenzeOspiti, { [ospite.id]: true })
+    assert.deepEqual(saved.presenze, {})
+    await page.reload()
+    await presenza.waitFor()
+    assert.equal(await presenza.getAttribute('aria-pressed'), 'true')
     assert.match(saved.programma, /90 minuti/)
     assert.equal(saved.svolto, 'Lavoro sul possesso eseguito')
     await page.goto('http://127.0.0.1:5181/#/classifica')

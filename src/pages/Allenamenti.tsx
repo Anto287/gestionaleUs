@@ -73,6 +73,7 @@ export function Allenamenti() {
   const { items, add, update } = allenamentiColl
   const eliminaConUndo = useEliminaUndo()
   const giocatori = useCollection<Giocatore>('giocatori')
+  const { items: ospiti } = useCollection<Giocatore>('giocatori', 'ospiti')
   const { attiva } = useSeason()
   const { message } = AntApp.useApp()
   const [modaleNuova, setModaleNuova] = useState(false)
@@ -147,11 +148,16 @@ export function Allenamenti() {
 
   const sessioneAperta = apertaId ? items.find((s) => s.id === apertaId) : null
 
-  const rosaModale = useMemo(() => {
+  const { rosaModale, ospitiModale } = useMemo(() => {
     const t = ricerca.trim().toLowerCase()
-    if (!t) return rosa
-    return rosa.filter((g) => `${g.cognome} ${g.nome}`.toLowerCase().includes(t))
-  }, [rosa, ricerca])
+    const corrisponde = (g: Giocatore) => `${g.cognome} ${g.nome}`.toLowerCase().includes(t)
+    return {
+      rosaModale: rosa.filter(corrisponde),
+      ospitiModale: ospiti.filter(corrisponde).sort((a, b) =>
+        `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'),
+      ),
+    }
+  }, [rosa, ospiti, ricerca])
 
   function apriSeduta(id: string) {
     setRicerca('')
@@ -211,7 +217,14 @@ export function Allenamenti() {
       if (presente) presenze[g.id] = true
       else delete presenze[g.id]
     }
-    update(s.id, { presenze })
+    update(s.id, presente ? { presenze } : { presenze, presenzeOspiti: {} })
+  }
+
+  function toggleOspite(s: Allenamento, id: string) {
+    const presenzeOspiti = { ...s.presenzeOspiti }
+    if (presenzeOspiti[id]) delete presenzeOspiti[id]
+    else presenzeOspiti[id] = true
+    update(s.id, { presenzeOspiti })
   }
 
   async function esporta() {
@@ -223,7 +236,7 @@ export function Allenamenti() {
     }
   }
 
-  if (giocatori.items.length === 0) {
+  if (rosa.length === 0 && ospiti.length === 0) {
     return (
       <>
         <PageHeader titolo="Allenamenti" />
@@ -522,8 +535,8 @@ export function Allenamenti() {
                 trailColor="var(--linea)"
               />
               <Space style={{ marginTop: 10 }}>
-                <Button size="small" onClick={() => segnaTutti(sessioneAperta, true)}>
-                  Tutti presenti
+                <Button size="small" disabled={rosa.length === 0} onClick={() => segnaTutti(sessioneAperta, true)}>
+                  {ospiti.length ? 'Tutti i giocatori presenti' : 'Tutti presenti'}
                 </Button>
                 <Button size="small" onClick={() => segnaTutti(sessioneAperta, false)}>
                   Azzera
@@ -535,14 +548,14 @@ export function Allenamenti() {
               allowClear
               autoComplete="off"
               prefix={<SearchOutlined />}
-              placeholder="Cerca giocatore"
+              placeholder="Cerca giocatore o ospite"
               value={ricerca}
               onChange={(e) => setRicerca(e.target.value)}
               style={{ marginBottom: 12 }}
             />
 
             <div style={{ marginBottom: 16 }}>
-              {rosaModale.length === 0 ? (
+              {rosaModale.length === 0 && ospitiModale.length === 0 ? (
                 <Text type="secondary">Nessun giocatore trovato.</Text>
               ) : (
                 <Space size={[8, 8]} wrap>
@@ -564,6 +577,29 @@ export function Allenamenti() {
                 </Space>
               )}
             </div>
+
+            {ospitiModale.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <Typography.Paragraph strong>Solo allenamento</Typography.Paragraph>
+                <Space size={[8, 8]} wrap>
+                  {ospitiModale.map((g) => {
+                    const presente = !!sessioneAperta.presenzeOspiti?.[g.id]
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`presenza-chip${presente ? ' on' : ''}`}
+                        aria-pressed={presente}
+                        onClick={() => toggleOspite(sessioneAperta, g.id)}
+                      >
+                        {presente && <CheckOutlined />}
+                        {g.cognome} {g.nome}
+                      </button>
+                    )
+                  })}
+                </Space>
+              </div>
+            )}
 
             <Popconfirm
               title="Eliminare questa seduta?"

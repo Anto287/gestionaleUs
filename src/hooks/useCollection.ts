@@ -15,10 +15,10 @@ export interface Collection<T> {
  * DataProvider (Drive del Riolunato, o browser se il Drive non è
  * configurato). Le pagine non sanno da dove vengono: usano solo questo hook.
  */
-export function useCollection<T extends { id: string }>(nome: string): Collection<T> {
+export function useCollection<T extends { id: string }>(nome: string, vistaRosa?: 'ospiti'): Collection<T> {
   const data = useData()
   return {
-    items: data.getItems<T>(nome),
+    items: data.getItems<T>(nome, vistaRosa),
     add: (item) => data.add<T>(nome, item),
     update: (id, patch) => data.update<T>(nome, id, patch),
     remove: (id) => data.remove(nome, id),

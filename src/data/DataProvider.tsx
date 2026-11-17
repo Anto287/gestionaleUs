@@ -20,10 +20,14 @@ import * as store from '../services/driveStore'
 import { preparaCaricamento, preparaScontrino } from '../lib/immagine'
 import { useChiudiUndoAlloSmontaggio } from '../hooks/useEliminaUndo'
 
+import type { Giocatore } from '../types'
+
+type VistaRosa = 'tesserati' | 'ospiti'
+
 type Store = Record<string, Array<{ id: string }>>
 
 interface DataValue {
-  getItems: <T>(collection: string) => T[]
+  getItems: <T>(collection: string, vistaRosa?: VistaRosa) => T[]
   add: <T>(collection: string, item: Omit<T, 'id'>) => string
   update: <T>(collection: string, id: string, patch: Partial<T>) => void
   remove: (collection: string, id: string) => void
@@ -297,9 +301,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const rosa = data.giocatori as Giocatore[] | undefined
+  const visteRosa = useMemo(() => ({
+    tesserati: (rosa ?? []).filter((g) => !g.soloAllenamento),
+    ospiti: (rosa ?? []).filter((g) => g.soloAllenamento),
+  }), [rosa])
   const getItems = useCallback(
-    <T,>(c: string): T[] => (data[c] ?? []) as T[],
-    [data],
+    <T,>(c: string, vistaRosa: VistaRosa = 'tesserati'): T[] =>
+      (c === 'giocatori' ? visteRosa[vistaRosa] : data[c] ?? []) as T[],
+    [data, visteRosa],
   )
 
   // applica una modifica a una raccolta: allo stato e SUBITO anche a dataRef,

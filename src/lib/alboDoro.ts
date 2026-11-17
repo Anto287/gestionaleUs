@@ -107,7 +107,7 @@ export async function caricaStorico(
       ])
       const dati: StagioneStorico = {
         stagione,
-        giocatori,
+        giocatori: giocatori.filter((g) => !g.soloAllenamento),
         partite: partite
           .filter((p) => p.giocata !== false)
           .sort((a, b) => a.data.localeCompare(b.data)),

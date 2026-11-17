@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { OspitiAllenamento } from './rosa/OspitiAllenamento'
 import { CardGiocatore } from './rosa/CardGiocatore'
 import { useFiltro, useFiltriDaLink } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
@@ -557,6 +558,8 @@ export function Rosa() {
           )
         }
       />
+
+      <OspitiAllenamento />
 
       {items.length === 0 ? (
         <Empty description="Nessun giocatore in rosa">
