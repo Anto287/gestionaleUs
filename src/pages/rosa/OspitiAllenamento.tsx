@@ -30,7 +30,7 @@ export function OspitiAllenamento() {
       <Typography.Paragraph type="secondary">
         Ospiti occasionali, disponibili solo quando segni le presenze agli allenamenti.
       </Typography.Paragraph>
-      <Button icon={<PlusOutlined />} onClick={() => apri()}>Aggiungi ospite</Button>
+      <Button icon={<PlusOutlined aria-hidden />} onClick={() => apri()}>Aggiungi ospite</Button>
       {ospiti.items.length > 0 && (
         <List
           rowKey="id"

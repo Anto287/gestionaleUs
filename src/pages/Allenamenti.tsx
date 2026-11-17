@@ -569,7 +569,7 @@ export function Allenamenti() {
                         aria-pressed={presente}
                         onClick={() => togglePresenza(sessioneAperta, g.id)}
                       >
-                        {presente && <CheckOutlined />}
+                        {presente && <CheckOutlined aria-hidden />}
                         {g.cognome} {g.nome}
                       </button>
                     )
@@ -592,7 +592,7 @@ export function Allenamenti() {
                         aria-pressed={presente}
                         onClick={() => toggleOspite(sessioneAperta, g.id)}
                       >
-                        {presente && <CheckOutlined />}
+                        {presente && <CheckOutlined aria-hidden />}
                         {g.cognome} {g.nome}
                       </button>
                     )
