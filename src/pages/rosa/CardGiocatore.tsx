@@ -9,7 +9,7 @@ import { isDirigente, isExtra, isGiocatore } from '../../lib/categoria'
 import { coloreRuolo } from '../../ruoli'
 import type { Giocatore } from '../../types'
 
-export function CardGiocatore({ g, foto, presenze, quota, avvisoElimina, elimina }: { g: Giocatore; foto?: string; presenze: number; quota: ReactNode; avvisoElimina?: string; elimina: () => void }) {
+export function CardGiocatore({ g, foto, presenze, quota, azioneSoloAllenamento, avvisoElimina, elimina }: { g: Giocatore; foto?: string; presenze: number; quota: ReactNode; azioneSoloAllenamento: ReactNode; avvisoElimina?: string; elimina: () => void }) {
   const cert = statoCertificato(g), doc = statoScadenza(g.scadenzaDocumento)
   const ruoli = [...new Set(g.ruoliAdattati || [])].filter((r) => r !== g.ruoloPreferito)
   return <article className="lista-card rosa-card">
@@ -40,6 +40,7 @@ export function CardGiocatore({ g, foto, presenze, quota, avvisoElimina, elimina
         {ruoli.length > 0 && <div><dt>Ruoli adattati</dt><dd>{ruoli.map((r) => <Tag key={r} color={coloreRuolo(r)}>{r}</Tag>)}</dd></div>}
         <div><dt>Documento</dt><dd>{g.scadenzaDocumento ? `${doc.label ? doc.label + ' · ' : ''}${formatData(g.scadenzaDocumento)}` : 'Scadenza non indicata'}</dd></div>
       </dl>
+      {azioneSoloAllenamento}
       <Popconfirm title={`Eliminare ${g.nome} ${g.cognome}?`} description={avvisoElimina} okText="Elimina" cancelText="Annulla" okButtonProps={{ danger: true }} onConfirm={elimina}>
         <Button type="text" danger icon={<DeleteOutlined />} aria-label={`Elimina ${g.nome} ${g.cognome}`}>Elimina tesserato</Button>
       </Popconfirm>

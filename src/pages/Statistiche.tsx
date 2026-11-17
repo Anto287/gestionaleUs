@@ -15,7 +15,7 @@ import { AlboDoro } from './statistiche/AlboDoro'
 import { esportaReportStagione } from './statistiche/report'
 import type { Allenamento, Giocatore, Movimento, Partita, Torneo } from '../types'
 import { plurale } from '../lib/format'
-import { seduteSvolte } from '../lib/allenamenti'
+import { idPresentiAllenamento, seduteSvolte } from '../lib/allenamenti'
 
 const { Text } = Typography
 
@@ -177,8 +177,8 @@ export function Statistiche() {
   const presenzeAllenamenti: RigaClassifica[] = useMemo(() => {
     const conteggio: Record<string, number> = {}
     for (const a of allenamenti) {
-      for (const [id, presente] of Object.entries(a.presenze)) {
-        if (presente) conteggio[id] = (conteggio[id] ?? 0) + 1
+      for (const id of idPresentiAllenamento(a)) {
+        conteggio[id] = (conteggio[id] ?? 0) + 1
       }
     }
     return giocatori

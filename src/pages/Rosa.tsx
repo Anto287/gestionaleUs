@@ -33,6 +33,7 @@ import {
   MedicineBoxOutlined,
   SearchOutlined,
   WarningOutlined,
+  SwapOutlined,
 } from '@ant-design/icons'
 import { useCollection } from '../hooks/useCollection'
 import { useEliminaUndo } from '../hooks/useEliminaUndo'
@@ -48,7 +49,7 @@ import { statoCertificato } from '../lib/certificato'
 import { statoScadenza } from '../lib/scadenza'
 import { riepilogoQuote, statoQuota } from '../lib/quota'
 import { esportaExcel } from '../lib/excel'
-import { seduteSvolte } from '../lib/allenamenti'
+import { idPresentiAllenamento, seduteSvolte } from '../lib/allenamenti'
 import { isDirigente, isExtra, isGiocatore, OPZIONI_CATEGORIA, OPZIONI_RUOLI_DIRIGENZA, ripulisciTesserato, LABEL_CATEGORIA } from '../lib/categoria'
 import type { Allenamento, Giocatore, Movimento, Partita } from '../types'
 import { formatData, formatEuro, iniziali, plurale } from '../lib/format'
@@ -208,8 +209,8 @@ export function Rosa() {
     const conteggio: Record<string, number> = {}
     // le sedute future (create dal calendario) non contano
     for (const a of seduteSvolte(allenamenti.items)) {
-      for (const [id, presente] of Object.entries(a.presenze)) {
-        if (presente) conteggio[id] = (conteggio[id] ?? 0) + 1
+      for (const id of idPresentiAllenamento(a)) {
+        conteggio[id] = (conteggio[id] ?? 0) + 1
       }
     }
     return conteggio
@@ -338,6 +339,24 @@ export function Rosa() {
 
   // il click su Elimina (e sul suo Popconfirm) non deve aprire la scheda del giocatore
   const stopCell = { onCell: () => ({ onClick: (e: MouseEvent) => e.stopPropagation() }) }
+
+  function azioneSoloAllenamento(g: Giocatore, compatta = false) {
+    if (!isGiocatore(g)) return null
+    const etichetta = 'Passa a solo allenamento'
+    return (
+      <Popconfirm
+        title={`Spostare ${g.nome} ${g.cognome} in «Solo allenamento»?`}
+        description="Le presenze restano salvate. Scheda, quote e dati delle partite tornano visibili se lo riporti in rosa."
+        okText="Sposta"
+        cancelText="Annulla"
+        onConfirm={() => update(g.id, { soloAllenamento: true })}
+      >
+        <Button type="text" icon={<SwapOutlined aria-hidden />} aria-label={etichetta} title={compatta ? etichetta : undefined}>
+          {!compatta && etichetta}
+        </Button>
+      </Popconfirm>
+    )
+  }
 
   const columns = [
     {
@@ -491,19 +510,22 @@ export function Rosa() {
     {
       title: '',
       key: 'azioni',
-      width: 60,
+      width: 94,
       ...stopCell,
       render: (_: unknown, g: Giocatore) => (
-        <Popconfirm
-          title={`Eliminare ${g.nome} ${g.cognome}?`}
-          description={avvisoElimina(g)}
-          okText="Elimina"
-          cancelText="Annulla"
-          okButtonProps={{ danger: true }}
-          onConfirm={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)}
-        >
-          <Button type="text" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
+        <Space size={0}>
+          {azioneSoloAllenamento(g, true)}
+          <Popconfirm
+            title={`Eliminare ${g.nome} ${g.cognome}?`}
+            description={avvisoElimina(g)}
+            okText="Elimina"
+            cancelText="Annulla"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)}
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
@@ -749,6 +771,7 @@ export function Rosa() {
             <div className="lista-mobile">
               {filtrati.map((g) => <CardGiocatore key={g.id} g={g} foto={fotoDi(g)} presenze={presenze[g.id] ?? 0}
                 quota={<CellaQuota g={g} onCambia={(patch) => update(g.id, patch)} />}
+                azioneSoloAllenamento={azioneSoloAllenamento(g)}
                 avvisoElimina={avvisoElimina(g)} elimina={() => eliminaConUndo(giocatori, g, `${g.cognome} ${g.nome} eliminato.`)} />)}
             </div>
           ) : (

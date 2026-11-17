@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Card, Form, Input, List, Modal, Popconfirm, Space, Typography } from 'antd'
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useCollection } from '../../hooks/useCollection'
 import { useEliminaUndo } from '../../hooks/useEliminaUndo'
 import type { Giocatore } from '../../types'
@@ -40,7 +40,14 @@ export function OspitiAllenamento() {
           renderItem={(g) => (
             <List.Item>
               <span>{g.cognome} {g.nome}</span>
-              <Space>
+              <Space wrap>
+                <Button
+                  size="small"
+                  icon={<UserAddOutlined aria-hidden />}
+                  onClick={() => ospiti.update(g.id, { soloAllenamento: undefined })}
+                >
+                  Passa in rosa
+                </Button>
                 <Button type="text" icon={<EditOutlined />} aria-label={`Modifica ${g.nome} ${g.cognome}`} onClick={() => apri(g)} />
                 <Popconfirm
                   title={`Eliminare ${g.nome} ${g.cognome}?`}

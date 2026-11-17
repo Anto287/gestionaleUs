@@ -58,7 +58,7 @@ import { ScansionaDocumento } from './rosa/ScansionaDocumento'
 import { statoQuota } from '../lib/quota'
 import { formatData, formatEuro, iniziali, oggiIso } from '../lib/format'
 import type { Allenamento, Giocatore, Movimento, Partita, VersamentoQuota } from '../types'
-import { seduteSvolte } from '../lib/allenamenti'
+import { presenteAllenamento, seduteSvolte } from '../lib/allenamenti'
 
 const { Title, Text } = Typography
 
@@ -123,7 +123,7 @@ export function GiocatoreDettaglio() {
     const svolte = seduteSvolte(allenamenti.items)
     return {
       totali: svolte.length,
-      fatte: svolte.filter((a) => a.presenze[g.id]).length,
+      fatte: svolte.filter((a) => presenteAllenamento(a, g.id)).length,
     }
   }, [allenamenti.items, g])
 

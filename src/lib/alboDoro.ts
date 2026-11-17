@@ -13,7 +13,7 @@
 import * as store from '../services/driveStore'
 import { esitoPartita } from './social'
 import { formatData } from './format'
-import { seduteSvolte } from './allenamenti'
+import { idPresentiAllenamento, seduteSvolte } from './allenamenti'
 import { isGiocatore } from './categoria'
 import type { Allenamento, Giocatore, Partita } from '../types'
 
@@ -255,9 +255,9 @@ export function calcolaAlbo(storico: StagioneStorico[]): Albo {
     // affluenza: solo i giocatori (niente dirigenti né id di ex tesserati)
     const idGiocatori = new Set(giocatori.filter(isGiocatore).map((g) => g.id))
     for (const seduta of allenamenti) {
-      const presenti = Object.entries(seduta.presenze).filter(([, ok]) => ok)
-      for (const [id] of presenti) somma(seduteAnno, id, 1)
-      const nPresenti = presenti.filter(([id]) => idGiocatori.has(id)).length
+      const presenti = idPresentiAllenamento(seduta)
+      for (const id of presenti) somma(seduteAnno, id, 1)
+      const nPresenti = [...presenti].filter((id) => idGiocatori.has(id)).length
       const rec = curiosita.affluenzaRecord
       if (nPresenti > 0 && (!rec || nPresenti > rec.presenti)) {
         curiosita.affluenzaRecord = {

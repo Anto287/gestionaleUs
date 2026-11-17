@@ -16,6 +16,7 @@ interface Punto {
   label: string
   data?: string
   valore: number
+  totale: number
 }
 
 export type TipoAffluenza = 'barre' | 'linea'
@@ -72,9 +73,9 @@ export function AffluenzaChart({
   )
 
   return (
-    <GraficoInterattivo iniziaDallaFine titolo="Presenze agli allenamenti" descrizione="Presenti per seduta. La linea tratteggiata indica la media del periodo; il confronto usa i giocatori della rosa attuale."
-      riepilogo={`${dati.length} sedute · Media ${media.toLocaleString('it-IT', { maximumFractionDigits: 1 })} presenti su ${scala} · Massimo ${Math.max(...dati.map((d) => d.valore))}`}
-      dati={dati.map((d) => ({ label: d.data || d.label, valori: [{ nome: 'Presenti', valore: `${d.valore} / ${scala}` }, { nome: 'Partecipazione', valore: scala ? `${Math.round(d.valore / scala * 100)}%` : '—' }, { nome: 'Assenti', valore: String(Math.max(0, scala - d.valore)) }, { nome: 'Scarto dalla media', valore: (d.valore - media).toLocaleString('it-IT', { maximumFractionDigits: 1, signDisplay: 'always' }) }] }))}
+    <GraficoInterattivo iniziaDallaFine titolo="Presenze agli allenamenti" descrizione="Presenti per seduta. La linea tratteggiata indica la media del periodo; il totale include la rosa attuale e gli ospiti presenti."
+      riepilogo={`${dati.length} sedute · Media ${media.toLocaleString('it-IT', { maximumFractionDigits: 1 })} presenti · Massimo ${Math.max(...dati.map((d) => d.valore))}`}
+      dati={dati.map((d) => ({ label: d.data || d.label, valori: [{ nome: 'Presenti', valore: `${d.valore} / ${d.totale}` }, { nome: 'Partecipazione', valore: d.totale ? `${Math.round(d.valore / d.totale * 100)}%` : '—' }, { nome: 'Assenti', valore: String(d.totale - d.valore) }, { nome: 'Scarto dalla media', valore: (d.valore - media).toLocaleString('it-IT', { maximumFractionDigits: 1, signDisplay: 'always' }) }] }))}
       minWidth={minWidth} altezza={H}>
       {(seleziona) => <ResponsiveContainer width="100%" height="100%">
           {tipo === 'linea' ? (

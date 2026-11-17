@@ -25,7 +25,9 @@ try {
       if (b.action === 'listAll') res.liste = b.richieste.map((r) => ({ collection: r.collection, items: data[r.collection] || [] }))
       if (b.action === 'archivioList') Object.assign(res, { documenti: [], foto: [] })
       if (b.action === 'list') res.items = data[b.collection] || []
-      if (b.action === 'put' && b.collection === 'giocatori') data.giocatori.push(b.record)
+      if (b.action === 'put' && b.collection === 'giocatori') {
+        data.giocatori = [...data.giocatori.filter((g) => g.id !== b.record.id), b.record]
+      }
       if (b.action === 'put' && b.collection === 'allenamenti') { saved = b.record; data.allenamenti = [saved] }
       if (b.action === 'standings') Object.assign(res, { tipo: legacy ? 'widget' : 'api', righe: [{ squadra: 'U.S. Riolunato', punti: 12 }], aggiornato: new Date().toISOString() })
       if (b.action === 'managementDevices') res.devices = []
@@ -68,8 +70,40 @@ try {
     await page.reload()
     await presenza.waitFor()
     assert.equal(await presenza.getAttribute('aria-pressed'), 'true')
+    const giocatoriAttesi = data.giocatori.filter((g) => !g.soloAllenamento && g.categoria !== 'dirigente').length
+    await dialog.getByText(`1 di ${giocatoriAttesi + 1} presenti`, { exact: true }).waitFor()
     assert.match(saved.programma, /90 minuti/)
     assert.equal(saved.svolto, 'Lavoro sul possesso eseguito')
+    const urlRosa = 'http://127.0.0.1:5181/#/rosa'
+    const urlSeduta = 'http://127.0.0.1:5181/#/allenamenti?seduta=seduta-test'
+    const scritturaGiocatore = () => page.waitForResponse((r) => {
+      const req = r.request()
+      if (!req.url().startsWith('https://script.google.com/') || req.method() !== 'POST') return false
+      const b = req.postDataJSON()
+      return b.action === 'put' && b.collection === 'giocatori' && b.record.id === ospite.id
+    })
+    await page.goto(urlRosa)
+    const promozione = scritturaGiocatore()
+    await page.getByRole('button', { name: 'Passa in rosa', exact: true }).click()
+    await promozione
+    assert.equal(data.giocatori.find((g) => g.id === ospite.id).soloAllenamento, undefined)
+    await page.goto(urlSeduta)
+    await presenza.waitFor()
+    assert.equal(await presenza.getAttribute('aria-pressed'), 'true')
+
+    await page.goto(urlRosa)
+    const scheda = page.getByRole(width < 576 ? 'article' : 'row').filter({ hasText: 'Ospitetest Mario' })
+    if (width < 576) await scheda.getByText('Dettagli', { exact: true }).click()
+    await scheda.getByRole('button', { name: 'Passa a solo allenamento', exact: true }).click()
+    const passaggioAOspite = scritturaGiocatore()
+    await page.getByRole('button', { name: 'Sposta', exact: true }).click()
+    await passaggioAOspite
+    assert.equal(data.giocatori.find((g) => g.id === ospite.id).soloAllenamento, true)
+    await page.goto(urlSeduta)
+    await presenza.waitFor()
+    assert.equal(await presenza.getAttribute('aria-pressed'), 'true')
+    await dialog.getByText(`1 di ${giocatoriAttesi + 1} presenti`, { exact: true }).waitFor()
+
     await page.goto('http://127.0.0.1:5181/#/classifica')
     await page.getByRole('cell', { name: 'U.S. Riolunato', exact: true }).waitFor()
     assert.equal(await page.locator('iframe').count(), 0)

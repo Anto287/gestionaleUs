@@ -42,7 +42,7 @@ import { useSeason } from '../season/SeasonContext'
 import { PageHeader } from '../components/PageHeader'
 import { DataPicker, propsCampoData } from '../components/DataPicker'
 import { formatData, oggiIso, plurale } from '../lib/format'
-import { seduteSvolte } from '../lib/allenamenti'
+import { presenteAllenamento, seduteSvolte } from '../lib/allenamenti'
 import { OPZIONI_PERIODO, mesiPeriodo, type PeriodoChart } from '../lib/periodo'
 import { isGiocatore } from '../lib/categoria'
 import { coloreAffluenza } from '../lib/chart'
@@ -105,11 +105,20 @@ export function Allenamenti() {
   // al massimo una seduta al giorno: le date già occupate non si possono riusare
   const dateOccupate = useMemo(() => new Set(items.map((s) => s.data)), [items])
 
-  const presenti = (s: Allenamento) => rosa.filter((g) => s.presenze[g.id]).length
-  const percSeduta = (s: Allenamento) => (rosa.length ? Math.round((presenti(s) / rosa.length) * 100) : 0)
+  const affluenza = useMemo(() => new Map(sedute.map((s) => {
+    const ospitiPresenti = ospiti.filter((g) => presenteAllenamento(s, g.id)).length
+    const presenti = rosa.filter((g) => presenteAllenamento(s, g.id)).length + ospitiPresenti
+    // Gli ospiti sono occasionali: ciascuno entra nel totale solo se ha partecipato.
+    const totale = rosa.length + ospitiPresenti
+    return [s.id, { presenti, totale, percentuale: totale ? Math.round(presenti / totale * 100) : 0 }]
+  })), [sedute, rosa, ospiti])
 
-  const media = svolte.length ? svolte.reduce((tot, s) => tot + presenti(s), 0) / svolte.length : 0
-  const mediaPerc = rosa.length ? Math.round((media / rosa.length) * 100) : 0
+  const totali = svolte.reduce((tot, s) => {
+    const seduta = affluenza.get(s.id)!
+    return { presenti: tot.presenti + seduta.presenti, posti: tot.posti + seduta.totale }
+  }, { presenti: 0, posti: 0 })
+  const media = svolte.length ? totali.presenti / svolte.length : 0
+  const mediaPerc = totali.posti ? Math.round(totali.presenti / totali.posti * 100) : 0
 
   // il grafico può restringersi a una finestra recente (le tessere in alto no)
   const seduteChart = useMemo(() => {
@@ -119,22 +128,22 @@ export function Allenamenti() {
     return svolte.filter((s) => s.data >= cutoff)
   }, [svolte, periodoChart])
 
-  const mediaChart = seduteChart.length
-    ? seduteChart.reduce((tot, s) => tot + presenti(s), 0) / seduteChart.length
-    : 0
-
-  const datiChart = useMemo(
-    () =>
-      [...seduteChart].reverse().map((s) => ({ label: labelBreve(s.data), data: formatData(s.data), valore: presenti(s) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seduteChart, rosa],
+  const datiChart = useMemo(() =>
+    [...seduteChart].reverse().map((s) => {
+      const { presenti, totale } = affluenza.get(s.id)!
+      return { label: labelBreve(s.data), data: formatData(s.data), valore: presenti, totale }
+    }),
+    [seduteChart, affluenza],
   )
+  const mediaChart = datiChart.length
+    ? datiChart.reduce((tot, punto) => tot + punto.valore, 0) / datiChart.length
+    : 0
 
   const classifica: RigaClassifica[] = useMemo(
     () =>
-      rosa
+      [...rosa, ...ospiti]
         .map((g) => {
-          const p = svolte.filter((s) => s.presenze[g.id]).length
+          const p = svolte.filter((s) => presenteAllenamento(s, g.id)).length
           return {
             id: g.id,
             nome: `${g.cognome} ${g.nome}`,
@@ -143,10 +152,11 @@ export function Allenamenti() {
           }
         })
         .sort((a, b) => b.presenze - a.presenze || a.nome.localeCompare(b.nome)),
-    [rosa, svolte],
+    [rosa, ospiti, svolte],
   )
 
   const sessioneAperta = apertaId ? items.find((s) => s.id === apertaId) : null
+  const affluenzaAperta = sessioneAperta && affluenza.get(sessioneAperta.id)
 
   const { rosaModale, ospitiModale } = useMemo(() => {
     const t = ricerca.trim().toLowerCase()
@@ -207,24 +217,28 @@ export function Allenamenti() {
       )
   }
 
-  function togglePresenza(s: Allenamento, giocatoreId: string) {
-    update(s.id, { presenze: { ...s.presenze, [giocatoreId]: !s.presenze[giocatoreId] } })
-  }
-  function segnaTutti(s: Allenamento, presente: boolean) {
-    // si tocca solo la rosa attuale: le presenze di dirigenti/ex restano com'erano
+  function togglePresenza(s: Allenamento, g: Giocatore) {
+    const presente = presenteAllenamento(s, g.id)
     const presenze = { ...s.presenze }
-    for (const g of rosa) {
+    const presenzeOspiti = { ...s.presenzeOspiti }
+    delete presenze[g.id]
+    delete presenzeOspiti[g.id]
+    if (!presente) {
+      if (g.soloAllenamento) presenzeOspiti[g.id] = true
+      else presenze[g.id] = true
+    }
+    update(s.id, { presenze, presenzeOspiti })
+  }
+
+  function segnaTutti(s: Allenamento, presente: boolean) {
+    const presenze = { ...s.presenze }
+    const presenzeOspiti = { ...s.presenzeOspiti }
+    for (const g of presente ? rosa : [...rosa, ...ospiti]) {
+      delete presenzeOspiti[g.id]
       if (presente) presenze[g.id] = true
       else delete presenze[g.id]
     }
-    update(s.id, presente ? { presenze } : { presenze, presenzeOspiti: {} })
-  }
-
-  function toggleOspite(s: Allenamento, id: string) {
-    const presenzeOspiti = { ...s.presenzeOspiti }
-    if (presenzeOspiti[id]) delete presenzeOspiti[id]
-    else presenzeOspiti[id] = true
-    update(s.id, { presenzeOspiti })
+    update(s.id, { presenze, presenzeOspiti })
   }
 
   async function esporta() {
@@ -292,7 +306,7 @@ export function Allenamenti() {
         <Col xs={12} sm={8}>
           <Card className="stat-card">
             <TeamOutlined className="stat-icon" aria-hidden />
-            <Statistic title="Affluenza media" value={media.toFixed(1)} suffix={`/ ${rosa.length}`} />
+            <Statistic title="Affluenza media" value={media.toFixed(1)} suffix="presenti" />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
@@ -361,8 +375,7 @@ export function Allenamenti() {
           <List
             dataSource={sedute}
             renderItem={(s) => {
-              const p = presenti(s)
-              const perc = percSeduta(s)
+              const { presenti: p, totale, percentuale: perc } = affluenza.get(s.id)!
               return (
                 <List.Item
                   onClick={() => apriSeduta(s.id)}
@@ -381,7 +394,7 @@ export function Allenamenti() {
                       </div>
                       <Text style={{ minWidth: 52, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <b>{p}</b>
-                        <Text type="secondary">/{rosa.length}</Text>
+                        <Text type="secondary">/{totale}</Text>
                       </Text>
                     </Space>
                   )}
@@ -482,7 +495,7 @@ export function Allenamenti() {
         maskClosable={false}
         width={640}
       >
-        {sessioneAperta && (
+        {sessioneAperta && affluenzaAperta && (
           <>
             <Space wrap className="filtri-inline" style={{ marginBottom: 14 }}>
               <DataPicker
@@ -524,14 +537,14 @@ export function Allenamenti() {
                 }}
               >
                 <Text strong>
-                  {presenti(sessioneAperta)} di {rosa.length} presenti
+                  {affluenzaAperta.presenti} di {affluenzaAperta.totale} presenti
                 </Text>
-                <Text type="secondary">{percSeduta(sessioneAperta)}%</Text>
+                <Text type="secondary">{affluenzaAperta.percentuale}%</Text>
               </div>
               <Progress
-                percent={percSeduta(sessioneAperta)}
+                percent={affluenzaAperta.percentuale}
                 showInfo={false}
-                strokeColor={coloreAffluenza(percSeduta(sessioneAperta))}
+                strokeColor={coloreAffluenza(affluenzaAperta.percentuale)}
                 trailColor="var(--linea)"
               />
               <Space style={{ marginTop: 10 }}>
@@ -560,14 +573,14 @@ export function Allenamenti() {
               ) : (
                 <Space size={[8, 8]} wrap>
                   {rosaModale.map((g) => {
-                    const presente = !!sessioneAperta.presenze[g.id]
+                    const presente = presenteAllenamento(sessioneAperta, g.id)
                     return (
                       <button
                         key={g.id}
                         type="button"
                         className={`presenza-chip${presente ? ' on' : ''}`}
                         aria-pressed={presente}
-                        onClick={() => togglePresenza(sessioneAperta, g.id)}
+                        onClick={() => togglePresenza(sessioneAperta, g)}
                       >
                         {presente && <CheckOutlined aria-hidden />}
                         {g.cognome} {g.nome}
@@ -583,14 +596,14 @@ export function Allenamenti() {
                 <Typography.Paragraph strong>Solo allenamento</Typography.Paragraph>
                 <Space size={[8, 8]} wrap>
                   {ospitiModale.map((g) => {
-                    const presente = !!sessioneAperta.presenzeOspiti?.[g.id]
+                    const presente = presenteAllenamento(sessioneAperta, g.id)
                     return (
                       <button
                         key={g.id}
                         type="button"
                         className={`presenza-chip${presente ? ' on' : ''}`}
                         aria-pressed={presente}
-                        onClick={() => toggleOspite(sessioneAperta, g.id)}
+                        onClick={() => togglePresenza(sessioneAperta, g)}
                       >
                         {presente && <CheckOutlined aria-hidden />}
                         {g.cognome} {g.nome}

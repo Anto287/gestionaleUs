@@ -1,3 +1,4 @@
+import { idPresentiAllenamento } from '../../lib/allenamenti'
 import { useState } from 'react'
 import { App, Button, Form, Input, InputNumber, Popconfirm, Select, Space } from 'antd'
 import type { Allenamento } from '../../types'
@@ -9,7 +10,7 @@ export function ProgrammaSeduta({ seduta, salva }: { seduta: Allenamento; salva:
   const [svolto, setSvolto] = useState(seduta.svolto || '')
   const [durata, setDurata] = useState(90)
   const [obiettivo, setObiettivo] = useState('Possesso')
-  const [numero, setNumero] = useState(Math.max(4, Object.values(seduta.presenze).filter(Boolean).length || 16))
+  const [numero, setNumero] = useState(Math.max(4, idPresentiAllenamento(seduta).size || 16))
   const genera = () => setProgramma(generaProgramma(durata, numero, obiettivo))
   return <Form layout="vertical">
     <Space wrap>

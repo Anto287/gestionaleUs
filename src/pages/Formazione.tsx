@@ -7,7 +7,7 @@ import { ElencoCompatto } from '../components/ElencoCompatto'
 import { PageHeader } from '../components/PageHeader'
 import { coloreRuolo } from '../ruoli'
 import { isGiocatore } from '../lib/categoria'
-import { seduteSvolte } from '../lib/allenamenti'
+import { idPresentiAllenamento, seduteSvolte } from '../lib/allenamenti'
 import { statoCertificato } from '../lib/certificato'
 import {
   MODULI,
@@ -38,13 +38,14 @@ export function Formazione() {
   // le sedute future create dal calendario non contano
   const presenze = useMemo(() => {
     const c: Record<string, number> = {}
+    const inRosa = new Set(giocatori.items.map((g) => g.id))
     for (const a of seduteSvolte(allenamenti.items)) {
-      for (const [id, presente] of Object.entries(a.presenze)) {
-        if (presente) c[id] = (c[id] ?? 0) + 1
+      for (const id of idPresentiAllenamento(a)) {
+        if (inRosa.has(id)) c[id] = (c[id] ?? 0) + 1
       }
     }
     return c
-  }, [allenamenti.items])
+  }, [allenamenti.items, giocatori.items])
 
   // solo i giocatori tesserati (con numero di tessera), niente dirigenti puri né infortunati
   const tesserati = useMemo(
