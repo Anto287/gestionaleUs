@@ -34,3 +34,14 @@ export const COLLECTIONS = [
 ] as const
 
 export type CollectionName = (typeof COLLECTIONS)[number]
+
+// Raccolte condivise tra le stagioni.
+const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi'])
+
+export function seasonDi(collection: string, attiva: string): string {
+  return COLLEZIONI_GLOBALI.has(collection) ? 'globale' : attiva
+}
+
+export function richiesteRaccolte(attiva: string) {
+  return COLLECTIONS.map((collection) => ({ collection, season: seasonDi(collection, attiva) }))
+}

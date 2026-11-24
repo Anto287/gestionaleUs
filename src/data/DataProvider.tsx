@@ -15,7 +15,7 @@ import { SyncGuard } from '../lib/syncGuard'
 import { riusaLista } from '../lib/riusaLista'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
-import { COLLECTIONS } from '../collections'
+import { COLLECTIONS, richiesteRaccolte, seasonDi } from '../collections'
 import * as store from '../services/driveStore'
 import { preparaCaricamento, preparaScontrino } from '../lib/immagine'
 import { useChiudiUndoAlloSmontaggio } from '../hooks/useEliminaUndo'
@@ -60,15 +60,6 @@ export function useDataSyncVersion(): number {
   return useContext(SyncVersionContext)
 }
 
-// raccolte NON divise per stagione: la cassa è continua nel tempo, e così
-// anche i conti in sospeso con le altre società e le schede degli avversari
-// (si ritrovano l'anno dopo)
-const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi'])
-const SEASON_GLOBALE = 'globale'
-function seasonDi(collection: string, attiva: string): string {
-  return COLLEZIONI_GLOBALI.has(collection) ? SEASON_GLOBALE : attiva
-}
-
 function leggiBase64(file: File): Promise<string> {
   return new Promise((res, rej) => {
     const reader = new FileReader()
@@ -93,7 +84,8 @@ function copiaLocale(attiva: string): { data: Store; completa: boolean } {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { attiva } = useSeason()
+  const { attiva, raccolteAvvio } = useSeason()
+  const iniziali = useRef(raccolteAvvio?.attiva === attiva ? raccolteAvvio.liste : null)
   const [copia] = useState(() => copiaLocale(attiva))
   const [data, setData] = useState<Store>(copia.data)
   const [stato, setStato] = useState<'loading' | 'ready' | 'error'>(
@@ -162,17 +154,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
       try {
-        let tutte: Record<string, unknown[]> | null = null
-        try {
-          tutte = await store.listAll(
-            COLLECTIONS.map((c) => ({
-              collection: c,
-              season: seasonDi(c, attiva),
-            })),
-          )
-        } catch {
-          /* riprova le singole raccolte, come con lo script precedente */
-        }
+        // Lascia terminare lo smontaggio simulato di StrictMode prima di
+        // consumare le tabelle ricevute con la stagione.
+        await Promise.resolve()
+        if (annullato) return
+        const tutte = iniziali.current ?? await store.listAll(richiesteRaccolte(attiva))
+        iniziali.current = null
         if (annullato) return
         const esiti = await Promise.all(
           COLLECTIONS.map(async (c) => {
@@ -203,6 +190,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
             ? 'error'
             : 'ready',
         )
+      } catch (e) {
+        if (!annullato) {
+          setErroreCaricamento(String((e as Error)?.message || e))
+          setStato((st) => (st === 'ready' ? st : 'error'))
+        }
       } finally {
         inCorso = false
         if (!annullato) {

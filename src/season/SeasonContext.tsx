@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthContext'
 interface SeasonValue {
   stagioni: string[]
   attiva: string
+  raccolteAvvio: { attiva: string; liste: Record<string, unknown[]> } | null
   cambia: (stagione: string) => void
   /** Crea una nuova stagione e la rende attiva. */
   crea: (stagione: string) => boolean
@@ -35,10 +36,8 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   const { esci } = useAuth()
   const { sbloccato: admin } = useManagement()
   const { message } = AntApp.useApp()
-  const [cfg, setCfg] = useState<Cfg | null>(() => {
-    const c = store.seasonsConfigCache()
-    return c ? { stagioni: ordina(c.stagioni), attiva: c.attiva || c.stagioni[0] } : null
-  })
+  const [cfg, setCfg] = useState<Cfg | null>(null)
+  const [raccolteAvvio, setRaccolteAvvio] = useState<SeasonValue['raccolteAvvio']>(null)
   const [stato, setStato] = useState<'loading' | 'ready' | 'error'>('loading')
   const [errore, setErrore] = useState('')
   const [tentativo, setTentativo] = useState(0)
@@ -50,7 +49,11 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
     setErrore('')
     ;(async () => {
       try {
-        const c = await store.seasonsConfig()
+        await Promise.resolve()
+        if (annullato) return
+        const avvio = await store.datiAvvio()
+        if (annullato) return
+        const c = avvio?.cfg ?? await store.seasonsConfig()
         let stagioni: string[]
         let attiva: string
         if (c === null) {
@@ -67,6 +70,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
           attiva = c.attiva && c.stagioni.includes(c.attiva) ? c.attiva : c.stagioni[0]
         }
         if (!annullato) {
+          setRaccolteAvvio(avvio && { attiva: avvio.attiva, liste: avvio.liste })
           setCfg({ stagioni: ordina(stagioni), attiva })
           setStato('ready')
         }
@@ -202,7 +206,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
 
   return (
     <SeasonContext.Provider
-      value={{ stagioni: cfg.stagioni, attiva: cfg.attiva, cambia, crea, elimina }}
+      value={{ stagioni: cfg.stagioni, attiva: cfg.attiva, raccolteAvvio, cambia, crea, elimina }}
     >
       {children}
     </SeasonContext.Provider>
@@ -223,7 +227,7 @@ function SeasonSplash({
       <div className="drive-splash" style={{ minHeight: '100vh' }}>
         <Result
           status="warning"
-          title="Non riesco a leggere le stagioni dal Drive"
+          title="Non riesco a sincronizzare i dati dal Drive"
           subTitle={errore}
           extra={
             <Space>
@@ -242,7 +246,7 @@ function SeasonSplash({
   return (
     <div className="drive-splash" style={{ minHeight: '100vh' }}>
       <PalloneSpinner />
-      <p className="drive-splash-text">Carico le stagioni…</p>
+      <p className="drive-splash-text">Sincronizzo le tabelle dal Drive…</p>
     </div>
   )
 }

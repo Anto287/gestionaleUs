@@ -12,10 +12,26 @@ try {
   let fail = false, partial = false, block = false
   const releases = []
   const errors = []
+  const azioniTabelle = []
+  let startupSupportato = false
   page.on('pageerror', (e) => errors.push(e.message))
   await page.addInitScript(() => localStorage.setItem('usriolunato:__secret', 'test-only'))
   await page.route('https://script.google.com/**', async (route) => {
     const b = route.request().postDataJSON(), res = { ok: true }
+    if (['startup', 'seasons', 'listAll', 'list'].includes(b.action)) azioniTabelle.push(b.action)
+    if (b.action === 'startup') {
+      if (!startupSupportato) Object.assign(res, { ok: false, error: 'azione sconosciuta' })
+      else {
+        assert.equal(b.richieste.length, 20)
+        assert.equal(b.richieste.find((r) => r.collection === 'conti').globale, true)
+        assert.equal(b.richieste.find((r) => r.collection === 'giocatori').globale, false)
+        Object.assign(res, {
+          stagioni: ['2026/27'],
+          attiva: '2026/27',
+          liste: b.richieste.map((r) => ({ collection: r.collection, items: data[r.collection] ?? [] })),
+        })
+      }
+    }
     if (b.action === 'seasons') Object.assign(res, { stagioni: ['2026/27'], attiva: '2026/27' })
     if (b.action === 'listAll') {
       if (block) await new Promise((resolve) => releases.push(resolve))
@@ -27,7 +43,7 @@ try {
     }
     await route.fulfill({ json: res })
   })
-  // Una sola tabella non letta impedisce l'accesso, anche se le altre 16 sono disponibili.
+  // Una sola tabella non letta impedisce l'accesso, anche se le altre 19 sono disponibili.
   partial = true; fail = true
   await page.goto('http://127.0.0.1:5174/#/conti')
   await page.getByText('Sincronizzazione non completata', { exact: true }).waitFor()
@@ -55,6 +71,11 @@ try {
   await page.getByRole('dialog', { name: 'Nuovo movimento' }).waitFor()
   block = false
   for (const release of releases.splice(0)) release()
+  startupSupportato = true
+  azioniTabelle.length = 0
+  await page.reload()
+  await page.getByText('12 di 12 movimenti').waitFor()
+  assert.deepEqual(azioniTabelle, ['startup'])
   assert.deepEqual(errors, [])
   console.log('Avvio verificato: cache bloccata, errore parziale bloccante, recupero e refresh in sottofondo corretti')
 } finally { await browser?.close(); await server.close() }

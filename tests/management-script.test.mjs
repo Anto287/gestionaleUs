@@ -32,7 +32,7 @@ class Sheet {
     }
   }
 }
-function setup() {
+function setup({ mockList = true } = {}) {
   const props = new Map([['ADMIN_PASSWORD', 'admin-test-123456']]), cache = new Map(), sheets = [new Sheet('Sheet1')]
   const ss = { getId: () => 'private-management-id', getSheets: () => sheets, getSheetByName: (name) => sheets.find((s) => s.name === name), insertSheet: (name) => { const s = new Sheet(name); sheets.push(s); return s } }
   let locked = false, writes = 0, now = Date.now()
@@ -55,7 +55,8 @@ function setup() {
   vm.runInContext(source, context)
   if (process.env.APPS_SCRIPT_BASE) vm.runInContext(readFileSync(new URL('../docs/apps-script-aggiunta.gs', import.meta.url), 'utf8'), context)
   const records = new Map()
-  context.listDalFoglio_ = context.listItems = (c, season) => structuredClone(records.get(`${c}/${season}`) || [])
+  context.listDalFoglio_ = (c, season) => structuredClone(records.get(`${c}/${season}`) || [])
+  if (mockList) context.listItems = context.listDalFoglio_
   context.rebuildSheet_ = (c, season, items) => { writes++; records.set(`${c}/${season}`, structuredClone(items)) }
   context.uploadDoc = () => { writes++; return { id: 'file-test', nome: 'test.pdf' } }
   const device = { id: randomUUID(), browser: 'Chrome', sistema: 'macOS' }
@@ -64,6 +65,36 @@ function setup() {
   const logs = () => (ss.getSheetByName('Attivita')?.rows.slice(1) || []).map((r) => JSON.parse(r[1]))
   return { context, call, login, logs, records, device, props, cache, ss, writes: () => writes, advance: (ms) => { now += ms } }
 }
+
+test('avvio: stagione attiva, raccolte globali e due letture aggregate della cache', { skip: !!process.env.APPS_SCRIPT_BASE }, () => {
+  const s = setup({ mockList: false })
+  const cacheReads = []
+  s.context.CacheService.getScriptCache = () => ({
+    getAll(keys) {
+      cacheReads.push(Array.from(keys))
+      return Object.fromEntries(keys.filter((key) => s.cache.has(key)).map((key) => [key, s.cache.get(key)]))
+    },
+  })
+  s.context.readSeasons = () => ({ ok: true, stagioni: ['2026/27', '2027/28'], attiva: '2027/28' })
+  for (const key of ['lista/2027-28/giocatori', 'lista/globale/conti']) {
+    s.cache.set(key + '#n', '1')
+    s.cache.set(key + '#0', JSON.stringify([{ id: key }]))
+  }
+  s.context.listDocumenti = (season) => [{ id: season }]
+  const result = s.call({
+    action: 'startup',
+    device: undefined,
+    stagioneDefault: '2026/27',
+    richieste: [{ collection: 'giocatori' }, { collection: 'conti', globale: true }, { collection: 'documenti' }],
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.attiva, '2027/28')
+  assert.deepEqual(result.liste.map((r) => r.items[0].id), ['lista/2027-28/giocatori', 'lista/globale/conti', '2027/28'])
+  assert.deepEqual(cacheReads, [
+    ['lista/2027-28/giocatori#n', 'lista/globale/conti#n'],
+    ['lista/2027-28/giocatori#0', 'lista/globale/conti#0'],
+  ])
+})
 
 test('management: password separata, sessione persistente legata al browser e revoca', () => {
   const s = setup()

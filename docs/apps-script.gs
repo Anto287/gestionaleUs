@@ -89,6 +89,7 @@ function routeOriginal_(p) {
       case 'renameDoc':     return json({ ok: true, item: renameDoc(p.id, p.nome) });
       case 'exportPdf':     return json({ ok: true, dataBase64: exportPdf(p.id) });
       case 'uploadGrafica': return json({ ok: true, item: uploadGrafica(p.nome, p.dataBase64) });
+      case 'startup':       return json(readStartup_(p));
       case 'seasons':       return json(readSeasons());
       case 'setSeasons':    return json(writeSeasons(p.stagioni, p.attiva));
       case 'archivioList':  return json({ ok: true, documenti: archivioList('documenti'), foto: archivioList('foto') });
@@ -768,6 +769,20 @@ function readSeasons() {
   return { ok: true, stagioni: stagioni, attiva: attiva };
 }
 
+/** Risolve la stagione sul server e legge subito le relative raccolte. */
+function readStartup_(p) {
+  var configurazione = readSeasons();
+  var attiva = configurazione.attiva || p.stagioneDefault;
+  if (typeof attiva !== 'string' || !attiva.trim()) throw new Error('Stagione non valida');
+  if (!Array.isArray(p.richieste) || p.richieste.length > 30) throw new Error('Raccolte non valide');
+  var richieste = p.richieste.map(function (r) {
+    if (!r || !/^[a-z][a-z0-9]*$/i.test(String(r.collection || '')) ||
+        /^(management|attivita|dispositivi)/i.test(r.collection)) throw new Error('Raccolta non valida');
+    return { collection: r.collection, season: r.globale === true ? 'globale' : attiva };
+  });
+  return { ok: true, stagioni: configurazione.stagioni, attiva: attiva, liste: listAllItems(richieste) };
+}
+
 function writeSeasons(stagioni, attiva) {
   return withLock_(function () {
     var sh = ensureSeasonsSheet_();
@@ -891,24 +906,37 @@ function cacheChiave_(collection, season) {
   return 'lista/' + seasonKey_(season) + '/' + collection;
 }
 
-function cacheLeggi_(chiave) {
+/** Due letture CacheService per il gruppo: prima i contatori, poi i pezzi. */
+function cacheLeggiListe_(chiavi) {
+  var liste = Object.create(null);
+  if (!chiavi.length) return liste;
   try {
     var c = CacheService.getScriptCache();
-    var n = Number(c.get(chiave + '#n'));
-    if (!n) return null;
-    var chiavi = [];
-    for (var i = 0; i < n; i++) chiavi.push(chiave + '#' + i);
-    var pezzi = c.getAll(chiavi);
-    var testo = '';
-    for (var j = 0; j < n; j++) {
-      var p = pezzi[chiave + '#' + j];
-      if (p == null) return null; // un pezzo è scaduto: si rilegge dal foglio
-      testo += p;
-    }
-    return JSON.parse(testo);
+    var contatori = c.getAll(chiavi.map(function (k) { return k + '#n'; }));
+    var pezziPerLista = Object.create(null);
+    var chiaviPezzi = [];
+    chiavi.forEach(function (k) {
+      var n = Number(contatori[k + '#n']);
+      if (!Number.isInteger(n) || n < 1 || n > 20) return;
+      var pezzi = [];
+      for (var i = 0; i < n; i++) pezzi.push(k + '#' + i);
+      pezziPerLista[k] = pezzi;
+      chiaviPezzi = chiaviPezzi.concat(pezzi);
+    });
+    if (!chiaviPezzi.length) return liste;
+    var valori = c.getAll(chiaviPezzi);
+    Object.keys(pezziPerLista).forEach(function (k) {
+      var pezzi = pezziPerLista[k].map(function (id) { return valori[id]; });
+      if (pezzi.some(function (p) { return p == null; })) return;
+      try {
+        var items = JSON.parse(pezzi.join(''));
+        if (Array.isArray(items)) liste[k] = items;
+      } catch (err) {}
+    });
   } catch (err) {
-    return null;
+    /* cache non disponibile: si rilegge il foglio */
   }
+  return liste;
 }
 
 function cacheScrivi_(chiave, items) {
@@ -956,6 +984,14 @@ function cercaPerNome_(parentId, nome, mimeType) {
 var MIME_FOGLIO = 'application/vnd.google-apps.spreadsheet';
 var MIME_CARTELLA = 'application/vnd.google-apps.folder';
 
+var cartelleStagioniApi_ = Object.create(null);
+function cartellaStagioneApi_(key) {
+  if (!(key in cartelleStagioniApi_)) {
+    cartelleStagioniApi_[key] = cercaPerNome_(PARENT_FOLDER_ID, key, MIME_CARTELLA);
+  }
+  return cartelleStagioniApi_[key];
+}
+
 /** L'id del foglio di una sezione; una volta trovato resta in memoria 6 ore. */
 function fileIdSezione_(collection, season) {
   var key = seasonKey_(season);
@@ -969,7 +1005,7 @@ function fileIdSezione_(collection, season) {
   if (FILE_RADICE[collection]) {
     id = cercaPerNome_(PARENT_FOLDER_ID, FILE_RADICE[collection], MIME_FOGLIO);
   } else {
-    var cartella = cercaPerNome_(PARENT_FOLDER_ID, key, MIME_CARTELLA);
+    var cartella = cartellaStagioneApi_(key);
     if (cartella) id = cercaPerNome_(cartella, FILE_STAGIONE[collection] || nomeFile_(collection), MIME_FOGLIO);
   }
   if (id) {
@@ -1018,11 +1054,11 @@ function listDalFoglio_(collection, season) {
   return recordDaRighe_(sheet.getDataRange().getValues());
 }
 
-function listItems(collection, season) {
+function listItems(collection, season, cache) {
   if (collection === 'documenti') return listDocumenti(season);
 
   var chiave = cacheChiave_(collection, season);
-  var pronti = cacheLeggi_(chiave);
+  var pronti = (cache || cacheLeggiListe_([chiave]))[chiave];
   if (pronti) return pronti;
 
   var items = null;
@@ -1051,9 +1087,16 @@ function listItems(collection, season) {
  */
 function listAllItems(richieste) {
   var out = [];
-  (richieste || []).forEach(function (r) {
+  var richiesteValide = (richieste || []).filter(function (r) { return r && typeof r.collection === 'string'; });
+  var chiavi = richiesteValide.filter(function (r) {
+    return r.collection !== 'documenti';
+  }).map(function (r) {
+    return cacheChiave_(r.collection, r.season);
+  });
+  var cache = cacheLeggiListe_(chiavi);
+  richiesteValide.forEach(function (r) {
     try {
-      out.push({ collection: r.collection, items: listItems(r.collection, r.season) });
+      out.push({ collection: r.collection, items: listItems(r.collection, r.season, cache) });
     } catch (err) {
       console.error('listAll ' + r.collection + ': ' + err);
     }
@@ -1115,7 +1158,7 @@ function listDocumenti(season) {
   var key = seasonKey_(season);
   if (serviziVeloci_()) {
     try {
-      var cartellaStagione = cercaPerNome_(PARENT_FOLDER_ID, key, MIME_CARTELLA);
+      var cartellaStagione = cartellaStagioneApi_(key);
       if (!cartellaStagione) return [];
       var cartellaDoc = cercaPerNome_(cartellaStagione, DOCUMENTI_FOLDER, MIME_CARTELLA);
       return cartellaDoc ? elencoFile_(cartellaDoc) : [];

@@ -6,6 +6,7 @@
  * browser (localStorage), così l'app resta usabile anche senza Drive.
  */
 import { config } from '../config'
+import { richiesteRaccolte } from '../collections'
 import { getDevice } from '../management/device'
 import {
   keysWithPrefix,
@@ -171,7 +172,10 @@ export async function listAll(
     if (String(data.error || '').toLowerCase().includes('sconosciuta')) return null
     throw new Error(data.error || 'Errore Drive')
   }
-  const liste = (data.liste ?? []) as Array<{ collection: string; items?: unknown[] }>
+  return decodificaListe(data.liste)
+}
+
+function decodificaListe(liste: Array<{ collection: string; items?: unknown[] }> = []): Record<string, unknown[]> {
   const raccolte: Record<string, unknown[]> = {}
   for (const l of liste) if (Array.isArray(l.items)) raccolte[l.collection] = l.items
   return raccolte
@@ -289,6 +293,30 @@ export interface SeasonsConfig {
   attiva: string
 }
 
+/** Legge stagione e raccolte con una sola esecuzione di Apps Script. */
+export async function datiAvvio() {
+  if (!DRIVE_URL) return null
+  await attendiScritture()
+  const data = await callDrive({
+    action: 'startup',
+    richieste: richiesteRaccolte('').map(({ collection, season }) => ({
+      collection,
+      globale: season === 'globale',
+    })),
+    stagioneDefault: config.season,
+    secret: getSecret(),
+  })
+  if (!data.ok) {
+    if (String(data.error || '').toLowerCase().includes('sconosciuta')) return null
+    throw new Error(data.error || 'Errore Drive')
+  }
+  // Compatibilità con risposte di servizi che ignorano l'azione sconosciuta.
+  if (!Array.isArray(data.stagioni) || !Array.isArray(data.liste)) return null
+  const cfg: SeasonsConfig = { stagioni: data.stagioni, attiva: data.attiva }
+  saveValue(SEASONS_CFG_KEY, JSON.stringify(cfg))
+  return { cfg, attiva: cfg.attiva, liste: decodificaListe(data.liste) }
+}
+
 /**
  * Legge l'elenco stagioni dal Drive. Restituisce `null` se lo script non
  * conosce ancora l'azione (versione vecchia dello script): in quel caso
@@ -317,8 +345,7 @@ export async function seasonsConfig(): Promise<SeasonsConfig | null> {
 }
 
 /**
- * L'elenco stagioni dell'ultima volta, letto dal browser: serve ad aprire
- * l'app senza aspettare il Drive (poi `seasonsConfig` lo rinfresca).
+ * L'elenco stagioni dell'ultima volta, mostrato nella schermata di accesso.
  */
 export function seasonsConfigCache(): SeasonsConfig | null {
   try {
