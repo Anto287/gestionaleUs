@@ -5,6 +5,7 @@ import {
   Button,
   Dropdown,
   Empty,
+  Skeleton,
   Grid,
   Input,
   List,
@@ -62,7 +63,7 @@ function descrizioneDoc(d: Documento): string {
 
 export function Documenti() {
   const { items, remove } = useCollection<Documento>('documenti')
-  const { uploadDoc, createDoc, renameDoc } = useData()
+  const { uploadDoc, createDoc, renameDoc, documentiInCaricamento } = useData()
   const { message } = AntApp.useApp()
   const screens = Grid.useBreakpoint()
   const isMobile = !screens.sm
@@ -186,7 +187,9 @@ export function Documenti() {
         azioni={items.length > 0 && azioni}
       />
 
-      {items.length === 0 ? (
+      {items.length === 0 && documentiInCaricamento ? (
+        <div role="status" aria-label="Caricamento documenti"><Skeleton active /></div>
+      ) : items.length === 0 ? (
         <Empty description="Nessun documento: carica certificati e moduli, o crea un documento nuovo. Tutto finisce nella cartella Documenti sul Drive.">
           {azioni}
         </Empty>

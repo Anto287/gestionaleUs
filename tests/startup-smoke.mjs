@@ -9,7 +9,11 @@ try {
   browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--no-sandbox', '--disable-dev-shm-usage'], headless: true })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' })
   const data = fixtures()
-  let fail = false, partial = false, block = false
+  let fail = false, partial = false, block = false, blockDocs = true
+  let docsRequested = false
+  let notifyDocs
+  const docsStarted = new Promise((resolve) => { notifyDocs = resolve })
+  const docReleases = []
   const releases = []
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -18,10 +22,16 @@ try {
     const b = route.request().postDataJSON(), res = { ok: true }
     if (b.action === 'seasons') Object.assign(res, { stagioni: ['2026/27'], attiva: '2026/27' })
     if (b.action === 'listAll') {
+      assert.ok(b.richieste.every((r) => r.collection !== 'documenti'), 'solo tabelle nel percorso di avvio')
       if (block) await new Promise((resolve) => releases.push(resolve))
       res.liste = b.richieste.map((r) => ({ collection: r.collection, ...(partial && r.collection === 'conti' ? {} : { items: data[r.collection] ?? [] }) }))
     }
     if (b.action === 'list') {
+      if (b.collection === 'documenti') {
+        docsRequested = true
+        notifyDocs()
+        if (blockDocs) await new Promise((resolve) => docReleases.push(resolve))
+      }
       if (fail) res.items = 'risposta non valida'
       else res.items = data[b.collection] ?? []
     }
@@ -37,6 +47,9 @@ try {
   fail = false
   await page.getByRole('button', { name: 'Riprova', exact: true }).click()
   await page.getByText('12 di 12 movimenti').waitFor()
+  await page.waitForFunction(() => !!document.querySelector('.app-container'))
+  await docsStarted
+  assert.ok(docsRequested, 'catalogo richiesto dopo le tabelle')
   // La cache è completa ma non è un lasciapassare per l'avvio successivo.
   await page.waitForFunction(() => !!localStorage.getItem('usriolunato:__dati/globale/conti'))
   block = true; partial = false
@@ -48,6 +61,16 @@ try {
   block = false
   for (const release of releases.splice(0)) release()
   await page.getByText('12 di 12 movimenti').waitFor()
+  // Il Drive può tenere i documenti in attesa senza bloccare le tabelle.
+  assert.ok(docsRequested)
+  await page.goto('http://127.0.0.1:5174/#/documenti')
+  await page.getByRole('status', { name: 'Caricamento documenti' }).waitFor()
+  assert.equal(await page.getByText(/Nessun documento: carica/).count(), 0)
+  blockDocs = false
+  for (const release of docReleases.splice(0)) release()
+  await page.getByText(data.documenti[0].nome, { exact: true }).first().waitFor()
+  await page.goto('http://127.0.0.1:5174/#/conti')
+  await page.getByText('12 di 12 movimenti').waitFor()
   // Dopo l'avvio le riletture non chiudono l'app o i moduli aperti.
   block = true
   await page.getByRole('button', { name: /Aggiorna/ }).click()
@@ -56,5 +79,5 @@ try {
   block = false
   for (const release of releases.splice(0)) release()
   assert.deepEqual(errors, [])
-  console.log('Avvio verificato: cache bloccata, errore parziale bloccante, recupero e refresh in sottofondo corretti')
+  console.log('Documenti lenti non bloccanti; avvio verificato: cache bloccata, errore parziale bloccante, recupero e refresh in sottofondo corretti')
 } finally { await browser?.close(); await server.close() }
