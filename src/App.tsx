@@ -65,6 +65,9 @@ const Distinte = lazy(() =>
 const Social = lazy(() =>
   import('./pages/Social').then((m) => ({ default: m.Social })),
 )
+const ManutenzioniPeriodiche = lazy(() =>
+  import('./pages/ManutenzioniPeriodiche').then((m) => ({ default: m.ManutenzioniPeriodiche })),
+)
 const Magazzino = lazy(() =>
   import('./pages/Magazzino').then((m) => ({ default: m.Magazzino })),
 )
@@ -110,6 +113,7 @@ function App() {
             <Route path="/statistiche" element={<Statistiche />} />
             <Route path="/distinte" element={<Distinte />} />
             <Route path="/social" element={<Social />} />
+            <Route path="/manutenzioni-periodiche" element={<ManutenzioniPeriodiche />} />
             <Route path="/magazzino" element={<Magazzino />} />
             <Route path="/conti" element={<Conti />} />
             <Route path="/spese" element={<Spese />} />

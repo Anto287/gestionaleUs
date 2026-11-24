@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useFiltro } from '../hooks/useFiltro'
 import type { MouseEvent } from 'react'
 import {
@@ -387,6 +388,17 @@ export function Conti() {
     form.setFieldsValue(m)
     setModale(true)
   }
+  const location = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const id = location.state?.movimentoId
+    if (typeof id !== 'string') return
+    const movimento = items.find((voce) => voce.id === id)
+    if (movimento) apriModifica(movimento)
+    else message.warning('Movimento non disponibile.')
+    navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [location, items, navigate, message])
+
   async function salva(v: Omit<Movimento, 'id'>) {
     if (salvataggioRef.current) return
     salvataggioRef.current = true

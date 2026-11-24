@@ -21,6 +21,7 @@ export const COLLECTIONS = [
   'magazzino',
   'materiale',
   'manutenzione',
+  'manutenzioniPeriodiche',
   'borsaMedica',
   'divise',
   'tornei',
