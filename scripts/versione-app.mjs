@@ -5,9 +5,9 @@ function git(...args) {
 }
 
 function tipoModifica(titolo) {
-  const match = /^(fix|feat)(?:\([^)]+\))?(!)?:\s+\S/.exec(titolo)
-  if (!match || (match[1] === 'fix' && match[2])) {
-    throw new Error(`Titolo o commit non valido: «${titolo}». Inizia con fix:, feat: o feat!: e aggiungi una descrizione.`)
+  const match = /^(fix|feat|perf)(?:\([^)]+\))?(!)?:\s+\S/.exec(titolo)
+  if (!match || (match[1] !== 'feat' && match[2])) {
+    throw new Error(`Titolo o commit non valido: «${titolo}». Inizia con fix:, feat:, feat!: o perf: e aggiungi una descrizione.`)
   }
   if (match[2]) return 'major'
   return match[1] === 'feat' ? 'minor' : 'patch'
