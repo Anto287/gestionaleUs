@@ -27,6 +27,8 @@ type VistaRosa = 'tesserati' | 'ospiti'
 type Store = Record<string, Array<{ id: string }>>
 
 interface DataValue {
+  documentiInCaricamento: boolean
+
   getItems: <T>(collection: string, vistaRosa?: VistaRosa) => T[]
   add: <T>(collection: string, item: Omit<T, 'id'>) => string
   update: <T>(collection: string, id: string, patch: Partial<T>) => void
@@ -65,6 +67,8 @@ export function useDataSyncVersion(): number {
 // (si ritrovano l'anno dopo)
 const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi'])
 const SEASON_GLOBALE = 'globale'
+// Il catalogo dei file Drive non è una tabella gestionale.
+const TABELLE = COLLECTIONS.filter((c) => c !== 'documenti')
 function seasonDi(collection: string, attiva: string): string {
   return COLLEZIONI_GLOBALI.has(collection) ? SEASON_GLOBALE : attiva
 }
@@ -101,6 +105,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   )
   const [erroreCaricamento, setErroreCaricamento] = useState('')
   const [lette, setLette] = useState(0)
+  const [documentiInCaricamento, setDocumentiInCaricamento] = useState(true)
+  const [erroreDocumenti, setErroreDocumenti] = useState('')
   const [erroreSync, setErroreSync] = useState<string | null>(null)
   const [aggiornando, setAggiornando] = useState(true)
   const [tentativo, setTentativo] = useState(0)
@@ -165,7 +171,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         let tutte: Record<string, unknown[]> | null = null
         try {
           tutte = await store.listAll(
-            COLLECTIONS.map((c) => ({
+            TABELLE.map((c) => ({
               collection: c,
               season: seasonDi(c, attiva),
             })),
@@ -175,7 +181,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
         if (annullato) return
         const esiti = await Promise.all(
-          COLLECTIONS.map(async (c) => {
+          TABELLE.map(async (c) => {
             try {
               const items =
                 tutte?.[c] ??
@@ -193,7 +199,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const errori = esiti.filter(Boolean)
         setErroreCaricamento(
           errori.length
-            ? `Non riesco a leggere ${errori.length} ${errori.length === 1 ? 'tabella' : 'tabelle'} su ${COLLECTIONS.length}. Verifica la connessione e riprova.`
+            ? `Non riesco a leggere ${errori.length} ${errori.length === 1 ? 'tabella' : 'tabelle'} su ${TABELLE.length}. Verifica la connessione e riprova.`
             : '',
         )
         if (!errori.length) setUltimoAggiornamento(new Date())
@@ -238,6 +244,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('offline', connessione)
     }
   }, [attiva, tentativo])
+
+  // Solo dopo l'apertura: un catalogo Drive lento o guasto non blocca le tabelle.
+  useEffect(() => {
+    if (stato !== 'ready') return
+    let annullato = false
+    const snapshot = guard.current.snapshot()
+    setDocumentiInCaricamento(true)
+    setErroreDocumenti('')
+    void store.list<{ id: string }>('documenti', attiva).then((items) => {
+      if (annullato || !guard.current.canApply('documenti', snapshot)) return
+      const condivisi = riusaLista(dataRef.current.documenti, items)
+      dataRef.current = { ...dataRef.current, documenti: condivisi }
+      setData((s) => ({ ...s, documenti: condivisi }))
+    }).catch(() => {
+      if (!annullato) setErroreDocumenti('Elenco documenti non aggiornato. Le tabelle sono disponibili; premi Aggiorna per riprovare.')
+    }).finally(() => {
+      if (!annullato) setDocumentiInCaricamento(false)
+    })
+    return () => { annullato = true }
+  }, [stato, attiva, versioneSync])
 
   // la copia locale segue quello che si vede: scritta poco dopo ogni
   // cambiamento, così la prossima apertura parte da qui
@@ -446,6 +472,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const valore = useMemo<DataValue>(
     () => ({
+      documentiInCaricamento,
       getItems,
       add,
       update,
@@ -457,6 +484,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       renameDoc,
     }),
     [
+      documentiInCaricamento,
       getItems,
       add,
       update,
@@ -480,6 +508,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const feedback = (
     <>
+        {erroreDocumenti && <Alert type="warning" showIcon message={erroreDocumenti} />}
         {erroreSync && (
           <Alert
             type="warning"
@@ -607,9 +636,9 @@ function DriveSplash({
         <h1>Sincronizzazione iniziale</h1>
         <p>Carico tutte le tabelle dal Drive prima di aprire il gestionale.</p>
         <PalloneSpinner />
-        <Progress percent={Math.round(lette / COLLECTIONS.length * 100)} showInfo={false} strokeColor="var(--rosso)" />
-        <span className="startup-progress">{lette} di {COLLECTIONS.length} tabelle verificate</span>
-        <small>Foto e immagini si caricheranno quando servono.</small>
+        <Progress percent={Math.round(lette / TABELLE.length * 100)} showInfo={false} strokeColor="var(--rosso)" />
+        <span className="startup-progress">{lette} di {TABELLE.length} tabelle verificate</span>
+        <small>Documenti e foto si caricano dopo l’apertura.</small>
       </div>
     </div>
   )
