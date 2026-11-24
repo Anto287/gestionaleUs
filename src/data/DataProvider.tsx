@@ -65,7 +65,7 @@ export function useDataSyncVersion(): number {
 // raccolte NON divise per stagione: la cassa è continua nel tempo, e così
 // anche i conti in sospeso con le altre società e le schede degli avversari
 // (si ritrovano l'anno dopo)
-const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi'])
+const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi', 'manutenzioniPeriodiche'])
 const SEASON_GLOBALE = 'globale'
 // Il catalogo dei file Drive non è una tabella gestionale.
 const TABELLE = COLLECTIONS.filter((c) => c !== 'documenti')

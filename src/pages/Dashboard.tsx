@@ -15,6 +15,7 @@ import {
   RiseOutlined,
   SafetyCertificateOutlined,
   SwapOutlined,
+  ToolOutlined,
   TeamOutlined,
   WalletOutlined,
 } from '@ant-design/icons'
@@ -26,6 +27,7 @@ import { useEliminaUndo } from '../hooks/useEliminaUndo'
 import { chiaveGara, chiaviGare, inAttesaDiRecupero } from '../lib/partita'
 import { formatData, formatEuro, oggiIso } from '../lib/format'
 import { statoScadenza } from '../lib/scadenza'
+import { prossimaManutenzione, type ManutenzionePeriodica } from '../lib/manutenzioni'
 import { sottoScorta } from '../lib/scorta'
 import { statoCertificato } from '../lib/certificato'
 import { statoQuota } from '../lib/quota'
@@ -68,6 +70,8 @@ export function Dashboard() {
   const magazzino = useCollection<Articolo>('magazzino')
   const materiale = useCollection<VoceMagazzino>('materiale')
   const manutenzione = useCollection<VoceMagazzino>('manutenzione')
+  const periodiche = useCollection<ManutenzionePeriodica>('manutenzioniPeriodiche')
+  const oggi = oggiIso()
   const borsaMedica = useCollection<VoceMagazzino>('borsaMedica')
   const conti = useCollection<Movimento>('conti')
   const spese = useCollection<SpesaCondivisa>('speseCondivise')
@@ -131,7 +135,17 @@ export function Dashboard() {
     const daRiordinare = scortePerScheda.flatMap(({ articoli }) => articoli)
     const primaSchedaSottoScorta = scortePerScheda.find(({ articoli }) => articoli.length)?.scheda ?? 'bar'
 
+    const manutenzioniDovute = periodiche.items.filter((voce) => prossimaManutenzione(voce) <= oggi)
     const voci = [
+      {
+        key: 'manutenzioniPeriodiche',
+        icona: <ToolOutlined />,
+        tono: 'ocra' as const,
+        testo: 'Manutenzioni periodiche da fare',
+        dettaglio: manutenzioniDovute.map((voce) => voce.nome).join(', '),
+        n: manutenzioniDovute.length,
+        to: '/manutenzioni-periodiche',
+      },
       {
         key: 'cert',
         icona: <SafetyCertificateOutlined />,
@@ -230,6 +244,8 @@ export function Dashboard() {
     magazzino.items,
     materiale.items,
     manutenzione.items,
+    periodiche.items,
+    oggi,
     spese.items,
   ])
 
@@ -244,7 +260,6 @@ export function Dashboard() {
   )
   const inScadenza = magazzino.items.filter((a) => statoScadenza(a.scadenza).critico).length
 
-  const oggi = oggiIso()
 
   /**
    * Il prossimo impegno guarda tutto quello che è in programma: le partite
@@ -483,6 +498,7 @@ export function Dashboard() {
         vista={dettaglio}
         movimenti={conti.items}
         onClose={() => setDettaglio(null)}
+        onApriMovimento={(movimento) => navigate('/conti', { state: { movimentoId: movimento.id } })}
         conLinkConti
       />
     </>
