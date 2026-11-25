@@ -416,12 +416,20 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     // pixel: Konva parte dal bordo alto della riga, non dal centro delle lettere
     push({ id: nid(), tipo: 'cerchio', x: vsX, y: sfidaY + 36, rotation: 0, raggio: 34, strokeWidth: 3 })
     push(testo(vsX - 50, sfidaY + 18, 'Vs', 34, 'titolo', { width: 100 }))
-    push(testo(vsX + 34 - 620, sfidaY + 72, g.avversario.toUpperCase(), 64, 'titolo', { align: 'right', width: 620 }))
+    push(testo(vsX + 34 - 620, sfidaY + 72, g.avversario.toUpperCase(), 52, 'titolo', { align: 'right', width: 620 }))
 
     // il titolo: MATCH dritto e DAY in corsivo, più grande e un po' più in basso
-    push(testo(54, sy(560), 'MATCH', 165, 'titolo', { fontFamily: MANIFESTO, align: 'left', width: 900 }))
-    push(testo(638, sy(612), 'DAY', 172, 'titolo', { fontFamily: MANIFESTO, italic: true, align: 'left', width: 460 }))
-    push(testo(62, sy(738), g.dove, 28, 'titolo', { fontFamily: BASE, align: 'left', letterSpacing: 3, width: 800 }))
+    const dayY = sy(672)
+    const daySize = 172
+    push(testo(54, sy(620), 'MATCH', 165, 'titolo', { fontFamily: MANIFESTO, align: 'left', width: 900 }))
+    push(testo(638, dayY, 'DAY', daySize, 'titolo', { fontFamily: MANIFESTO, italic: true, align: 'left', width: 460 }))
+    // Il campo parte sotto il bordo inferiore di DAY, anche su un post corto.
+    // Gli indirizzi lunghi possono andare a capo nello spazio verso il piede.
+    if (g.dove.trim()) {
+      push(testo(62, dayY + daySize + 32, g.dove, 28, 'titolo', {
+        fontFamily: BASE, align: 'left', letterSpacing: 2, width: bandaX - 110,
+      }))
+    }
 
     // in fondo: stagione e, se c'è, la riga libera (competizione, note)
     push(testo(60, sy(1238), stagioneTxt, 30, 'titolo', { fontFamily: BASE, align: 'left', letterSpacing: 1, width: 760 }))

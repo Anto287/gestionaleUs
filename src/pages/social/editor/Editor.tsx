@@ -3,6 +3,10 @@ import { Stage, Layer, Rect, Line, Text as KText, Image as KImage, Circle, Trans
 import type Konva from 'konva'
 import { App, Button, Drawer, Dropdown, Tooltip, Upload } from 'antd'
 import {
+  ArrowDownOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  ArrowUpOutlined,
   BgColorsOutlined,
   BorderOutlined,
   CloudUploadOutlined,
@@ -548,11 +552,18 @@ export function Editor({
     patchEl(selElemento.id, { x: selElemento.x + dx, y: selElemento.y + dy })
   }
 
+  function spostaSelezione(dx: number, dy: number) {
+    const elemento = scenaRef.current.elementi.find((el) => el.id === selId)
+    if (!elemento || elemento.bloccato) return
+    patchEl(elemento.id, { x: elemento.x + dx, y: elemento.y + dy }, 'frecce')
+  }
+
   // scorciatoie da tastiera (annulla/ripeti, elimina, duplica, frecce)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.defaultPrevented || t?.isContentEditable ||
+        t?.closest('input, textarea, select, [role="combobox"], [role="listbox"], [role="menu"]')) return
       const mod = e.metaKey || e.ctrlKey
       const k = e.key.toLowerCase()
       if (mod && k === 'z') {
@@ -577,12 +588,13 @@ export function Editor({
         duplicaSel()
         return
       }
-      const passo = e.shiftKey ? 10 : 2
+      const passo = e.shiftKey ? 10 : 1
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (mod || e.altKey || !editorRef.current?.contains(t)) return
         e.preventDefault()
         const dx = e.key === 'ArrowLeft' ? -passo : e.key === 'ArrowRight' ? passo : 0
         const dy = e.key === 'ArrowUp' ? -passo : e.key === 'ArrowDown' ? passo : 0
-        patchEl(selElemento.id, { x: selElemento.x + dx, y: selElemento.y + dy }, 'frecce')
+        spostaSelezione(dx, dy)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -725,7 +737,10 @@ export function Editor({
   const eventiNodo = (el: Elemento): EventiNodo => ({
     draggable: true,
     preventDefault: true,
-    onMouseDown: () => setSelId(el.id),
+    onMouseDown: () => {
+      setSelId(el.id)
+      wrapRef.current?.focus({ preventScroll: true })
+    },
     onTap: () => setSelId(el.id),
     onDblClick: () => setSelId(el.id),
     onDblTap: () => {
@@ -839,8 +854,18 @@ export function Editor({
             </div>
           )}
 
+          {(mobile || selElemento) && (
+            <div className="ed-sposta" role="group" aria-label="Spostamento fine">
+              <span>Sposta di 1 px</span>
+              <Button disabled={!selElemento || selElemento.bloccato} aria-label="Sposta a sinistra" icon={<ArrowLeftOutlined />} onClick={() => spostaSelezione(-1, 0)} />
+              <Button disabled={!selElemento || selElemento.bloccato} aria-label="Sposta in alto" icon={<ArrowUpOutlined />} onClick={() => spostaSelezione(0, -1)} />
+              <Button disabled={!selElemento || selElemento.bloccato} aria-label="Sposta in basso" icon={<ArrowDownOutlined />} onClick={() => spostaSelezione(0, 1)} />
+              <Button disabled={!selElemento || selElemento.bloccato} aria-label="Sposta a destra" icon={<ArrowRightOutlined />} onClick={() => spostaSelezione(1, 0)} />
+            </div>
+          )}
+
           {/* tela */}
-          <div ref={wrapRef} className="ed-stage-wrap">
+          <div ref={wrapRef} className="ed-stage-wrap" tabIndex={0} aria-label="Tela grafica. Frecce per spostare la selezione, Maiusc per passi più grandi.">
             {pronto && larg > 0 && (
               <Stage
                 ref={stageRef}

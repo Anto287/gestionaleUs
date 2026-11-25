@@ -1669,6 +1669,20 @@ body {
   gap: 10px;
 }
 
+.ed-sposta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ed-sposta .ant-btn {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
 .ed-toolbar {
   display: flex;
   flex-wrap: wrap;
