@@ -15,7 +15,7 @@ import { SyncGuard } from '../lib/syncGuard'
 import { riusaLista } from '../lib/riusaLista'
 import { PalloneSpinner } from '../components/PalloneSpinner'
 import { useSeason } from '../season/SeasonContext'
-import { COLLECTIONS } from '../collections'
+import { COLLECTIONS, CONFERME_COMPLEANNI } from '../collections'
 import * as store from '../services/driveStore'
 import { preparaCaricamento, preparaScontrino } from '../lib/immagine'
 import { useChiudiUndoAlloSmontaggio } from '../hooks/useEliminaUndo'
@@ -28,6 +28,7 @@ type Store = Record<string, Array<{ id: string }>>
 
 interface DataValue {
   documentiInCaricamento: boolean
+  confermaCompleanno: (id: string) => Promise<void>
 
   getItems: <T>(collection: string, vistaRosa?: VistaRosa) => T[]
   add: <T>(collection: string, item: Omit<T, 'id'>) => string
@@ -65,7 +66,7 @@ export function useDataSyncVersion(): number {
 // raccolte NON divise per stagione: la cassa è continua nel tempo, e così
 // anche i conti in sospeso con le altre società e le schede degli avversari
 // (si ritrovano l'anno dopo)
-const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi', 'manutenzioniPeriodiche'])
+const COLLEZIONI_GLOBALI = new Set(['conti', 'speseCondivise', 'avversari', 'loghi', 'manutenzioniPeriodiche', CONFERME_COMPLEANNI])
 const SEASON_GLOBALE = 'globale'
 // Il catalogo dei file Drive non è una tabella gestionale.
 const TABELLE = COLLECTIONS.filter((c) => c !== 'documenti')
@@ -470,9 +471,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [update, fallita],
   )
 
+  const confermaCompleanno = useCallback(async (id: string) => {
+    const record = await store.put(CONFERME_COMPLEANNI, SEASON_GLOBALE, { id })
+    segnaModifica(CONFERME_COMPLEANNI)
+    cambia(CONFERME_COMPLEANNI, (items) =>
+      items.some((item) => item.id === id) ? items : [...items, record],
+    )
+  }, [cambia, segnaModifica])
+
   const valore = useMemo<DataValue>(
     () => ({
       documentiInCaricamento,
+      confermaCompleanno,
       getItems,
       add,
       update,
@@ -485,6 +495,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }),
     [
       documentiInCaricamento,
+      confermaCompleanno,
       getItems,
       add,
       update,

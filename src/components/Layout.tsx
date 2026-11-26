@@ -24,6 +24,7 @@ import { useTema } from '../theme/TemaProvider'
 import { DataProvider, DataFeedback } from '../data/DataProvider'
 import { ArchivioProvider } from '../data/ArchivioProvider'
 import { PalloneSpinner } from './PalloneSpinner'
+import { PromemoriaCompleanni } from './PromemoriaCompleanni'
 import { PromemoriaTessereProvider } from './PromemoriaTessere'
 
 const { Sider, Header, Content } = AntLayout
@@ -191,6 +192,7 @@ function LayoutPronto() {
         )}
         <Content className="app-content">
           <DataFeedback />
+          <PromemoriaCompleanni />
             <ArchivioProvider
               attivo={
                 location.pathname === '/archivio' ||

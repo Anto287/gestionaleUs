@@ -1,3 +1,5 @@
+import { compleanniDaVedere, giornoCompleanni } from '../src/lib/compleanni.ts'
+
 // Dati fittizi: nessuna informazione dei tesserati o richiesta al Drive reale.
 export function fixtures() {
   const giocatori = Array.from({ length: 16 }, (_, i) => ({
@@ -22,6 +24,7 @@ export function fixtures() {
     categoria: i % 2 === 0 ? 'Materiale' : 'Bevande', quantita: i + 1, scortaMinima: 4, scadenza: '2026-11-01', note: 'Da verificare prima della prossima partita.' }))
   return {
     giocatori, partite,
+    confermeCompleanni: compleanniDaVedere(giocatori, giornoCompleanni(), []).map(({ id }) => ({ id })),
     allenamenti: [1, 7, 14, 21].map((d) => ({ id: `a${d}`, data: `2026-10-${String(d).padStart(2, '0')}`,
       note: 'Riscaldamento, tecnica e partita finale.', presenze: Object.fromEntries(giocatori.slice(0, 13).map((g, i) => [g.id, i % 3 !== 0])) })),
     appuntamenti: [{ id: 'app', data: '2026-10-28', ora: '21:00', avversario: 'Associazione Sportiva San Damaso e San Paolo', inCasa: true, luogo: 'Campo comunale di Riolunato' }],

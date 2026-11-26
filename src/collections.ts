@@ -10,6 +10,8 @@
  * stagioni, come i conti. Lo script sul Drive crea il foglio di una collezione nuova al
  * primo salvataggio, quindi aggiungerne una qui è sicuro.
  */
+export const CONFERME_COMPLEANNI = 'confermeCompleanni'
+
 export const COLLECTIONS = [
   'giocatori',
   'allenamenti',
@@ -32,6 +34,7 @@ export const COLLECTIONS = [
   'documenti',
   'liste',
   'righeLista',
+  CONFERME_COMPLEANNI,
 ] as const
 
 export type CollectionName = (typeof COLLECTIONS)[number]
