@@ -210,7 +210,6 @@ export function Editor({
   const nodiRef = useRef<Map<string, Konva.Node>>(new Map())
   const wrapRef = useRef<HTMLDivElement>(null)
   const [larg, setLarg] = useState(0)
-  const primoRender = useRef(true)
   const lastKind = useRef(input.kind)
   const nomeKind = NOMI_KIND[input.kind]
 
@@ -315,11 +314,7 @@ export function Editor({
   // al cambio di grafica: se cambia il TIPO, riparte dallo stile predefinito di
   // quel tipo; se cambiano solo i dati, rigenera gli elementi tenendo lo stile.
   useLayoutEffect(() => {
-    if (primoRender.current) {
-      primoRender.current = false
-      lastKind.current = input.kind
-      return
-    }
+    if (!pronto) return
     if (input.kind !== lastKind.current) {
       lastKind.current = input.kind
       resetScena(scenaDaPrefs(input))
@@ -330,7 +325,7 @@ export function Editor({
     setSelId(null)
     setDrawer(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seedKey])
+  }, [seedKey, pronto])
 
   // larghezza disponibile → scala di visualizzazione
   useLayoutEffect(() => {
