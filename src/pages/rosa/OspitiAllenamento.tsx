@@ -4,6 +4,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, UserAddOutlined } from '@an
 import { useCollection } from '../../hooks/useCollection'
 import { useEliminaUndo } from '../../hooks/useEliminaUndo'
 import type { Giocatore } from '../../types'
+import './ospitiAllenamento.css'
 
 type Nominativo = Pick<Giocatore, 'nome' | 'cognome'>
 
@@ -33,13 +34,14 @@ export function OspitiAllenamento() {
       <Button icon={<PlusOutlined aria-hidden />} onClick={() => apri()}>Aggiungi ospite</Button>
       {ospiti.items.length > 0 && (
         <List
+          className="ospiti-allenamento-list"
           rowKey="id"
           dataSource={[...ospiti.items].sort((a, b) =>
             `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'),
           )}
           renderItem={(g) => (
-            <List.Item>
-              <span>{g.cognome} {g.nome}</span>
+            <List.Item className="ospiti-allenamento-row">
+              <span className="ospiti-allenamento-name">{g.cognome} {g.nome}</span>
               <Space wrap>
                 <Button
                   size="small"
