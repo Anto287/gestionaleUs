@@ -4,6 +4,7 @@
  * coordinate reali (tela 1080×h). L'editor la disegna e la rende modificabile;
  * l'export la ridisegna a piena risoluzione.
  */
+import { Text } from 'konva/lib/shapes/Text.js'
 import { ordineRuolo } from '../../../ruoli'
 
 export const DISPLAY = "'Barlow Condensed', 'Inter', sans-serif"
@@ -416,18 +417,31 @@ export function buildScene(input: BuildInput, tema: Tema, accento: string): Scen
     // pixel: Konva parte dal bordo alto della riga, non dal centro delle lettere
     push({ id: nid(), tipo: 'cerchio', x: vsX, y: sfidaY + 36, rotation: 0, raggio: 34, strokeWidth: 3 })
     push(testo(vsX - 50, sfidaY + 18, 'Vs', 34, 'titolo', { width: 100 }))
-    push(testo(vsX + 34 - 620, sfidaY + 72, g.avversario.toUpperCase(), 52, 'titolo', { align: 'right', width: 620 }))
+    const avversario = testo(vsX + 34 - 620, sfidaY + 72, g.avversario.toUpperCase(), 64, 'titolo', { align: 'right', width: 620 })
+    push(avversario)
 
-    // il titolo: MATCH dritto e DAY in corsivo, più grande e un po' più in basso
-    const dayY = sy(672)
-    const daySize = 172
-    push(testo(54, sy(620), 'MATCH', 165, 'titolo', { fontFamily: MANIFESTO, align: 'left', width: 900 }))
-    push(testo(638, dayY, 'DAY', daySize, 'titolo', { fontFamily: MANIFESTO, italic: true, align: 'left', width: 460 }))
-    // Il campo parte sotto il bordo inferiore di DAY, anche su un post corto.
-    // Gli indirizzi lunghi possono andare a capo nello spazio verso il piede.
+    // Mantiene le coordinate del manifesto originale quando il nome sta su una
+    // riga. Se Konva lo manda a capo, lascia spazio alle righe prima del titolo.
+    let altezzaAvversario = avversario.fontSize
+    if (typeof document !== 'undefined') {
+      const misura = new Text({
+        text: avversario.testo,
+        width: avversario.width,
+        fontSize: avversario.fontSize,
+        fontFamily: avversario.fontFamily,
+        fontStyle: 'bold',
+      })
+      altezzaAvversario = misura.height()
+      misura.destroy()
+    }
+    const spazioExtra = Math.max(0, avversario.y + altezzaAvversario - sy(560))
+    const dayX = 638
+    push(testo(54, sy(560) + spazioExtra, 'MATCH', 165, 'titolo', { fontFamily: MANIFESTO, align: 'left', width: 900 }))
+    push(testo(dayX, sy(612) + spazioExtra, 'DAY', 172, 'titolo', { fontFamily: MANIFESTO, italic: true, align: 'left', width: 460 }))
     if (g.dove.trim()) {
-      push(testo(62, dayY + daySize + 32, g.dove, 28, 'titolo', {
-        fontFamily: BASE, align: 'left', letterSpacing: 2, width: bandaX - 110,
+      const campoX = 62
+      push(testo(campoX, sy(738) + spazioExtra, g.dove, 28, 'titolo', {
+        fontFamily: BASE, align: 'left', letterSpacing: 3, width: dayX - campoX - 24,
       }))
     }
 

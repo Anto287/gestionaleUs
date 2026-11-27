@@ -1,0 +1,22 @@
+.ospiti-allenamento-list {
+  container-type: inline-size;
+}
+
+.ospiti-allenamento-list .ant-list-item.ospiti-allenamento-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: normal;
+  justify-items: start;
+  gap: 8px 16px;
+}
+
+.ospiti-allenamento-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@container (min-width: 30rem) {
+  .ospiti-allenamento-list .ant-list-item.ospiti-allenamento-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
